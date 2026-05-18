@@ -7,6 +7,8 @@ plugins {
     id("com.google.firebase.crashlytics")
 }
 
+import java.util.Properties
+
 android {
     namespace = "com.stepify.app"
     compileSdk = flutter.compileSdkVersion
@@ -32,11 +34,25 @@ android {
         versionName = flutter.versionName
     }
 
+    // Load signing properties from ../key.properties if present
+    val keystorePropertiesFile = rootProject.file("key.properties")
+    val keystoreProperties = Properties()
+    if (keystorePropertiesFile.exists()) {
+        keystoreProperties.load(java.io.FileInputStream(keystorePropertiesFile))
+
+        signingConfigs.create("release") {
+            storeFile = file(keystoreProperties.getProperty("storeFile"))
+            storePassword = keystoreProperties.getProperty("storePassword")
+            keyAlias = keystoreProperties.getProperty("keyAlias")
+            keyPassword = keystoreProperties.getProperty("keyPassword")
+        }
+    }
+
     buildTypes {
         release {
-            // TODO: Add your own signing config for the release build.
-            // Signing with the debug keys for now, so `flutter run --release` works.
-            signingConfig = signingConfigs.getByName("debug")
+            // Use release signing config when `key.properties` is provided,
+            // otherwise fall back to the debug signing config so local runs still work.
+            signingConfig = signingConfigs.findByName("release") ?: signingConfigs.getByName("debug")
             
             // Enables code shrinking, obfuscation, and optimization
             isMinifyEnabled = true

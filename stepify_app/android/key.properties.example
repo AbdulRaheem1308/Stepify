@@ -1,0 +1,6 @@
+# Copy this file to key.properties and fill values for release signing
+# Keep key.properties out of version control (it's already in .gitignore)
+storeFile=release_keystore.jks
+storePassword=your_store_password
+keyAlias=stepify_key
+keyPassword=your_key_password

@@ -1,0 +1,66 @@
+name: Build Android APK
+
+on:
+  push:
+    branches: [ main ]
+  workflow_dispatch:
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    env:
+      PROJECT_DIR: stepify_app
+
+    steps:
+    - uses: actions/checkout@v4
+
+    - name: Set up Java
+      uses: actions/setup-java@v4
+      with:
+        distribution: temurin
+        java-version: '17'
+
+    - name: Set up Flutter
+      uses: subosito/flutter-action@v2
+      with:
+        flutter-version: 'stable'
+
+    - name: Prepare Android signing (optional)
+      run: |
+        if [ -n "${{ secrets.KEYSTORE_BASE64 }}" ]; then
+          mkdir -p $PROJECT_DIR/android
+          echo "${{ secrets.KEYSTORE_BASE64 }}" | base64 --decode > $PROJECT_DIR/android/release_keystore.jks
+          cat > $PROJECT_DIR/android/key.properties <<EOF
+storeFile=release_keystore.jks
+storePassword=${{ secrets.KEYSTORE_PASSWORD }}
+keyAlias=${{ secrets.KEY_ALIAS }}
+keyPassword=${{ secrets.KEY_PASSWORD }}
+EOF
+        else
+          echo "No keystore provided; build will use debug signing."
+        fi
+
+    - name: Flutter pub get
+      working-directory: ${{ env.PROJECT_DIR }}
+      run: flutter pub get
+
+    - name: Build release artifacts
+      working-directory: ${{ env.PROJECT_DIR }}
+      run: |
+        # Build a universal release APK, an app bundle (AAB), and split per-ABI APKs
+        flutter build apk --release
+        flutter build appbundle --release
+        flutter build apk --target-platform android-arm,android-arm64 --split-per-abi --release
+
+    - name: Upload APK artifacts
+      uses: actions/upload-artifact@v4
+      with:
+        name: stepify-apks
+        path: |
+          ${{ env.PROJECT_DIR }}/build/app/outputs/flutter-apk/*.apk
+
+    - name: Upload AAB artifact
+      uses: actions/upload-artifact@v4
+      with:
+        name: stepify-aab
+        path: ${{ env.PROJECT_DIR }}/build/app/outputs/bundle/release/*.aab
