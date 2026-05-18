@@ -18,16 +18,19 @@ class MonthlyStepsChart extends StatelessWidget {
     final maxSteps = monthlyHistory.fold<int>(0, (max, current) => current.steps > max ? current.steps : max);
     final maxY = (maxSteps * 1.2).toDouble();
 
+    final isDark = Theme.of(context).brightness == Brightness.dark;
+
     return Container(
       padding: const EdgeInsets.all(20),
       decoration: BoxDecoration(
-        color: Theme.of(context).colorScheme.surface,
-        borderRadius: BorderRadius.circular(10),
+        color: Theme.of(context).cardColor,
+        borderRadius: BorderRadius.circular(24),
+        border: Border.all(color: Theme.of(context).dividerColor.withOpacity(0.08)),
         boxShadow: [
           BoxShadow(
-            color: Colors.black.withOpacity(0.04),
-            blurRadius: 10,
-            offset: const Offset(0, 4),
+            color: Colors.black.withOpacity(isDark ? 0.2 : 0.03),
+            blurRadius: 12,
+            offset: const Offset(0, 6),
           ),
         ],
       ),
@@ -42,7 +45,7 @@ class MonthlyStepsChart extends StatelessWidget {
                 maxY: maxY,
                 lineTouchData: LineTouchData(
                   touchTooltipData: LineTouchTooltipData(
-                    tooltipBgColor: AppTheme.neutral800,
+                    tooltipBgColor: isDark ? AppTheme.neutral800 : Colors.black,
                     getTooltipItems: (touchedSpots) {
                       return touchedSpots.map((LineBarSpot touchedSpot) {
                         return LineTooltipItem(
@@ -72,7 +75,7 @@ class MonthlyStepsChart extends StatelessWidget {
                   drawVerticalLine: false,
                   horizontalInterval: maxY / 4,
                   getDrawingHorizontalLine: (value) => FlLine(
-                    color: AppTheme.neutral100,
+                    color: Theme.of(context).dividerColor.withOpacity(0.2),
                     strokeWidth: 1,
                     dashArray: [4, 4],
                   ),

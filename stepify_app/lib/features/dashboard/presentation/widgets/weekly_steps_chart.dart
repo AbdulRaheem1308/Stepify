@@ -19,55 +19,25 @@ class WeeklyStepsChart extends StatelessWidget {
     // Add 20% buffer
     final maxY = (maxSteps * 1.2).toDouble();
 
+    final isDark = Theme.of(context).brightness == Brightness.dark;
+
     return Container(
       padding: const EdgeInsets.all(20),
       decoration: BoxDecoration(
-        color: Theme.of(context).colorScheme.surface,
-        borderRadius: BorderRadius.circular(10),
+        color: Theme.of(context).cardColor,
+        borderRadius: BorderRadius.circular(24),
+        border: Border.all(color: Theme.of(context).dividerColor.withOpacity(0.08)),
         boxShadow: [
           BoxShadow(
-            color: Colors.black.withOpacity(0.04),
-            blurRadius: 10,
-            offset: const Offset(0, 4),
+            color: Colors.black.withOpacity(isDark ? 0.2 : 0.03),
+            blurRadius: 12,
+            offset: const Offset(0, 6),
           ),
         ],
       ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          // Row(
-          //   mainAxisAlignment: MainAxisAlignment.spaceBetween,
-          //   children: [
-          //     Row(
-          //       children: [
-          //         Container(
-          //           padding: const EdgeInsets.all(8),
-          //           decoration: BoxDecoration(
-          //             color: AppTheme.secondaryBlue.withOpacity(0.1),
-          //             borderRadius: BorderRadius.circular(8),
-          //           ),
-          //           child: const Icon(Icons.bar_chart_rounded, color: AppTheme.secondaryBlue, size: 20),
-          //         ),
-          //         const SizedBox(width: 12),
-          //         Text(
-          //           'Activity',
-          //           style: Theme.of(context).textTheme.titleMedium?.copyWith(
-          //             fontWeight: FontWeight.bold,
-          //           ),
-          //         ),
-          //       ],
-          //     ),
-          //     DropdownButton<String>(
-          //       value: 'Week',
-          //       items: const [DropdownMenuItem(value: 'Week', child: Text('This Week'))],
-          //       onChanged: (_) {},
-          //       underline: const SizedBox(),
-          //       style: TextStyle(color: AppTheme.neutral500, fontSize: 13, fontWeight: FontWeight.w500),
-          //       icon: const Icon(Icons.keyboard_arrow_down, size: 16),
-          //     ),
-          //   ],
-          // ),
-          // const SizedBox(height: 24),
           AspectRatio(
             aspectRatio: 2.2,
             child: BarChart(
@@ -76,7 +46,7 @@ class WeeklyStepsChart extends StatelessWidget {
                 maxY: maxY,
                 barTouchData: BarTouchData(
                   touchTooltipData: BarTouchTooltipData(
-                    tooltipBgColor: AppTheme.neutral800,
+                    tooltipBgColor: isDark ? AppTheme.neutral800 : Colors.black,
                     tooltipPadding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
                     tooltipMargin: 8,
                     tooltipRoundedRadius: 8,
@@ -112,15 +82,15 @@ class WeeklyStepsChart extends StatelessWidget {
                         final date = weeklyHistory[value.toInt()].date;
                         final isToday = value.toInt() == weeklyHistory.length - 1;
                         return Padding(
-                          padding: const EdgeInsets.only(top: 8),
-                          child: Text(
-                            DateFormat.E().format(date).toUpperCase(), // MON, TUE...
-                            style: TextStyle(
-                              color: isToday ? AppTheme.primaryGreen : AppTheme.neutral400,
-                              fontWeight: isToday ? FontWeight.bold : FontWeight.normal,
-                              fontSize: 10,
-                            ),
-                          ),
+                           padding: const EdgeInsets.only(top: 8),
+                           child: Text(
+                             DateFormat.E().format(date).toUpperCase(), // MON, TUE...
+                             style: TextStyle(
+                               color: isToday ? AppTheme.primaryGreen : AppTheme.neutral400,
+                               fontWeight: isToday ? FontWeight.bold : FontWeight.normal,
+                               fontSize: 10,
+                             ),
+                           ),
                         );
                       },
                       reservedSize: 30,
@@ -135,7 +105,7 @@ class WeeklyStepsChart extends StatelessWidget {
                   drawVerticalLine: false,
                   horizontalInterval: maxY / 4,
                   getDrawingHorizontalLine: (value) => FlLine(
-                    color: AppTheme.neutral100,
+                    color: Theme.of(context).dividerColor.withOpacity(0.2),
                     strokeWidth: 1,
                     dashArray: [4, 4],
                   ),
@@ -167,7 +137,7 @@ class WeeklyStepsChart extends StatelessWidget {
                         backDrawRodData: BackgroundBarChartRodData(
                           show: true,
                           toY: maxY,
-                          color: AppTheme.neutral50.withOpacity(0.5),
+                          color: isDark ? Colors.white.withOpacity(0.06) : AppTheme.neutral50.withOpacity(0.5),
                         ),
                       ),
                     ],

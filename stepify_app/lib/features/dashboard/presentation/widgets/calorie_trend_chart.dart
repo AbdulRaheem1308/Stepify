@@ -27,16 +27,19 @@ class CalorieTrendChart extends StatelessWidget {
     });
     final maxY = (maxCals * 1.2).toDouble();
 
+    final isDark = Theme.of(context).brightness == Brightness.dark;
+
     return Container(
       padding: const EdgeInsets.all(20),
       decoration: BoxDecoration(
-        color: Theme.of(context).colorScheme.surface,
-        borderRadius: BorderRadius.circular(10),
+        color: Theme.of(context).cardColor,
+        borderRadius: BorderRadius.circular(24),
+        border: Border.all(color: Theme.of(context).dividerColor.withOpacity(0.08)),
         boxShadow: [
           BoxShadow(
-            color: Colors.black.withOpacity(0.04),
-            blurRadius: 10,
-            offset: const Offset(0, 4),
+            color: Colors.black.withOpacity(isDark ? 0.2 : 0.03),
+            blurRadius: 12,
+            offset: const Offset(0, 6),
           ),
         ],
       ),
@@ -83,7 +86,7 @@ class CalorieTrendChart extends StatelessWidget {
                 maxY: maxY,
                 barTouchData: BarTouchData(
                   touchTooltipData: BarTouchTooltipData(
-                    tooltipBgColor: AppTheme.neutral800,
+                    tooltipBgColor: isDark ? AppTheme.neutral800 : Colors.black,
                     getTooltipItem: (group, groupIndex, rod, rodIndex) {
                       return BarTooltipItem(
                         '${rod.toY.toInt()}\n',
@@ -149,7 +152,7 @@ class CalorieTrendChart extends StatelessWidget {
                         backDrawRodData: BackgroundBarChartRodData(
                           show: true,
                           toY: maxY,
-                          color: AppTheme.neutral50.withOpacity(0.5),
+                          color: isDark ? Colors.white.withOpacity(0.06) : AppTheme.neutral50.withOpacity(0.5),
                         ),
                       ),
                     ],

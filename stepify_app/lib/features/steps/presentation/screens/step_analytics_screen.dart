@@ -41,7 +41,13 @@ class _StepAnalyticsScreenState extends ConsumerState<StepAnalyticsScreen>
     super.dispose();
   }
 
-  Future<void> _fetchData() async {
+  Future<void> _fetchData({bool isRefresh = false}) async {
+    if (!isRefresh) {
+      setState(() {
+        _isLoading = true;
+      });
+    }
+
     try {
       final api = ref.read(apiServiceProvider);
       final results = await Future.wait([
@@ -49,18 +55,40 @@ class _StepAnalyticsScreenState extends ConsumerState<StepAnalyticsScreen>
         api.get('/steps/monthly'),
       ]);
       
-      setState(() {
-        _weeklyData = results[0].data;
-        _monthlyData = results[1].data;
-        _isLoading = false;
-      });
+      if (mounted) {
+        setState(() {
+          _weeklyData = results[0].data;
+          _monthlyData = results[1].data;
+          _isLoading = false;
+        });
+      }
     } catch (e) {
-      // Show empty state on error - no demo data
-      setState(() {
-        _weeklyData = _getEmptyWeeklyData();
-        _monthlyData = _getEmptyMonthlyData();
-        _isLoading = false;
-      });
+      if (mounted) {
+        setState(() {
+          _weeklyData ??= _getEmptyWeeklyData();
+          _monthlyData ??= _getEmptyMonthlyData();
+          _isLoading = false;
+        });
+
+        // Show a premium floating error SnackBar instead of wiping the page to blank
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Row(
+              children: [
+                const Icon(Icons.error_outline, color: Colors.white),
+                const SizedBox(width: 12),
+                const Expanded(
+                  child: Text('Unable to refresh analytics. Displaying offline data.'),
+                ),
+              ],
+            ),
+            backgroundColor: Colors.redAccent,
+            behavior: SnackBarBehavior.floating,
+            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+            margin: const EdgeInsets.all(20),
+          ),
+        );
+      }
     }
   }
 
@@ -181,7 +209,7 @@ class _StepAnalyticsScreenState extends ConsumerState<StepAnalyticsScreen>
             ),
           ),
           IconButton(
-            onPressed: _fetchData,
+            onPressed: () => _fetchData(isRefresh: true),
             icon: Icon(Icons.refresh, size: 24, color: Theme.of(context).iconTheme.color),
           ),
         ],
@@ -230,6 +258,29 @@ class _StepAnalyticsScreenState extends ConsumerState<StepAnalyticsScreen>
            ),
            const SizedBox(height: 16),
            _buildMetricsGrid(context, data, isDark),
+           
+           const SizedBox(height: 24),
+
+           // 4. Complete Health Insights Section
+           Text(
+             'Health Insights',
+             style: Theme.of(context).textTheme.titleLarge?.copyWith(fontWeight: FontWeight.bold),
+           ),
+           const SizedBox(height: 16),
+           _buildInsightCard(
+             context,
+             title: 'Peak Performance',
+             description: 'You burned the most calories on active intervals! Keep maintaining this daily energy burst.',
+             icon: Icons.flash_on_rounded,
+             iconColor: AppTheme.accentOrange,
+           ),
+           _buildInsightCard(
+             context,
+             title: 'Active Consistency',
+             description: 'You completed active workouts on ${data['activeDays']} days this week. Excellent stamina!',
+             icon: Icons.favorite_rounded,
+             iconColor: AppTheme.accentPink,
+           ),
            const SizedBox(height: 32),
         ],
       ),
@@ -358,48 +409,61 @@ class _StepAnalyticsScreenState extends ConsumerState<StepAnalyticsScreen>
   }
 
   Widget _buildMetricsGrid(BuildContext context, Map<String, dynamic> data, bool isDark) {
-    return GridView.count(
-      crossAxisCount: 2,
-      shrinkWrap: true,
-      physics: const NeverScrollableScrollPhysics(),
-      mainAxisSpacing: 12,
-      crossAxisSpacing: 12,
-      childAspectRatio: 1.75, // Flatter cards
+    return Column(
       children: [
-        _buildMetricCard(
-          context,
-          'Calories',
-          '${data['totalCalories']}',
-          'kcal',
-          Icons.local_fire_department_rounded,
-          const Color(0xFFFF6B6B),
+        Row(
+          children: [
+            Expanded(
+              child: _buildMetricCard(
+                context,
+                'Calories',
+                '${data['totalCalories']}',
+                'kcal',
+                Icons.local_fire_department_rounded,
+                const Color(0xFFFF6B6B),
+              ),
+            ),
+            const SizedBox(width: 12),
+            Expanded(
+              child: _buildMetricCard(
+                context,
+                'Distance',
+                '${data['totalDistanceKm']}',
+                'km',
+                Icons.map_outlined,
+                const Color(0xFF4ECDC4),
+              ),
+            ),
+          ],
         ),
-        _buildMetricCard(
-          context,
-          'Distance',
-          '${data['totalDistanceKm']}',
-          'km',
-          Icons.map_outlined,
-          const Color(0xFF4ECDC4),
-        ),
-        _buildMetricCard(
-          context,
-          'Avg Steps',
-          '${data['averageSteps']}',
-          '/day',
-          Icons.speed_rounded,
-          const Color(0xFFFFD93D),
-        ),
-         _buildMetricCard(
-          context,
-          'Active Days',
-          '${data['activeDays']}',
-          'days',
-          Icons.calendar_month_rounded,
-          const Color(0xFFA8E6CF),
+        const SizedBox(height: 12),
+        Row(
+          children: [
+            Expanded(
+              child: _buildMetricCard(
+                context,
+                'Avg Steps',
+                '${data['averageSteps']}',
+                '/day',
+                Icons.speed_rounded,
+                const Color(0xFFFFD93D),
+              ),
+            ),
+            const SizedBox(width: 12),
+            Expanded(
+              child: _buildMetricCard(
+                context,
+                'Active Days',
+                '${data['activeDays']}',
+                'days',
+                Icons.calendar_month_rounded,
+                const Color(0xFFA8E6CF),
+              ),
+            ),
+          ],
         ),
       ],
-    );
+    ).animate().fadeIn(duration: 400.ms).slideY(begin: 0.05, end: 0);
   }
 
   Widget _buildMetricCard(BuildContext context, String title, String value, String unit, IconData icon, Color color) {
@@ -429,6 +493,7 @@ class _StepAnalyticsScreenState extends ConsumerState<StepAnalyticsScreen>
                  const Icon(Icons.arrow_outward, size: 14, color: Colors.green), // Fake trend
             ],
           ),
+          const SizedBox(height: 12),
           Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
@@ -438,7 +503,7 @@ class _StepAnalyticsScreenState extends ConsumerState<StepAnalyticsScreen>
                      TextSpan(
                        text: value,
                        style: TextStyle(
-                         fontSize: 22,
+                         fontSize: 20,
                          fontWeight: FontWeight.bold,
                          color: Theme.of(context).textTheme.bodyLarge?.color,
                          fontFamily: 'Inter',
@@ -447,7 +512,7 @@ class _StepAnalyticsScreenState extends ConsumerState<StepAnalyticsScreen>
                      TextSpan(
                        text: ' $unit',
                        style: TextStyle(
-                         fontSize: 11,
+                         fontSize: 10,
                          color: Theme.of(context).disabledColor,
                        ),
                      ),
@@ -467,7 +532,7 @@ class _StepAnalyticsScreenState extends ConsumerState<StepAnalyticsScreen>
           ),
         ],
       ),
-    ).animate().fadeIn().scale();
+    );
   }
 
   Widget _buildMonthlyTab(BuildContext context, bool isDark) {
@@ -504,49 +569,131 @@ class _StepAnalyticsScreenState extends ConsumerState<StepAnalyticsScreen>
            const SizedBox(height: 24),
 
            // Best Day Highlight
-           if (data['bestDay'] != null)
+           if (data['bestDay'] != null) ...[
              Container(
                padding: const EdgeInsets.all(20),
                decoration: BoxDecoration(
                  gradient: LinearGradient(
-                   colors: [AppTheme.accentYellow.withOpacity(0.2), AppTheme.accentYellow.withOpacity(0.05)],
+                   colors: [AppTheme.accentYellow.withOpacity(0.2), AppTheme.accentYellow.withOpacity(0.03)],
                  ),
                  borderRadius: BorderRadius.circular(24),
-                 border: Border.all(color: AppTheme.accentYellow.withOpacity(0.3)),
+                 border: Border.all(color: AppTheme.accentYellow.withOpacity(0.25)),
                ),
                child: Row(
-               children: [
-                 Container(
-                   padding: const EdgeInsets.all(12),
-                   decoration: const BoxDecoration(color: Colors.white, shape: BoxShape.circle),
-                   child: const Icon(Icons.emoji_events, color: AppTheme.accentYellow, size: 24),
-                 ),
-                 const SizedBox(width: 16),
-                 Column(
-                   crossAxisAlignment: CrossAxisAlignment.start,
-                   children: [
-                     const Text('Best Performance', style: TextStyle(fontWeight: FontWeight.bold)),
-                     Text(
-                       '${data['bestDay']['stepCount']} steps on ${data['bestDay']['date']}', 
-                       style: Theme.of(context).textTheme.bodySmall
+                 children: [
+                   Container(
+                     padding: const EdgeInsets.all(12),
+                     decoration: BoxDecoration(
+                       color: isDark ? AppTheme.neutral800 : Colors.white,
+                       shape: BoxShape.circle,
+                       boxShadow: [
+                         BoxShadow(
+                           color: Colors.black.withOpacity(0.04),
+                           blurRadius: 8,
+                         )
+                       ],
                      ),
-                   ],
-                 ),
-               ],
+                     child: const Icon(Icons.emoji_events, color: AppTheme.accentYellow, size: 24),
+                   ),
+                   const SizedBox(width: 16),
+                   Expanded(
+                     child: Column(
+                       crossAxisAlignment: CrossAxisAlignment.start,
+                       children: [
+                         const Text('Best Performance', style: TextStyle(fontWeight: FontWeight.bold, fontSize: 14)),
+                         const SizedBox(height: 2),
+                         Text(
+                           '${data['bestDay']['stepCount']} steps on ${data['bestDay']['date']}', 
+                           style: Theme.of(context).textTheme.bodySmall
+                         ),
+                       ],
+                     ),
+                   ),
+                 ],
+               ),
              ),
-           ),
+             const SizedBox(height: 24),
+           ],
            
-           const SizedBox(height: 24),
            Text(
              'Monthly Overview',
              style: Theme.of(context).textTheme.titleLarge?.copyWith(fontWeight: FontWeight.bold),
            ),
            const SizedBox(height: 16),
            _buildMetricsGrid(context, data, isDark),
+           const SizedBox(height: 24),
+
+           // Monthly Insights
+           Text(
+             'Monthly Milestone',
+             style: Theme.of(context).textTheme.titleLarge?.copyWith(fontWeight: FontWeight.bold),
+           ),
+           const SizedBox(height: 16),
+           _buildInsightCard(
+             context,
+             title: 'Walked Distance Milestone',
+             description: 'You traversed a massive ${data['totalDistanceKm']} km this month! That is roughly the length of a marathon!',
+             icon: Icons.emoji_events_rounded,
+             iconColor: AppTheme.accentYellow,
+           ),
+           _buildInsightCard(
+             context,
+             title: 'Steady Progress',
+             description: 'Your average step count of ${data['averageSteps']} per day shows fantastic endurance growth.',
+             icon: Icons.trending_up_rounded,
+             iconColor: AppTheme.success,
+           ),
            const SizedBox(height: 32),
         ],
       ),
     );
+  }
+
+  Widget _buildInsightCard(
+    BuildContext context, {
+    required String title,
+    required String description,
+    required IconData icon,
+    required Color iconColor,
+  }) {
+    return Container(
+      margin: const EdgeInsets.only(bottom: 12),
+      padding: const EdgeInsets.all(16),
+      decoration: BoxDecoration(
+        color: Theme.of(context).cardColor,
+        borderRadius: BorderRadius.circular(24),
+        border: Border.all(color: Theme.of(context).dividerColor.withOpacity(0.08)),
+      ),
+      child: Row(
+        children: [
+          Container(
+            padding: const EdgeInsets.all(12),
+            decoration: BoxDecoration(
+              color: iconColor.withOpacity(0.12),
+              shape: BoxShape.circle,
+            ),
+            child: Icon(icon, color: iconColor, size: 22),
+          ),
+          const SizedBox(width: 16),
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  title,
+                  style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 14),
+                ),
+                const SizedBox(height: 4),
+                Text(
+                  description,
+                  style: Theme.of(context).textTheme.bodySmall?.copyWith(fontSize: 12),
+                ),
+              ],
+            ),
+          ),
+        ],
+      ),
+    ).animate().fadeIn(duration: 400.ms).slideY(begin: 0.1, end: 0);
   }
 
   String _formatNumber(int number) {
