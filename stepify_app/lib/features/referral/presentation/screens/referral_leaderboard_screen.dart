@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_animate/flutter_animate.dart';
+import 'package:share_plus/share_plus.dart';
 import 'package:stepify_app/l10n/app_localizations.dart';
 import '../../../../core/theme/app_theme.dart';
 import '../providers/referral_provider.dart';
@@ -202,7 +203,19 @@ class _ReferralLeaderboardScreenState extends ConsumerState<ReferralLeaderboardS
   }
 
   void _shareInvite(String code) {
-    // Reusing the share logic or just a placeholder for now as per original file
-    ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('Sharing invite link: $code...')));
+    if (code.isEmpty) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text('Invite code not found. Please try again.'),
+          backgroundColor: Colors.redAccent,
+        ),
+      );
+      return;
+    }
+    
+    Share.share(
+      '🚀 Join me on Stepify and get rewarded! Use my invite code: $code\n\nDownload: https://stepify.app/invite?code=$code', 
+      subject: 'Join Stepify Challenge!'
+    );
   }
 }
