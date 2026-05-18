@@ -12,7 +12,28 @@
           "package_name": "com.stepify.app"
         }
       },
-      "oauth_client": [],
+      "oauth_client": [
+        {
+          "client_id": "221429123728-f8ac9uo5r3t11k8k0ukoq4835ohk5ejr.apps.googleusercontent.com",
+          "client_type": 1,
+          "android_info": {
+            "package_name": "com.stepify.app",
+            "certificate_hash": "ad740f482e16281523b85d84f64b27f83235123a"
+          }
+        },
+        {
+          "client_id": "221429123728-rt9bbu9a1ipokbgdm3upsi5di6qvs5le.apps.googleusercontent.com",
+          "client_type": 1,
+          "android_info": {
+            "package_name": "com.stepify.app",
+            "certificate_hash": "6f66374f55c462838670b883172a465d29f43d8a"
+          }
+        },
+        {
+          "client_id": "221429123728-qncpljp1dshdrar62988i2ofvtebtbj4.apps.googleusercontent.com",
+          "client_type": 3
+        }
+      ],
       "api_key": [
         {
           "current_key": "AIzaSyB-lEJbbSnbUNOFxSKmKdKbKCaq4MDPMTM"
@@ -20,7 +41,19 @@
       ],
       "services": {
         "appinvite_service": {
-          "other_platform_oauth_client": []
+          "other_platform_oauth_client": [
+            {
+              "client_id": "221429123728-qncpljp1dshdrar62988i2ofvtebtbj4.apps.googleusercontent.com",
+              "client_type": 3
+            },
+            {
+              "client_id": "221429123728-lcf99ddgpgekhpk68ep0j2dp2l9q0f0e.apps.googleusercontent.com",
+              "client_type": 2,
+              "ios_info": {
+                "bundle_id": "com.stepify.app"
+              }
+            }
+          ]
         }
       }
     }
