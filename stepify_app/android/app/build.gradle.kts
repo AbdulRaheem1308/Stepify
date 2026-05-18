@@ -7,6 +7,7 @@ plugins {
     id("com.google.firebase.crashlytics")
 }
 
+import java.io.FileInputStream
 import java.util.Properties
 
 android {
@@ -20,7 +21,7 @@ android {
     }
 
     kotlinOptions {
-        jvmTarget = JavaVersion.VERSION_17.toString()
+        jvmTarget = "17"
     }
 
     defaultConfig {
@@ -38,7 +39,7 @@ android {
     val keystorePropertiesFile = rootProject.file("key.properties")
     val keystoreProperties = Properties()
     if (keystorePropertiesFile.exists()) {
-        keystoreProperties.load(java.io.FileInputStream(keystorePropertiesFile))
+        keystoreProperties.load(FileInputStream(keystorePropertiesFile))
 
         signingConfigs.create("release") {
             storeFile = file(keystoreProperties.getProperty("storeFile"))
