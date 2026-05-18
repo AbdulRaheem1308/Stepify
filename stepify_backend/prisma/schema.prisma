@@ -1,0 +1,864 @@
+// Prisma Schema for Stepify - Fitness Step Tracking App
+// Database: PostgreSQL
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+// ============================================
+// NOTIFICATIONS
+// ============================================
+
+model Notification {
+  id        String   @id @default(uuid())
+  userId    String
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  title     String
+  message   String
+  type      String   // achievement, steps, system, social, etc.
+  isRead    Boolean  @default(false)
+  createdAt DateTime @default(now())
+  
+  @@index([userId, isRead])
+  @@map("notifications")
+}
+
+
+// ============================================
+// USER MANAGEMENT
+// ============================================
+
+model Avatar {
+  id        String   @id @default(uuid())
+  url       String
+  category  String   @default("default")
+  isActive  Boolean  @default(true)
+  createdAt DateTime @default(now())
+
+  @@map("avatars")
+}
+
+
+model User {
+  id            String    @id @default(uuid())
+  phone         String?   @unique
+  email         String?   @unique
+  name          String?
+  avatarUrl     String?
+  heightCm      Decimal?  @db.Decimal(5, 2)
+  weightKg      Decimal?  @db.Decimal(5, 2)
+  age           Int?
+  dailyStepGoal Int       @default(10000)
+
+  // Referral System
+  referralCode  String?   @unique // The code this user shares
+  referredBy    String?   // The code used by this user to join
+  referralCount Int       @default(0)
+  referralCoinsEarned Int @default(0)
+
+  isActive      Boolean   @default(true)
+  createdAt     DateTime  @default(now())
+  updatedAt     DateTime  @updatedAt
+
+  // Relations
+  steps            Step[]
+  wallet           Wallet?
+  transactions     Transaction[]
+  streak           Streak?
+  userAchievements UserAchievement[]
+  refreshTokens    RefreshToken[]
+  adViews          AdView[]
+  userChallenges   UserChallenge[]
+  userRedemptions  UserRedemption[]
+  userOffers       UserOffer[]
+  devices          Device[]
+  feedPosts        FeedPost[]
+  feedReactions    FeedReaction[]
+  feedComments     FeedComment[]
+  notifications    Notification[]
+  settings         UserSettings?
+  
+  // Corporate
+  companyMember    CompanyMember?
+
+  // Gamification (Quests)
+  userQuests       UserQuest[]
+
+  // Social (Messaging)
+  sentMessages               Message[]
+  participatingConversations ConversationParticipant[]
+
+  @@map("users")
+}
+
+model UserSettings {
+  id                    String   @id @default(uuid())
+  userId                String   @unique
+  user                  User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  themeMode             String   @default("system") // light, dark, system
+  language              String   @default("en")
+  pushNotifications     Boolean  @default(true)
+  dailyReminders        Boolean  @default(true)
+  soundEnabled          Boolean  @default(true)
+  dataSyncOverCellular  Boolean  @default(false)
+  distanceUnit          String   @default("km") // km, mi
+  
+  // Profile Visibility
+  isPublic              Boolean  @default(true)
+  showOnLeaderboard     Boolean  @default(true)
+  showMilestones        Boolean  @default(true)
+  
+  updatedAt             DateTime @updatedAt
+
+  @@map("user_settings")
+}
+
+model RefreshToken {
+  id        String   @id @default(uuid())
+  token     String   @unique
+  userId    String
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  expiresAt DateTime
+  createdAt DateTime @default(now())
+
+  @@map("refresh_tokens")
+}
+
+// ============================================
+// STEP TRACKING
+// ============================================
+
+model Step {
+  id             String   @id @default(uuid())
+  userId         String
+  user           User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  date           DateTime @db.Date
+  stepCount      Int      @default(0)
+  caloriesBurned Int      @default(0)
+  distanceKm     Decimal  @default(0) @db.Decimal(6, 2)
+  activeMinutes  Int      @default(0)
+  synced         Boolean  @default(false)
+  source         String   @default("manual") // manual, google_fit, apple_health
+  createdAt      DateTime @default(now())
+  updatedAt      DateTime @updatedAt
+
+  @@unique([userId, date])
+  @@map("steps")
+}
+
+// ============================================
+// REWARDS & WALLET
+// ============================================
+
+model Wallet {
+  id             String   @id @default(uuid())
+  userId         String   @unique
+  user           User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  balance        Int      @default(0)
+  lifetimePoints Int      @default(0)
+  
+  // Monthly Reset System
+  monthlyXp      Int      @default(0)
+  lastResetDate  DateTime @default(now())
+  
+  createdAt      DateTime @default(now())
+  updatedAt      DateTime @updatedAt
+
+  @@map("wallets")
+}
+
+model Transaction {
+  id          String          @id @default(uuid())
+  userId      String
+  user        User            @relation(fields: [userId], references: [id], onDelete: Cascade)
+  type        TransactionType
+  points      Int
+  description String?
+  metadata    Json?           // Additional data like step count, ad type, etc.
+  createdAt   DateTime        @default(now())
+
+  @@index([userId, createdAt])
+  @@map("transactions")
+}
+
+enum TransactionType {
+  STEPS
+  STREAK_BONUS
+  MILESTONE
+  AD_REWARD
+  REFERRAL
+  REDEMPTION
+  OFFER_REWARD // New
+}
+
+// ============================================
+// STREAKS & ACHIEVEMENTS (Badges)
+// ============================================
+
+model Streak {
+  id             String    @id @default(uuid())
+  userId         String    @unique
+  user           User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+  currentStreak  Int       @default(0)
+  longestStreak  Int       @default(0)
+  lastActiveDate DateTime? @db.Date
+  createdAt      DateTime  @default(now())
+  updatedAt      DateTime  @updatedAt
+
+  @@map("streaks")
+}
+
+// Levels for gamification
+model Level {
+  id          String   @id @default(uuid())
+  levelNumber Int      @unique
+  name        String   // e.g., "Beginner", "Starter", "Apprentice"
+  minXp       Int      // Minimum XP to reach this level
+  maxXp       Int      // Maximum XP before next level
+  icon        String?  // Icon name or URL
+  color       String?  // Hex color for theming
+  createdAt   DateTime @default(now())
+
+  @@map("levels")
+}
+
+model Achievement {
+  id              String            @id @default(uuid())
+  code            String            @unique
+  name            String
+  description     String
+  icon            String
+  category        AchievementCategory
+  pointsReward    Int               @default(0)
+  stepsRequired   Int?
+  streakRequired  Int?
+  targetValue     Int?              // Generic target (e.g., 5 friends, 10 challenges)
+  isActive        Boolean           @default(true)
+  createdAt       DateTime          @default(now())
+
+  userAchievements UserAchievement[]
+
+  @@map("achievements")
+}
+
+enum AchievementCategory {
+  STEPS
+  STREAK
+  DISTANCE
+  SPECIAL
+  COMMUNITY
+  SOCIAL      // Friend-related badges
+  CHALLENGE   // Challenge completion badges
+  COINS       // Coin earning badges
+}
+
+model UserAchievement {
+  id            String      @id @default(uuid())
+  userId        String
+  user          User        @relation(fields: [userId], references: [id], onDelete: Cascade)
+  achievementId String
+  achievement   Achievement @relation(fields: [achievementId], references: [id])
+  progress      Int         @default(0)  // 0-100 percent progress
+  currentValue  Int         @default(0)  // Current progress value (e.g., steps walked)
+  unlocked      Boolean     @default(false)
+  unlockedAt    DateTime?
+
+  @@unique([userId, achievementId])
+  @@map("user_achievements")
+}
+
+// ============================================
+// ADS & MONETIZATION
+// ============================================
+
+model AdView {
+  id          String   @id @default(uuid())
+  userId      String
+  user        User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  adType      AdType
+  adUnitId    String?
+  pointsEarned Int     @default(0)
+  completedAt DateTime @default(now())
+
+  @@index([userId, completedAt])
+  @@map("ad_views")
+}
+
+enum AdType {
+  REWARDED
+  INTERSTITIAL
+  BANNER
+}
+
+// ============================================
+// OFFERS (Screen 16/17)
+// ============================================
+
+model Offer {
+  id              String      @id @default(uuid())
+  title           String
+  description     String
+  providerName    String
+  imageUrl        String?
+  rewardCoins     Int         @default(0)
+  offerType       OfferType   @default(WATCH_TO_EARN)
+  actionUrl       String?
+  expiryDate      DateTime?
+  isActive        Boolean     @default(true)
+  createdAt       DateTime    @default(now())
+
+  userOffers      UserOffer[]
+
+  @@map("offers")
+}
+
+enum OfferType {
+  WATCH_TO_EARN
+  SURVEY
+  APP_INSTALL
+  PURCHASE
+  EXTERNAL_SIGNUP
+}
+
+model UserOffer {
+  id          String      @id @default(uuid())
+  userId      String
+  user        User        @relation(fields: [userId], references: [id], onDelete: Cascade)
+  offerId     String
+  offer       Offer       @relation(fields: [offerId], references: [id])
+  status      OfferStatus @default(STARTED)
+  startedAt   DateTime    @default(now())
+  completedAt DateTime?
+  
+  @@unique([userId, offerId])
+  @@map("user_offers")
+}
+
+enum OfferStatus {
+  STARTED
+  COMPLETED
+  REWARDED
+  EXPIRED
+}
+
+// ============================================
+// COMMUNITY & FEED (Screen 19)
+// ============================================
+
+model FeedPost {
+  id          String      @id @default(uuid())
+  userId      String
+  user        User        @relation(fields: [userId], references: [id], onDelete: Cascade)
+  content     String
+  type        FeedType    @default(MILESTONE)
+  metadata    Json?       // e.g. { "badgeId": "...", "streak": 10 }
+  likesCount  Int         @default(0)
+  commentsCount Int       @default(0)
+  createdAt   DateTime    @default(now())
+  
+  reactions   FeedReaction[]
+  comments    FeedComment[]
+
+  @@map("feed_posts")
+}
+
+enum FeedType {
+  MILESTONE   // Badge earned, Level up
+  STREAK      // Streak update
+  CHALLENGE   // Challenge completion
+  MANUAL      // User status update
+}
+
+model FeedReaction {
+  id        String   @id @default(uuid())
+  postId    String
+  post      FeedPost @relation(fields: [postId], references: [id], onDelete: Cascade)
+  userId    String
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  type      String   @default("like") // "like", "clap", "fire"
+  createdAt DateTime @default(now())
+
+  @@unique([postId, userId])
+  @@map("feed_reactions")
+}
+
+model FeedComment {
+  id        String   @id @default(uuid())
+  postId    String
+  post      FeedPost @relation(fields: [postId], references: [id], onDelete: Cascade)
+  userId    String
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  content   String
+  createdAt DateTime @default(now())
+
+  @@map("feed_comments")
+}
+
+// ============================================
+// CONNECTED DEVICES (Screen 15)
+// ============================================
+
+model Device {
+  id           String    @id @default(uuid())
+  userId       String
+  user         User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+  name         String    // e.g. "Apple Watch Series 8"
+  type         DeviceType
+  identifier   String?   // UUID or unique ID
+  lastSyncedAt DateTime?
+  createdAt    DateTime  @default(now())
+  isActive     Boolean   @default(true)
+
+  @@index([userId])
+  @@map("devices")
+}
+
+enum DeviceType {
+  PHONE
+  WATCH_APPLE
+  WATCH_ANDROID
+  FITBIT
+  GARMIN
+  OTHER
+}
+
+// ============================================
+// CHALLENGES (Screen 22)
+// ============================================
+
+model Challenge {
+  id              String         @id @default(uuid())
+  title           String
+  description     String
+  stepTarget      Int
+  rewardCoins     Int            @default(0)
+  rewardXp        Int            @default(0)
+  durationDays    Int
+  challengeType   ChallengeType  @default(SOLO)
+  difficulty      ChallengeDifficulty @default(MEDIUM)
+  imageUrl        String?
+  isActive        Boolean        @default(true)
+  isInviteOnly    Boolean        @default(false)
+  maxParticipants Int?
+  startsAt        DateTime?
+  endsAt          DateTime?
+  createdAt       DateTime       @default(now())
+  updatedAt       DateTime       @updatedAt
+
+  userChallenges  UserChallenge[]
+
+  @@map("challenges")
+}
+
+enum ChallengeType {
+  SOLO
+  GROUP
+  TIMED
+  CORPORATE
+}
+
+enum ChallengeDifficulty {
+  EASY
+  MEDIUM
+  HARD
+  EXTREME
+}
+
+model UserChallenge {
+  id            String           @id @default(uuid())
+  userId        String
+  user          User             @relation(fields: [userId], references: [id], onDelete: Cascade)
+  challengeId   String
+  challenge     Challenge        @relation(fields: [challengeId], references: [id], onDelete: Cascade)
+  status        ChallengeStatus  @default(ONGOING)
+  currentSteps  Int              @default(0)
+  progress      Int              @default(0) // 0-100 percent
+  joinedAt      DateTime         @default(now())
+  completedAt   DateTime?
+  
+  @@unique([userId, challengeId])
+  @@index([userId, status])
+  @@map("user_challenges")
+}
+
+enum ChallengeStatus {
+  ONGOING
+  COMPLETED
+  FAILED
+  ABANDONED
+}
+
+// ============================================
+// REWARDS CATALOG
+// ============================================
+
+model Reward {
+  id              String            @id @default(uuid())
+  title           String
+  description     String
+  coinCost        Int
+  category        RewardCategory
+  imageUrl        String?
+  partnerName     String?
+  partnerLogoUrl  String?
+  availableStock  Int               @default(-1) // -1 = unlimited
+  totalStock      Int               @default(-1)
+  expiryDate      DateTime?
+  termsConditions String?
+  isActive        Boolean           @default(true)
+  isLimitedEdition Boolean          @default(false)
+  regionCode      String?           // null = global
+  createdAt       DateTime          @default(now())
+  updatedAt       DateTime          @updatedAt
+
+  redemptions     UserRedemption[]
+
+  @@index([category, isActive])
+  @@map("rewards")
+}
+
+enum RewardCategory {
+  FITNESS
+  FOOD
+  LIFESTYLE
+  SHOPPING
+  TRAVEL
+  ENTERTAINMENT
+  OTHER
+}
+
+model UserRedemption {
+  id              String           @id @default(uuid())
+  userId          String
+  user            User             @relation(fields: [userId], references: [id], onDelete: Cascade)
+  rewardId        String
+  reward          Reward           @relation(fields: [rewardId], references: [id])
+  coinCost        Int              // Store cost at time of redemption
+  status          RedemptionStatus @default(ACTIVE)
+  voucherCode     String?          // Generated code if applicable
+  redeemedAt      DateTime         @default(now())
+  usedAt          DateTime?
+  expiresAt       DateTime?
+
+  @@index([userId, status])
+  @@map("user_redemptions")
+}
+
+enum RedemptionStatus {
+  ACTIVE
+  USED
+  EXPIRED
+}
+
+// ============================================
+// SOCIAL & FRIENDS
+// ============================================
+
+model Friendship {
+  id          String           @id @default(uuid())
+  userId      String
+  friendId    String
+  status      FriendshipStatus @default(PENDING)
+  createdAt   DateTime         @default(now())
+  updatedAt   DateTime         @updatedAt
+
+  @@unique([userId, friendId])
+  @@index([userId, status])
+  @@index([friendId, status])
+  @@map("friendships")
+}
+
+enum FriendshipStatus {
+  PENDING
+  ACCEPTED
+  BLOCKED
+}
+
+model FriendBoost {
+  id         String   @id @default(uuid())
+  senderId   String
+  receiverId String
+  sentAt     DateTime @default(now())
+
+  @@index([senderId, sentAt])
+  @@index([receiverId, sentAt])
+  @@map("friend_boosts")
+}
+
+model Invitation {
+  id            String           @id @default(uuid())
+  inviterId     String
+  inviteePhone  String?
+  inviteeEmail  String?
+  referralCode  String           @unique
+  status        InvitationStatus @default(SENT)
+  sentAt        DateTime         @default(now())
+  acceptedAt    DateTime?
+  acceptedById  String?          // User ID of who accepted
+
+  @@index([inviterId])
+  @@index([referralCode])
+  @@map("invitations")
+}
+
+enum InvitationStatus {
+  SENT
+  ACCEPTED
+  EXPIRED
+}
+
+// ============================================
+// SYSTEM CONFIGURATION
+// ============================================
+
+model AppConfig {
+  id        String   @id @default(uuid())
+  key       String   @unique
+  value     String
+  updatedAt DateTime @updatedAt
+
+  @@map("app_config")
+}
+
+// ============================================
+// TEAM CHALLENGES
+// ============================================
+
+model Team {
+  id          String   @id @default(uuid())
+  name        String
+  description String?
+  imageUrl    String?
+  captainId   String
+  maxMembers  Int      @default(10)
+  isPublic    Boolean  @default(true)
+  inviteCode  String   @unique @default(uuid())
+  totalSteps  Int      @default(0)
+  weeklySteps Int      @default(0)
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  members         TeamMember[]
+  teamChallenges  TeamChallenge[]
+
+  @@index([captainId])
+  @@map("teams")
+}
+
+model TeamMember {
+  id          String   @id @default(uuid())
+  teamId      String
+  team        Team     @relation(fields: [teamId], references: [id], onDelete: Cascade)
+  userId      String
+  role        String   @default("member") // captain, member
+  totalSteps  Int      @default(0)
+  weeklySteps Int      @default(0)
+  joinedAt    DateTime @default(now())
+
+  @@unique([teamId, userId])
+  @@index([userId])
+  @@map("team_members")
+}
+
+model TeamChallenge {
+  id           String   @id @default(uuid())
+  teamId       String
+  team         Team     @relation(fields: [teamId], references: [id], onDelete: Cascade)
+  title        String
+  description  String?
+  targetSteps  Int
+  currentSteps Int      @default(0)
+  startDate    DateTime
+  endDate      DateTime
+  status       String   @default("active") // active, completed, failed
+  rewardCoins  Int      @default(0)
+  rewardXp     Int      @default(0)
+  createdAt    DateTime @default(now())
+
+  @@index([teamId, status])
+  @@map("team_challenges")
+}
+
+// ============================================
+// QUESTS (Gamification)
+// ============================================
+
+model Quest {
+  id          String   @id @default(uuid())
+  title       String
+  description String
+  imageUrl    String
+  difficulty  String   // EASY, MEDIUM, HARD, LEGENDARY
+  rewardXp    Int
+  rewardCoins Int
+  isActive    Boolean  @default(true)
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  stages      QuestStage[]
+  userQuests  UserQuest[]
+
+  @@map("quests")
+}
+
+model QuestStage {
+  id          String   @id @default(uuid())
+  questId     String
+  quest       Quest    @relation(fields: [questId], references: [id], onDelete: Cascade)
+  order       Int
+  title       String
+  description String
+  targetSteps Int
+  createdAt   DateTime @default(now())
+
+  @@map("quest_stages")
+}
+
+model UserQuest {
+  id                String      @id @default(uuid())
+  userId            String
+  user              User        @relation(fields: [userId], references: [id], onDelete: Cascade)
+  questId           String
+  quest             Quest       @relation(fields: [questId], references: [id], onDelete: Cascade)
+  status            QuestStatus @default(IN_PROGRESS)
+  currentStageIndex Int         @default(0)
+  startedAt         DateTime    @default(now())
+  completedAt       DateTime?
+
+  @@unique([userId, questId])
+  @@map("user_quests")
+}
+
+enum QuestStatus {
+  AVAILABLE
+  IN_PROGRESS
+  COMPLETED
+  FAILED
+}
+
+// ============================================
+// MESSAGING
+// ============================================
+
+model Conversation {
+  id        String    @id @default(uuid())
+  createdAt DateTime  @default(now())
+  updatedAt DateTime  @updatedAt
+  
+  participants ConversationParticipant[]
+  messages     Message[]
+
+  @@map("conversations")
+}
+
+model ConversationParticipant {
+  id             String       @id @default(uuid())
+  conversationId String
+  conversation   Conversation @relation(fields: [conversationId], references: [id], onDelete: Cascade)
+  userId         String
+  user           User         @relation(fields: [userId], references: [id], onDelete: Cascade)
+  joinedAt       DateTime     @default(now())
+  lastReadAt     DateTime?
+
+  @@unique([conversationId, userId])
+  @@map("conversation_participants")
+}
+
+model Message {
+  id             String       @id @default(uuid())
+  conversationId String
+  conversation   Conversation @relation(fields: [conversationId], references: [id], onDelete: Cascade)
+  senderId       String
+  sender         User         @relation(fields: [senderId], references: [id], onDelete: Cascade)
+  content        String
+  type           String       @default("text") // text, image, system
+  createdAt      DateTime     @default(now())
+  metadata       Json?
+
+  @@index([conversationId, createdAt])
+  @@map("messages")
+}
+
+// ============================================
+// CORPORATE WELLNESS
+// ============================================
+
+model Company {
+  id          String   @id @default(uuid())
+  name        String
+  domain      String?  // Auto-join by email domain
+  logoUrl     String?
+  inviteCode  String   @unique // For manual joining
+  apiKeys     Json?    // For external integrations
+  settings    Json?    // Custom branding, etc.
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  departments Department[]
+  members     CompanyMember[]
+  challenges  CompanyChallenge[]
+
+  @@map("companies")
+}
+
+model Department {
+  id        String   @id @default(uuid())
+  companyId String
+  company   Company  @relation(fields: [companyId], references: [id], onDelete: Cascade)
+  name      String
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  members   CompanyMember[]
+
+  @@unique([companyId, name])
+  @@map("departments")
+}
+
+model CompanyMember {
+  id           String   @id @default(uuid())
+  companyId    String
+  company      Company  @relation(fields: [companyId], references: [id], onDelete: Cascade)
+  userId       String   @unique // One company per user for now
+  user         User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  departmentId String?
+  department   Department? @relation(fields: [departmentId], references: [id])
+  
+  role         CompanyRole @default(EMPLOYEE)
+  joinedAt     DateTime @default(now())
+  
+  // Stats cache
+  totalSteps   Int      @default(0)
+  avgDailySteps Int     @default(0)
+
+  @@index([companyId])
+  @@map("company_members")
+}
+
+enum CompanyRole {
+  ADMIN
+  MANAGER
+  EMPLOYEE
+}
+
+model CompanyChallenge {
+  id          String   @id @default(uuid())
+  companyId   String
+  company     Company  @relation(fields: [companyId], references: [id], onDelete: Cascade)
+  title       String
+  description String?
+  startDate   DateTime
+  endDate     DateTime
+  targetType  String   // "TOTAL_STEPS", "AVG_STEPS"
+  targetValue Int
+  status      String   @default("ACTIVE")
+  createdAt   DateTime @default(now())
+
+  @@index([companyId])
+  @@map("company_challenges")
+}

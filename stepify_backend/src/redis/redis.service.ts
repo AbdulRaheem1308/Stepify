@@ -1,0 +1,147 @@
+import { Injectable, OnModuleDestroy } from '@nestjs/common';
+import { ConfigService } from '@nestjs/config';
+import Redis from 'ioredis';
+
+@Injectable()
+export class RedisService implements OnModuleDestroy {
+    private readonly client: Redis;
+    private readonly isProduction: boolean;
+    private readonly memoryStore = new Map<string, { value: any; expiry: number }>();
+
+    constructor(private configService: ConfigService) {
+        this.isProduction = this.configService.get('NODE_ENV') === 'production';
+
+        this.client = new Redis({
+            host: this.configService.get('REDIS_HOST', 'localhost'),
+            port: this.configService.get('REDIS_PORT', 6379),
+            password: this.configService.get('REDIS_PASSWORD') || undefined,
+            retryStrategy: (times) => {
+                if (times > 3) {
+                    const msg = '⚠️ Redis connection failed, running without cache';
+                    if (this.isProduction) console.error('CRITICAL: Redis connection failing in PRODUCTION! Services degraded.');
+                    else console.warn(msg);
+                    return null;
+                }
+                return Math.min(times * 100, 3000);
+            },
+        });
+
+        this.client.on('connect', () => {
+            console.log('🔴 Redis connected');
+        });
+
+        this.client.on('error', (err) => {
+            if (this.isProduction) console.error('CRITICAL: Redis error in PRODUCTION:', err.message);
+            else console.warn('⚠️ Redis error:', err.message);
+        });
+    }
+
+    async onModuleDestroy() {
+        await this.client.quit();
+    }
+
+    getClient(): Redis {
+        return this.client;
+    }
+
+    private isRedisConnected(): boolean {
+        return this.client.status === 'ready';
+    }
+
+    // OTP Management
+    async setOtp(identifier: string, otp: string, expiryMinutes: number): Promise<void> {
+        if (!this.isRedisConnected()) {
+            this.memoryStore.set(`otp:${identifier}`, {
+                value: otp,
+                expiry: Date.now() + expiryMinutes * 60 * 1000,
+            });
+            return;
+        }
+        const key = `otp:${identifier}`;
+        await this.client.setex(key, expiryMinutes * 60, otp);
+    }
+
+    async getOtp(identifier: string): Promise<string | null> {
+        if (!this.isRedisConnected()) {
+            const item = this.memoryStore.get(`otp:${identifier}`);
+            if (!item || item.expiry < Date.now()) {
+                this.memoryStore.delete(`otp:${identifier}`);
+                return null;
+            }
+            return item.value;
+        }
+        const key = `otp:${identifier}`;
+        return this.client.get(key);
+    }
+
+    async deleteOtp(identifier: string): Promise<void> {
+        if (!this.isRedisConnected()) {
+            this.memoryStore.delete(`otp:${identifier}`);
+            return;
+        }
+        const key = `otp:${identifier}`;
+        await this.client.del(key);
+    }
+
+    // Rate limiting for OTP
+    async checkOtpRateLimit(identifier: string): Promise<boolean> {
+        if (!this.isRedisConnected()) return true; // Fail open for rate limits if Redis down
+
+        try {
+            const key = `otp_rate:${identifier}`;
+            const count = await this.client.incr(key);
+            if (count === 1) {
+                await this.client.expire(key, 3600); // 1 hour window
+            }
+            return count <= 5; // Max 5 OTP requests per hour
+        } catch (e) {
+            return true; // Fail open
+        }
+    }
+
+    // Ad cooldown management
+    async checkAdCooldown(userId: string): Promise<boolean> {
+        if (!this.isRedisConnected()) return true; // Fail open
+
+        const key = `ad_cooldown:${userId}`;
+        const exists = await this.client.exists(key);
+        return exists === 0; // true if no cooldown
+    }
+
+    async setAdCooldown(userId: string, cooldownMinutes: number): Promise<void> {
+        if (!this.isRedisConnected()) return;
+
+        const key = `ad_cooldown:${userId}`;
+        await this.client.setex(key, cooldownMinutes * 60, '1');
+    }
+
+    async getAdCooldownRemaining(userId: string): Promise<number> {
+        if (!this.isRedisConnected()) return 0;
+
+        const key = `ad_cooldown:${userId}`;
+        return this.client.ttl(key);
+    }
+
+    // Cache helpers
+    async setCache(key: string, value: any, expirySeconds: number): Promise<void> {
+        if (!this.isRedisConnected()) return;
+        await this.client.setex(key, expirySeconds, JSON.stringify(value));
+    }
+
+    async getCache<T>(key: string): Promise<T | null> {
+        if (!this.isRedisConnected()) return null;
+
+        try {
+            const data = await this.client.get(key);
+            if (!data) return null;
+            return JSON.parse(data) as T;
+        } catch (e) {
+            return null;
+        }
+    }
+
+    async deleteCache(key: string): Promise<void> {
+        if (!this.isRedisConnected()) return;
+        await this.client.del(key);
+    }
+}

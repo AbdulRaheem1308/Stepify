@@ -1,0 +1,26 @@
+# Dependencies
+.dart_tool/
+.packages
+build/
+pubspec.lock
+
+# IDE
+.idea/
+*.iml
+.vscode/
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Generated
+*.g.dart
+*.freezed.dart
+
+# Android/iOS
+android/.gradle/
+ios/Pods/
+ios/.symlinks/
+
+# Test
+coverage/

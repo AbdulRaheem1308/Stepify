@@ -1,0 +1,84 @@
+{
+  "@@locale": "hi",
+  
+  "appName": "स्टेपिफाई",
+  "appTagline": "चलो, ट्रैक करो, इनाम पाओ",
+  
+  "home": "होम",
+  "analytics": "एनालिटिक्स",
+  "friends": "दोस्त",
+  "rewards": "इनाम",
+  "profile": "प्रोफ़ाइल",
+  
+  "greeting": "नमस्ते, {name}! 👋",
+  "readyToStep": "आज कदम बढ़ाने के लिए तैयार?",
+  
+  "steps": "कदम",
+  "stepsToGo": "{count} कदम बाकी",
+  "goalReached": "लक्ष्य पूरा! 🎉",
+  "adjustGoal": "लक्ष्य बदलें",
+  
+  "calories": "कैलोरी",
+  "distance": "दूरी",
+  "activeMinutes": "सक्रिय मिनट",
+  "streak": "स्ट्रीक",
+  "streakDays": "{count} दिन",
+  
+  "challenges": "चैलेंज",
+  "viewActive": "सक्रिय देखें",
+  "earnOffers": "कमाओ और ऑफर",
+  "watchAdsDeals": "विज्ञापन और डील देखें",
+  "community": "समुदाय",
+  "feedMilestones": "फ़ीड और उपलब्धियां",
+  
+  "settings": "सेटिंग्स",
+  "notifications": "सूचनाएं",
+  "leaderboard": "लीडरबोर्ड",
+  "badges": "बैज",
+  "wallet": "वॉलेट",
+  
+  "loading": "लोड हो रहा है...",
+  "error": "कुछ गलत हो गया",
+  "retry": "पुनः प्रयास करें",
+  "cancel": "रद्द करें",
+  "save": "सहेजें",
+  "done": "हो गया",
+  "next": "अगला",
+  "back": "वापस",
+  "continue_": "जारी रखें",
+  
+  "noData": "कोई डेटा उपलब्ध नहीं",
+  "pullToRefresh": "रीफ्रेश के लिए खींचें",
+  
+  "today": "आज",
+  "thisWeek": "इस सप्ताह",
+  "thisMonth": "इस महीने",
+  "allTime": "सभी समय",
+  
+  "global": "वैश्विक",
+  "referral": "रेफरल",
+  
+  "level": "लेवल {level}",
+  "xpPoints": "{count} XP",
+  "coins": "{count} सिक्के",
+  
+  "dailyGoal": "दैनिक लक्ष्य",
+  "weeklyGoal": "साप्ताहिक लक्ष्य",
+  
+  "viewAll": "सभी देखें",
+  "seeMore": "और देखें",
+  
+  "signIn": "साइन इन",
+  "signOut": "साइन आउट",
+  "editProfile": "प्रोफ़ाइल संपादित करें",
+  
+  "keepItUp": "जारी रखो! 💪",
+  "almostThere": "बस थोड़ा और!",
+  "greatProgress": "शानदार प्रगति!",
+  
+  "backgroundSync": "बैकग्राउंड सिंक",
+  "backgroundSyncSubtitle": "ऐप बंद होने पर भी सिंक करें",
+  "syncOverCellular": "सेलुलर पर सिंक",
+  "syncOverCellularSubtitle": "सिंक करने के लिए मोबाइल डेटा का उपयोग करें",
+  "connectedDevices": "कनेक्टेड डिवाइस"
+}
