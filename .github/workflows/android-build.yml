@@ -31,11 +31,11 @@ jobs:
           mkdir -p $PROJECT_DIR/android
           echo "${{ secrets.KEYSTORE_BASE64 }}" | base64 --decode > $PROJECT_DIR/android/release_keystore.jks
           cat > $PROJECT_DIR/android/key.properties <<EOF
-            storeFile=release_keystore.jks
-            storePassword=${{ secrets.KEYSTORE_PASSWORD }}
-            keyAlias=${{ secrets.KEY_ALIAS }}
-            keyPassword=${{ secrets.KEY_PASSWORD }}
-            EOF
+          storeFile=release_keystore.jks
+          storePassword=${{ secrets.KEYSTORE_PASSWORD }}
+          keyAlias=${{ secrets.KEY_ALIAS }}
+          keyPassword=${{ secrets.KEY_PASSWORD }}
+          EOF
         else
           echo "No keystore provided; build will use debug signing."
         fi
