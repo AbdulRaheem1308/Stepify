@@ -56,9 +56,9 @@ android {
             signingConfig = signingConfigs.findByName("release") ?: signingConfigs.getByName("debug")
             
             // Enables code shrinking, obfuscation, and optimization
-            isMinifyEnabled = true
+            isMinifyEnabled = false
             // Enables resource shrinking, which is performed by the Android Gradle plugin.
-            isShrinkResources = true
+            isShrinkResources = false
             
             // Includes the default ProGuard rules files that are packaged with
             // the Android Gradle plugin. To learn more, go to the section about
