@@ -19,22 +19,31 @@ export class RewardsService {
      * Get user wallet
      */
     async getWallet(userId: string) {
-        let wallet = await this.prisma.wallet.findUnique({
-            where: { userId },
-        });
-
-        if (!wallet) {
-            wallet = await this.prisma.wallet.create({
-                data: {
-                    userId,
-                    balance: 0,
-                    lifetimePoints: 0,
-                    monthlyXp: 0,
-                },
+        try {
+            let wallet = await this.prisma.wallet.findUnique({
+                where: { userId },
             });
-        }
 
-        return wallet;
+            if (!wallet) {
+                wallet = await this.prisma.wallet.create({
+                    data: {
+                        userId,
+                        balance: 0,
+                        lifetimePoints: 0,
+                        monthlyXp: 0,
+                    },
+                });
+            }
+
+            return wallet;
+        } catch (error) {
+            // Concurrency fallback
+            const wallet = await this.prisma.wallet.findUnique({
+                where: { userId },
+            });
+            if (wallet) return wallet;
+            throw error;
+        }
     }
 
     /**
@@ -260,32 +269,52 @@ export class RewardsService {
      * Get user streak info
      */
     async getStreak(userId: string) {
-        let streak = await this.prisma.streak.findUnique({
-            where: { userId },
-        });
-
-        if (!streak) {
-            streak = await this.prisma.streak.create({
-                data: {
-                    userId,
-                    currentStreak: 0,
-                    longestStreak: 0,
-                },
+        try {
+            let streak = await this.prisma.streak.findUnique({
+                where: { userId },
             });
+
+            if (!streak) {
+                streak = await this.prisma.streak.create({
+                    data: {
+                        userId,
+                        currentStreak: 0,
+                        longestStreak: 0,
+                    },
+                });
+            }
+
+            // Calculate next milestone
+            const milestones = [7, 30, 100, 365];
+            const nextMilestone = milestones.find(m => m > streak.currentStreak) || null;
+            const daysToMilestone = nextMilestone ? nextMilestone - streak.currentStreak : null;
+
+            return {
+                currentStreak: streak.currentStreak,
+                longestStreak: streak.longestStreak,
+                lastActiveDate: streak.lastActiveDate,
+                nextMilestone,
+                daysToMilestone,
+            };
+        } catch (error) {
+            // Concurrency fallback
+            const streak = await this.prisma.streak.findUnique({
+                where: { userId },
+            });
+            if (streak) {
+                const milestones = [7, 30, 100, 365];
+                const nextMilestone = milestones.find(m => m > streak.currentStreak) || null;
+                const daysToMilestone = nextMilestone ? nextMilestone - streak.currentStreak : null;
+                return {
+                    currentStreak: streak.currentStreak,
+                    longestStreak: streak.longestStreak,
+                    lastActiveDate: streak.lastActiveDate,
+                    nextMilestone,
+                    daysToMilestone,
+                };
+            }
+            throw error;
         }
-
-        // Calculate next milestone
-        const milestones = [7, 30, 100, 365];
-        const nextMilestone = milestones.find(m => m > streak.currentStreak) || null;
-        const daysToMilestone = nextMilestone ? nextMilestone - streak.currentStreak : null;
-
-        return {
-            currentStreak: streak.currentStreak,
-            longestStreak: streak.longestStreak,
-            lastActiveDate: streak.lastActiveDate,
-            nextMilestone,
-            daysToMilestone,
-        };
     }
 
     /**

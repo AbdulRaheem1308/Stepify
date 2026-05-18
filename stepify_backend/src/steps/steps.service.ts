@@ -68,50 +68,55 @@ export class StepsService {
      * Ensure user has demo data if empty
      */
     private async ensureUserData(userId: string) {
-        const count = await this.prisma.step.count({ where: { userId } });
-        if (count > 0) return;
+        try {
+            const count = await this.prisma.step.count({ where: { userId } });
+            if (count > 0) return;
 
-        // Seed 30 days
-        const today = new Date();
-        const stepsData = [];
+            // Seed 30 days
+            const today = new Date();
+            const stepsData = [];
 
-        for (let i = 0; i < 30; i++) {
-            const date = new Date(today);
-            date.setDate(date.getDate() - i);
-            date.setHours(0, 0, 0, 0);
+            for (let i = 0; i < 30; i++) {
+                const date = new Date(today);
+                date.setDate(date.getDate() - i);
+                date.setHours(0, 0, 0, 0);
 
-            const steps = Math.floor(Math.random() * 12000) + 2000;
-            const calories = Math.floor(steps * this.caloriesPerStep);
-            const distance = parseFloat((steps * this.kmPerStep).toFixed(2));
+                const steps = Math.floor(Math.random() * 12000) + 2000;
+                const calories = Math.floor(steps * this.caloriesPerStep);
+                const distance = parseFloat((steps * this.kmPerStep).toFixed(2));
 
-            stepsData.push({
-                userId,
-                date,
-                stepCount: steps,
-                caloriesBurned: calories,
-                distanceKm: distance,
-                activeMinutes: Math.floor(steps / 110),
-                synced: true,
-                source: 'demo_gen',
+                stepsData.push({
+                    userId,
+                    date,
+                    stepCount: steps,
+                    caloriesBurned: calories,
+                    distanceKm: distance,
+                    activeMinutes: Math.floor(steps / 110),
+                    synced: true,
+                    source: 'demo_gen',
+                });
+            }
+
+            // Use createMany (Postgres supports it)
+            await this.prisma.step.createMany({ data: stepsData });
+
+            // Also ensure streak
+            await this.prisma.streak.upsert({
+                where: { userId },
+                create: { userId, currentStreak: 5, longestStreak: 12 },
+                update: {},
             });
+
+            // Ensure wallet
+            await this.prisma.wallet.upsert({
+                where: { userId },
+                create: { userId, balance: 500, lifetimePoints: 1200 },
+                update: {},
+            });
+        } catch (error) {
+            // Ignore constraint errors from other simultaneous parallel requests that created the data first
+            console.warn('⚠️ Concurrency warning in ensureUserData:', error.message);
         }
-
-        // Use createMany (Postgres supports it)
-        await this.prisma.step.createMany({ data: stepsData });
-
-        // Also ensure streak
-        await this.prisma.streak.upsert({
-            where: { userId },
-            create: { userId, currentStreak: 5, longestStreak: 12 },
-            update: {},
-        });
-
-        // Ensure wallet
-        await this.prisma.wallet.upsert({
-            where: { userId },
-            create: { userId, balance: 500, lifetimePoints: 1200 },
-            update: {},
-        });
     }
 
     /**
