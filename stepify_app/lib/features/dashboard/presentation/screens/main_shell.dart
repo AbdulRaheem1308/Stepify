@@ -100,9 +100,8 @@ class _MainShellState extends ConsumerState<MainShell> {
                   child: AdWidget(ad: _bannerAd!),
                 ),
               Padding(
-                padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+                padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 8),
                 child: Row(
-                  mainAxisAlignment: MainAxisAlignment.spaceAround,
                   children: List.generate(navItems.length, (index) {
                     final item = navItems[index];
                     final isSelected = selectedIndex == index;
@@ -131,36 +130,42 @@ class _MainShellState extends ConsumerState<MainShell> {
     required bool isSelected,
     required VoidCallback onTap,
   }) {
-    return GestureDetector(
-      onTap: onTap,
-      behavior: HitTestBehavior.opaque,
-      child: AnimatedContainer(
-        duration: const Duration(milliseconds: 200),
-        padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
-        decoration: BoxDecoration(
-          color: isSelected 
-              ? AppTheme.primaryGreen.withOpacity(0.1) 
-              : Colors.transparent,
-          borderRadius: BorderRadius.circular(12),
-        ),
-        child: Column(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            Icon(
-              icon,
-              color: isSelected ? AppTheme.primaryGreen : AppTheme.neutral400,
-              size: 24,
-            ),
-            const SizedBox(height: 4),
-            Text(
-              label,
-              style: TextStyle(
+    return Expanded(
+      child: GestureDetector(
+        onTap: onTap,
+        behavior: HitTestBehavior.opaque,
+        child: AnimatedContainer(
+          duration: const Duration(milliseconds: 200),
+          padding: const EdgeInsets.symmetric(vertical: 8, horizontal: 4),
+          decoration: BoxDecoration(
+            color: isSelected 
+                ? AppTheme.primaryGreen.withOpacity(0.08) 
+                : Colors.transparent,
+            borderRadius: BorderRadius.circular(12),
+          ),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            mainAxisAlignment: MainAxisAlignment.center,
+            children: [
+              Icon(
+                icon,
                 color: isSelected ? AppTheme.primaryGreen : AppTheme.neutral400,
-                fontSize: 12,
-                fontWeight: isSelected ? FontWeight.w600 : FontWeight.normal,
+                size: 22,
               ),
-            ),
-          ],
+              const SizedBox(height: 4),
+              Text(
+                label,
+                maxLines: 1,
+                overflow: TextOverflow.ellipsis,
+                textAlign: TextAlign.center,
+                style: TextStyle(
+                  color: isSelected ? AppTheme.primaryGreen : AppTheme.neutral400,
+                  fontSize: 10.5,
+                  fontWeight: isSelected ? FontWeight.w600 : FontWeight.normal,
+                ),
+              ),
+            ],
+          ),
         ),
       ),
     );
