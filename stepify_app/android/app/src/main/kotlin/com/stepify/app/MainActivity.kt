@@ -1,4 +1,4 @@
-package com.example.stepify_app
+package com.stepify.app
 
 import io.flutter.embedding.android.FlutterActivity
 
