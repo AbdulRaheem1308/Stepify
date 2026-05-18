@@ -16,3 +16,7 @@
 -keepclasseswithmembernames class * {
     native <methods>;
 }
+
+# Suppress warnings/errors for missing Play Core classes (used by Flutter's deferred components)
+-dontwarn com.google.android.play.core.**
+
