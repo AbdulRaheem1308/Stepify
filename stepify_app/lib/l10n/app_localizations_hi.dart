@@ -207,7 +207,8 @@ class AppLocalizationsHi extends AppLocalizations {
   String get syncOverCellular => 'सेलुलर पर सिंक';
 
   @override
-  String get syncOverCellularSubtitle => 'सिंक करने के लिए मोबाइल डेटा का उपयोग करें';
+  String get syncOverCellularSubtitle =>
+      'सिंक करने के लिए मोबाइल डेटा का उपयोग करें';
 
   @override
   String get connectedDevices => 'कनेक्टेड डिवाइस';
