@@ -12,9 +12,23 @@ async function bootstrap() {
     // Security Headers
     app.use(helmet());
 
-    // Enable CORS
+    // Configure secure CORS policy
+    const allowedOrigins = [
+        'http://localhost:3000',
+        'http://localhost:5173',
+        'https://stepify.app',
+        'https://admin.stepify.app'
+    ];
+    
     app.enableCors({
-        origin: true,
+        origin: (origin, callback) => {
+            // Allow requests with no origin (like mobile apps) or specific allowed web origins
+            if (!origin || allowedOrigins.includes(origin)) {
+                callback(null, true);
+            } else {
+                callback(new Error('Blocked by CORS'));
+            }
+        },
         credentials: true,
     });
 
