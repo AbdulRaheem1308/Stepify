@@ -20,46 +20,63 @@ export class StepsService {
 
     /**
      * Sync step data from device
-     * Handles upsert for the given date
+     * Handles upsert for the given date.
+     * Uses a "highest wins" strategy: if a record already exists for this day,
+     * the step count is only updated if the incoming value is higher.
+     * This prevents overlap between pedometer, Google Fit, and wearable sources.
      */
     async syncSteps(userId: string, dto: SyncStepsDto) {
         const date = new Date(dto.date);
         date.setHours(0, 0, 0, 0);
 
-        // Calculate derived values
-        const caloriesBurned = Math.round(dto.stepCount * this.caloriesPerStep);
-        const distanceKm = parseFloat((dto.stepCount * this.kmPerStep).toFixed(2));
+        // Check if a record already exists for this day
+        const existing = await this.prisma.step.findUnique({
+            where: {
+                userId_date: { userId, date },
+            },
+        });
 
-        // Upsert step record
+        // Use the higher step count to avoid overlap between multiple sources
+        const effectiveStepCount = existing
+            ? Math.max(existing.stepCount, dto.stepCount)
+            : dto.stepCount;
+
+        // Calculate derived values from the winning step count
+        const caloriesBurned = Math.round(effectiveStepCount * this.caloriesPerStep);
+        const distanceKm = parseFloat((effectiveStepCount * this.kmPerStep).toFixed(2));
+
+        // Determine which source provided the highest count
+        const effectiveSource = (existing && existing.stepCount >= dto.stepCount)
+            ? existing.source
+            : (dto.source || 'manual');
+
+        // Upsert step record with the highest value
         const step = await this.prisma.step.upsert({
             where: {
-                userId_date: {
-                    userId,
-                    date,
-                },
+                userId_date: { userId, date },
             },
             update: {
-                stepCount: dto.stepCount,
+                stepCount: effectiveStepCount,
                 caloriesBurned,
                 distanceKm,
-                activeMinutes: dto.activeMinutes || 0,
-                source: dto.source || 'manual',
+                activeMinutes: Math.max(existing?.activeMinutes || 0, dto.activeMinutes || 0),
+                source: effectiveSource,
                 synced: true,
             },
             create: {
                 userId,
                 date,
-                stepCount: dto.stepCount,
+                stepCount: effectiveStepCount,
                 caloriesBurned,
                 distanceKm,
                 activeMinutes: dto.activeMinutes || 0,
-                source: dto.source || 'manual',
+                source: effectiveSource,
                 synced: true,
             },
         });
 
         // Update streak and rewards
-        await this.rewardsService.processStepRewards(userId, dto.stepCount, date);
+        await this.rewardsService.processStepRewards(userId, effectiveStepCount, date);
 
         return step;
     }
