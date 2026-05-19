@@ -270,7 +270,7 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen> with SingleTicker
                    Expanded(
                      child: _buildStatItem(
                        'Total Distance', 
-                       '${(stats['lifetimeDistanceKm'] ?? 0).toStringAsFixed(1)} km', 
+                       '${(double.tryParse(stats['lifetimeDistanceKm']?.toString() ?? '0') ?? 0.0).toStringAsFixed(1)} km', 
                        Icons.map,
                        AppTheme.accentPurple
                      ),

@@ -171,7 +171,7 @@ export class StepsService {
             date: `${year}-${month}-${day}`,
             stepCount,
             caloriesBurned: step?.caloriesBurned || 0,
-            distanceKm: step?.distanceKm || 0,
+            distanceKm: step?.distanceKm ? Number(step.distanceKm) : 0,
             activeMinutes: step?.activeMinutes || 0,
             goal,
             progress: Math.min(Math.round((stepCount / goal) * 100), 100),

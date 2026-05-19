@@ -125,7 +125,7 @@ class TodaySteps {
     return TodaySteps(
       stepCount: json['stepCount'] ?? 0,
       caloriesBurned: json['caloriesBurned'] ?? 0,
-      distanceKm: (json['distanceKm'] ?? 0).toDouble(),
+      distanceKm: double.tryParse(json['distanceKm']?.toString() ?? '0') ?? 0.0,
       activeMinutes: json['activeMinutes'] ?? 0,
       goal: json['goal'] ?? 10000,
       progress: json['progress'] ?? 0,
