@@ -115,7 +115,9 @@ class _HomeScreenState extends ConsumerState<HomeScreen> with SingleTickerProvid
     }
 
     if (!dashboard.isLoading && dashboard.todaySteps != null) {
-      _progressAnimController.forward(from: 0);
+      if (_progressAnimController.value == 0 && !_progressAnimController.isAnimating) {
+        _progressAnimController.forward();
+      }
       
       // Check for goal completion
       final steps = dashboard.todaySteps?.stepCount ?? 0;
