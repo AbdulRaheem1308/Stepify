@@ -15,6 +15,8 @@ class AppSettings {
   final bool showOnLeaderboard;
   final bool showMilestones;
   final bool backgroundSyncEnabled;
+  final String distanceUnit; // 'km', 'mi'
+  final String syncFrequency; // 'Auto (15m)', 'Manual Only', 'Every Hour'
 
   AppSettings({
     this.themeMode = 'system',
@@ -27,6 +29,8 @@ class AppSettings {
     this.showOnLeaderboard = true,
     this.showMilestones = true,
     this.backgroundSyncEnabled = false,
+    this.distanceUnit = 'km',
+    this.syncFrequency = 'Auto (15m)',
   });
 
   AppSettings copyWith({
@@ -40,6 +44,8 @@ class AppSettings {
     bool? showOnLeaderboard,
     bool? showMilestones,
     bool? backgroundSyncEnabled,
+    String? distanceUnit,
+    String? syncFrequency,
   }) {
     return AppSettings(
       themeMode: themeMode ?? this.themeMode,
@@ -52,6 +58,8 @@ class AppSettings {
       showOnLeaderboard: showOnLeaderboard ?? this.showOnLeaderboard,
       showMilestones: showMilestones ?? this.showMilestones,
       backgroundSyncEnabled: backgroundSyncEnabled ?? this.backgroundSyncEnabled,
+      distanceUnit: distanceUnit ?? this.distanceUnit,
+      syncFrequency: syncFrequency ?? this.syncFrequency,
     );
   }
 }
@@ -79,6 +87,8 @@ class SettingsNotifier extends StateNotifier<AppSettings> {
         showOnLeaderboard: data['showOnLeaderboard'] ?? true,
         showMilestones: data['showMilestones'] ?? true,
         backgroundSyncEnabled: StorageService.get('backgroundSyncEnabled', defaultValue: false) ?? false,
+        distanceUnit: data['distanceUnit'] ?? 'km',
+        syncFrequency: StorageService.get('syncFrequency', defaultValue: 'Auto (15m)') ?? 'Auto (15m)',
       );
     } catch (e) {
       print('Error loading settings: $e');
@@ -97,6 +107,7 @@ class SettingsNotifier extends StateNotifier<AppSettings> {
         'isPublic': state.isPublic,
         'showOnLeaderboard': state.showOnLeaderboard,
         'showMilestones': state.showMilestones,
+        'distanceUnit': state.distanceUnit,
       });
     } catch (e) {
       print('Error saving settings: $e');
@@ -155,6 +166,22 @@ class SettingsNotifier extends StateNotifier<AppSettings> {
       await BackgroundService.registerPeriodicTask();
     } else {
       await BackgroundService.cancelTask();
+    }
+  }
+
+  void setDistanceUnit(String unit) {
+    state = state.copyWith(distanceUnit: unit);
+    _saveSettings();
+  }
+
+  Future<void> setSyncFrequency(String frequency) async {
+    state = state.copyWith(syncFrequency: frequency);
+    await StorageService.put('syncFrequency', frequency);
+    
+    // Re-register periodic background tasks with updated interval if enabled
+    if (state.backgroundSyncEnabled) {
+      await BackgroundService.cancelTask();
+      await BackgroundService.registerPeriodicTask();
     }
   }
 

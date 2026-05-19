@@ -110,17 +110,25 @@ class SettingsScreen extends ConsumerWidget {
                 context,
                 title: 'Distance Unit',
                 icon: Icons.straighten,
-                value: 'Kilometers',
-                items: ['Kilometers', 'Miles'],
-                onChanged: (val) {}, // Mock logic
+                value: settings.distanceUnit == 'km' ? 'Kilometers' : 'Miles',
+                items: const ['Kilometers', 'Miles'],
+                onChanged: (val) {
+                  if (val != null) {
+                    ref.read(settingsProvider.notifier).setDistanceUnit(val == 'Kilometers' ? 'km' : 'mi');
+                  }
+                },
               ),
               _buildDropdownTile(
                 context,
                 title: 'Sync Frequency',
                 icon: Icons.sync,
-                value: 'Auto (15m)',
-                items: ['Auto (15m)', 'Manual Only', 'Every Hour'],
-                onChanged: (val) {}, // Mock logic
+                value: settings.syncFrequency,
+                items: const ['Auto (15m)', 'Manual Only', 'Every Hour'],
+                onChanged: (val) {
+                  if (val != null) {
+                    ref.read(settingsProvider.notifier).setSyncFrequency(val);
+                  }
+                },
               ),
             ],
           ),
