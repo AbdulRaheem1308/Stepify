@@ -5,6 +5,7 @@ import 'package:url_launcher/url_launcher.dart';
 import 'package:go_router/go_router.dart';
 import 'package:stepify_app/l10n/app_localizations.dart';
 
+import '../../../dashboard/presentation/providers/dashboard_provider.dart';
 import '../../../../core/theme/app_theme.dart';
 import '../providers/settings_provider.dart';
 
@@ -16,6 +17,7 @@ class SettingsScreen extends ConsumerWidget {
   Widget build(BuildContext context, WidgetRef ref) {
     final l10n = AppLocalizations.of(context)!;
     final settings = ref.watch(settingsProvider);
+    final dashboard = ref.watch(dashboardProvider);
 
     return Scaffold(
       appBar: AppBar(
@@ -130,6 +132,79 @@ class SettingsScreen extends ConsumerWidget {
                   }
                 },
               ),
+            ],
+          ),
+          const SizedBox(height: 16),
+
+          // Sensor & Sync Diagnostics Section
+          _buildSection(
+            context,
+            title: 'Sensor Diagnostics',
+            icon: Icons.developer_mode_outlined,
+            children: [
+              ListTile(
+                title: const Text('Direct Pedometer Sensor', style: TextStyle(fontWeight: FontWeight.w500, fontSize: 14)),
+                subtitle: Text(
+                  dashboard.isSensorListening ? 'Listening (Active)' : 'Inactive / Unsupported',
+                  style: TextStyle(
+                    color: dashboard.isSensorListening ? AppTheme.primaryGreen : AppTheme.error,
+                    fontSize: 12,
+                    fontWeight: FontWeight.bold,
+                  ),
+                ),
+                leading: Icon(
+                  Icons.sensors,
+                  color: dashboard.isSensorListening ? AppTheme.primaryGreen : AppTheme.neutral500,
+                ),
+                trailing: IconButton(
+                  icon: const Icon(Icons.refresh, size: 20),
+                  onPressed: () {
+                    ref.read(dashboardProvider.notifier).fetchTodayData();
+                    ScaffoldMessenger.of(context).showSnackBar(
+                      const SnackBar(content: Text('Checking sensor and forcing health sync...')),
+                    );
+                  },
+                ),
+              ),
+              ListTile(
+                title: const Text('Google Fit / Health Connect', style: TextStyle(fontWeight: FontWeight.w500, fontSize: 14)),
+                subtitle: Text(
+                  dashboard.healthAuthorized ? 'Authorized & Syncing' : 'Unauthorized / Denied',
+                  style: TextStyle(
+                    color: dashboard.healthAuthorized ? AppTheme.primaryGreen : AppTheme.error,
+                    fontSize: 12,
+                    fontWeight: FontWeight.bold,
+                  ),
+                ),
+                leading: Icon(
+                  Icons.health_and_safety,
+                  color: dashboard.healthAuthorized ? AppTheme.primaryGreen : AppTheme.neutral500,
+                ),
+              ),
+              ListTile(
+                title: const Text('Real-time Steps Captured', style: TextStyle(fontWeight: FontWeight.w500, fontSize: 14)),
+                subtitle: Text(
+                  '${dashboard.sensorStepsToday} steps (Offset: +${dashboard.sensorOffset})',
+                  style: TextStyle(color: AppTheme.neutral600, fontSize: 12),
+                ),
+                leading: const Icon(Icons.directions_walk, color: AppTheme.primaryGreen),
+              ),
+              if (dashboard.sensorErrorMessage != null)
+                Padding(
+                  padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+                  child: Container(
+                    padding: const EdgeInsets.all(8),
+                    decoration: BoxDecoration(
+                      color: AppTheme.error.withOpacity(0.1),
+                      borderRadius: BorderRadius.circular(8),
+                      border: Border.all(color: AppTheme.error.withOpacity(0.3)),
+                    ),
+                    child: Text(
+                      'Error: ${dashboard.sensorErrorMessage}',
+                      style: const TextStyle(color: AppTheme.error, fontSize: 12, fontFamily: 'monospace'),
+                    ),
+                  ),
+                ),
             ],
           ),
           const SizedBox(height: 16),

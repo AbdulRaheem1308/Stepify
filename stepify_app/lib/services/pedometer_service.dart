@@ -13,21 +13,26 @@ class PedometerService {
   final Pedometer _pedometer = Pedometer();
   StreamSubscription<int>? _subscription;
   void Function(int stepsToday)? _onStepsChanged;
+  void Function(String error)? _onErrorOccurred;
   
   bool _isListening = false;
+  bool get isListening => _isListening;
   
   // Storage keys
   static const _baselineKey = 'pedometer_baseline_steps';
   static const _lastDateKey = 'pedometer_last_sync_date';
 
   /// Initialize and start listening to the physical mobile step counter
-  Future<void> startListening({required void Function(int stepsToday) onStepsChanged}) async {
+  Future<void> startListening({
+    required void Function(int stepsToday) onStepsChanged,
+    void Function(String error)? onErrorOccurred,
+  }) async {
+    _onStepsChanged = onStepsChanged;
+    _onErrorOccurred = onErrorOccurred;
+
     if (_isListening) {
-      _onStepsChanged = onStepsChanged;
       return;
     }
-
-    _onStepsChanged = onStepsChanged;
 
     // 1. Request Activity Recognition permission safely
     if (defaultTargetPlatform == TargetPlatform.android) {
@@ -36,6 +41,9 @@ class PedometerService {
         print('Pedometer: Activity Recognition permission status: $status');
       } catch (e) {
         print('Pedometer: Error requesting permission: $e');
+        if (_onErrorOccurred != null) {
+          _onErrorOccurred!('Permission error: $e');
+        }
       }
     }
 
@@ -50,6 +58,9 @@ class PedometerService {
       print('🟢 Direct Hardware Pedometer Service Listening');
     } catch (e) {
       print('Pedometer: Error starting stream: $e');
+      if (_onErrorOccurred != null) {
+        _onErrorOccurred!('Sensor Stream error: $e');
+      }
     }
   }
 
@@ -86,6 +97,9 @@ class PedometerService {
 
   void _onStepCountError(dynamic error) {
     print('Pedometer: Hardware sensor error: $error');
+    if (_onErrorOccurred != null) {
+      _onErrorOccurred!('Hardware error: $error');
+    }
   }
 
   /// Stop listening to the sensor

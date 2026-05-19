@@ -28,6 +28,13 @@ class DashboardState {
   final SyncStatus syncStatus;
   final DateTime? lastSyncTime;
 
+  // Diagnostics & Debugging Info
+  final int sensorStepsToday;
+  final int sensorOffset;
+  final bool isSensorListening;
+  final bool healthAuthorized;
+  final String? sensorErrorMessage;
+
   DashboardState({
     this.isLoading = false,
     this.todaySteps,
@@ -42,6 +49,11 @@ class DashboardState {
     this.xpToNextLevel = 1000,
     this.syncStatus = SyncStatus.idle,
     this.lastSyncTime,
+    this.sensorStepsToday = 0,
+    this.sensorOffset = 0,
+    this.isSensorListening = false,
+    this.healthAuthorized = false,
+    this.sensorErrorMessage,
   });
 
   DashboardState copyWith({
@@ -58,6 +70,11 @@ class DashboardState {
     int? xpToNextLevel,
     SyncStatus? syncStatus,
     DateTime? lastSyncTime,
+    int? sensorStepsToday,
+    int? sensorOffset,
+    bool? isSensorListening,
+    bool? healthAuthorized,
+    String? sensorErrorMessage,
   }) {
     return DashboardState(
       isLoading: isLoading ?? this.isLoading,
@@ -73,6 +90,11 @@ class DashboardState {
       xpToNextLevel: xpToNextLevel ?? this.xpToNextLevel,
       syncStatus: syncStatus ?? this.syncStatus,
       lastSyncTime: lastSyncTime ?? this.lastSyncTime,
+      sensorStepsToday: sensorStepsToday ?? this.sensorStepsToday,
+      sensorOffset: sensorOffset ?? this.sensorOffset,
+      isSensorListening: isSensorListening ?? this.isSensorListening,
+      healthAuthorized: healthAuthorized ?? this.healthAuthorized,
+      sensorErrorMessage: sensorErrorMessage ?? this.sensorErrorMessage,
     );
   }
 }
@@ -190,7 +212,13 @@ class DashboardNotifier extends StateNotifier<DashboardState> {
 
   void _initHardwarePedometer() {
     // Listen directly to the physical phone's built-in step counter sensor
-    Future.microtask(() {
+    Future.microtask(() async {
+      final authorized = await _healthService.requestAuthorization();
+      state = state.copyWith(
+        healthAuthorized: authorized,
+        isSensorListening: _pedometerService.isListening,
+      );
+
       _pedometerService.startListening(
         onStepsChanged: (stepsToday) {
           _currentPedometerSteps = stepsToday;
@@ -204,12 +232,25 @@ class DashboardNotifier extends StateNotifier<DashboardState> {
             // Immediately sync once when initializing
             syncSteps(stepsToday + _pedometerOffset);
           }
+
+          state = state.copyWith(
+            sensorStepsToday: stepsToday,
+            sensorOffset: _pedometerOffset,
+            isSensorListening: _pedometerService.isListening,
+          );
+        },
+        onErrorOccurred: (err) {
+          state = state.copyWith(
+            sensorErrorMessage: err,
+            isSensorListening: _pedometerService.isListening,
+          );
         },
       );
       
       // Batch UI updates every 5 seconds to prevent jitter and save resources
       _uiBatchTimer = Timer.periodic(const Duration(seconds: 5), (timer) async {
         int stepsToSync = 0;
+        final isAuth = await _healthService.requestAuthorization();
         
         if (_currentPedometerSteps > 0) {
           // Use real-time physical sensor steps
@@ -219,8 +260,7 @@ class DashboardNotifier extends StateNotifier<DashboardState> {
         } else {
           // Fallback: Query Google Fit / Health Connect / HealthKit
           try {
-            final authorized = await _healthService.requestAuthorization();
-            if (authorized) {
+            if (isAuth) {
               final healthSteps = await _healthService.getTodaySteps();
               if (healthSteps > 0) {
                 stepsToSync = healthSteps;
@@ -231,6 +271,13 @@ class DashboardNotifier extends StateNotifier<DashboardState> {
             debugPrint('Pedometer: Fallback Health Service query failed: $e');
           }
         }
+
+        state = state.copyWith(
+          healthAuthorized: isAuth,
+          sensorStepsToday: _currentPedometerSteps,
+          sensorOffset: _pedometerOffset,
+          isSensorListening: _pedometerService.isListening,
+        );
         
         if (stepsToSync > 0) {
           // Only trigger if steps actually changed
