@@ -175,6 +175,10 @@ class DashboardNotifier extends StateNotifier<DashboardState> {
 
   int _lastSyncedSteps = 0;
   DateTime? _lastSyncedTime;
+  
+  int _currentPedometerSteps = 0;
+  int _pedometerOffset = 0;
+  bool _pedometerOffsetInitialized = false;
 
   DashboardNotifier(this._apiService, this._healthService) : super(DashboardState()) {
     _loadUser();
@@ -186,7 +190,21 @@ class DashboardNotifier extends StateNotifier<DashboardState> {
     Future.microtask(() {
       _pedometerService.startListening(
         onStepsChanged: (stepsToday) {
-          syncSteps(stepsToday);
+          _currentPedometerSteps = stepsToday;
+          
+          if (!_pedometerOffsetInitialized && state.todaySteps != null) {
+            final backendSteps = state.todaySteps!.stepCount;
+            _pedometerOffset = backendSteps - stepsToday;
+            if (_pedometerOffset < 0) _pedometerOffset = 0;
+            _pedometerOffsetInitialized = true;
+          }
+
+          if (_pedometerOffsetInitialized) {
+            syncSteps(stepsToday + _pedometerOffset);
+          } else {
+            // Backend data hasn't loaded yet, use raw pedometer
+            syncSteps(stepsToday);
+          }
         },
       );
     });
@@ -260,9 +278,24 @@ class DashboardNotifier extends StateNotifier<DashboardState> {
       // User Stats
       final userStats = results[5].data;
 
+      final backendStepsData = results[0].data;
+      final backendSteps = backendStepsData['stepCount'] ?? 0;
+      
+      // Calculate offset if not initialized, OR update it if backend has more steps (e.g. smartwatch synced)
+      final expectedTotal = _currentPedometerSteps + _pedometerOffset;
+      if (backendSteps > expectedTotal) {
+         _pedometerOffset = backendSteps - _currentPedometerSteps;
+         if (_pedometerOffset < 0) _pedometerOffset = 0;
+         _pedometerOffsetInitialized = true;
+      } else if (!_pedometerOffsetInitialized) {
+         _pedometerOffset = backendSteps - _currentPedometerSteps;
+         if (_pedometerOffset < 0) _pedometerOffset = 0;
+         _pedometerOffsetInitialized = true;
+      }
+
       state = state.copyWith(
         isLoading: false,
-        todaySteps: TodaySteps.fromJson(results[0].data),
+        todaySteps: TodaySteps.fromJson(backendStepsData),
         streak: StreakInfo.fromJson(results[1].data),
         wallet: walletData,
         xpLevel: xpInfo['level'],
