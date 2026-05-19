@@ -175,20 +175,61 @@ export class TeamsService {
     async leaveTeam(teamId: string, userId: string) {
         const team = await this.prisma.team.findUnique({
             where: { id: teamId },
+            include: { members: true },
         });
 
         if (!team) {
             throw new Error('Team not found');
         }
 
-        // Captain cannot leave (must transfer or delete)
         if (team.captainId === userId) {
-            throw new Error('Captain cannot leave. Transfer ownership or delete team.');
-        }
+            // Find other members to promote the next oldest to captain
+            const otherMembers = await this.prisma.teamMember.findMany({
+                where: {
+                    teamId,
+                    userId: { not: userId },
+                },
+                orderBy: { joinedAt: 'asc' },
+            });
 
-        await this.prisma.teamMember.deleteMany({
-            where: { teamId, userId },
-        });
+            if (otherMembers.length > 0) {
+                const nextCaptain = otherMembers[0];
+                await this.prisma.$transaction([
+                    // Update team captain
+                    this.prisma.team.update({
+                        where: { id: teamId },
+                        data: { captainId: nextCaptain.userId },
+                    }),
+                    // Update next captain's role to captain
+                    this.prisma.teamMember.update({
+                        where: { id: nextCaptain.id },
+                        data: { role: 'captain' },
+                    }),
+                    // Delete leaving captain's member record
+                    this.prisma.teamMember.deleteMany({
+                        where: { teamId, userId },
+                    }),
+                ]);
+            } else {
+                // No other members, delete the team cleanly
+                await this.prisma.$transaction([
+                    this.prisma.teamMember.deleteMany({
+                        where: { teamId },
+                    }),
+                    this.prisma.teamChallenge.deleteMany({
+                        where: { teamId },
+                    }),
+                    this.prisma.team.delete({
+                        where: { id: teamId },
+                    }),
+                ]);
+            }
+        } else {
+            // Standard member leaves the team
+            await this.prisma.teamMember.deleteMany({
+                where: { teamId, userId },
+            });
+        }
 
         return { success: true };
     }
