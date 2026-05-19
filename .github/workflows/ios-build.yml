@@ -21,6 +21,10 @@ jobs:
       working-directory: ${{ env.PROJECT_DIR }}
       run: flutter pub get
 
+    - name: Generate Flutter iOS configuration files
+      working-directory: ${{ env.PROJECT_DIR }}
+      run: flutter build ios --config-only
+
     - name: Install CocoaPods
       working-directory: ${{ env.PROJECT_DIR }}/ios
       run: |
