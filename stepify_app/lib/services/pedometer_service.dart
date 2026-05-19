@@ -29,12 +29,13 @@ class PedometerService {
 
     _onStepsChanged = onStepsChanged;
 
-    // 1. Request Activity Recognition permission (needed for direct sensor reading on Android)
+    // 1. Request Activity Recognition permission safely
     if (defaultTargetPlatform == TargetPlatform.android) {
-      final status = await Permission.activityRecognition.request();
-      if (status != PermissionStatus.granted) {
-        print('Pedometer: Activity Recognition permission denied.');
-        return;
+      try {
+        final status = await Permission.activityRecognition.request();
+        print('Pedometer: Activity Recognition permission status: $status');
+      } catch (e) {
+        print('Pedometer: Error requesting permission: $e');
       }
     }
 

@@ -208,15 +208,34 @@ class DashboardNotifier extends StateNotifier<DashboardState> {
       );
       
       // Batch UI updates every 5 seconds to prevent jitter and save resources
-      _uiBatchTimer = Timer.periodic(const Duration(seconds: 5), (timer) {
-        if (_currentPedometerSteps > 0 || _pedometerOffsetInitialized) {
-          final totalStepsToSync = _pedometerOffsetInitialized 
+      _uiBatchTimer = Timer.periodic(const Duration(seconds: 5), (timer) async {
+        int stepsToSync = 0;
+        
+        if (_currentPedometerSteps > 0) {
+          // Use real-time physical sensor steps
+          stepsToSync = _pedometerOffsetInitialized 
               ? _currentPedometerSteps + _pedometerOffset 
               : _currentPedometerSteps;
-          
+        } else {
+          // Fallback: Query Google Fit / Health Connect / HealthKit
+          try {
+            final authorized = await _healthService.requestAuthorization();
+            if (authorized) {
+              final healthSteps = await _healthService.getTodaySteps();
+              if (healthSteps > 0) {
+                stepsToSync = healthSteps;
+                debugPrint('Pedometer: Falling back to Health Service steps: $healthSteps');
+              }
+            }
+          } catch (e) {
+            debugPrint('Pedometer: Fallback Health Service query failed: $e');
+          }
+        }
+        
+        if (stepsToSync > 0) {
           // Only trigger if steps actually changed
-          if (state.todaySteps == null || totalStepsToSync > state.todaySteps!.stepCount) {
-             syncSteps(totalStepsToSync);
+          if (state.todaySteps == null || stepsToSync > state.todaySteps!.stepCount) {
+             syncSteps(stepsToSync);
           }
         }
       });
