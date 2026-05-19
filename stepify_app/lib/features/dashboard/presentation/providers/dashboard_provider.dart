@@ -185,25 +185,29 @@ class DashboardNotifier extends StateNotifier<DashboardState> {
 
     // Auto-sync steps from local sensors first (sync last 7 days of history in parallel to capture past offline steps)
     try {
-      final historyMap = await _healthService.getStepHistory(7);
-      final List<Future> syncTasks = [];
-      for (final entry in historyMap.entries) {
-        final dateStr = entry.key.toIso8601String().split('T')[0];
-        final steps = entry.value;
-        if (steps > 0) {
-          syncTasks.add(
-            _apiService.post('/steps/sync', data: {
-              'date': dateStr,
-              'stepCount': steps,
-              'source': 'phone_sensors',
-            }).catchError((err) {
-              print('Failed to sync steps for $dateStr: $err');
-            }),
-          );
+      // Automatically pre-authorize and request permissions on startup so the physical mobile phone's built-in pedometer tracks out-of-the-box
+      final authorized = await _healthService.requestAuthorization();
+      if (authorized) {
+        final historyMap = await _healthService.getStepHistory(7);
+        final List<Future> syncTasks = [];
+        for (final entry in historyMap.entries) {
+          final dateStr = entry.key.toIso8601String().split('T')[0];
+          final steps = entry.value;
+          if (steps > 0) {
+            syncTasks.add(
+              _apiService.post('/steps/sync', data: {
+                'date': dateStr,
+                'stepCount': steps,
+                'source': 'phone_sensors',
+              }).catchError((err) {
+                print('Failed to sync steps for $dateStr: $err');
+              }),
+            );
+          }
         }
-      }
-      if (syncTasks.isNotEmpty) {
-        await Future.wait(syncTasks);
+        if (syncTasks.isNotEmpty) {
+          await Future.wait(syncTasks);
+        }
       }
     } catch (e) {
       print('Auto-sync steps error: $e');
