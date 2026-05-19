@@ -4,6 +4,7 @@ import 'package:dio/dio.dart';
 import '../../../../services/api_service.dart';
 import '../../../../services/storage_service.dart';
 import 'package:stepify_app/services/health_service.dart';
+import 'package:stepify_app/services/pedometer_service.dart';
 import 'package:stepify_app/features/devices/presentation/providers/device_provider.dart';
 
 /// Dashboard state model
@@ -170,9 +171,25 @@ final dashboardProvider = StateNotifierProvider<DashboardNotifier, DashboardStat
 class DashboardNotifier extends StateNotifier<DashboardState> {
   final ApiService _apiService;
   final HealthService _healthService;
+  final PedometerService _pedometerService = PedometerService();
+
+  int _lastSyncedSteps = 0;
+  DateTime? _lastSyncedTime;
 
   DashboardNotifier(this._apiService, this._healthService) : super(DashboardState()) {
     _loadUser();
+    _initHardwarePedometer();
+  }
+
+  void _initHardwarePedometer() {
+    // Listen directly to the physical phone's built-in step counter sensor
+    Future.microtask(() {
+      _pedometerService.startListening(
+        onStepsChanged: (stepsToday) {
+          syncSteps(stepsToday);
+        },
+      );
+    });
   }
 
   void _loadUser() {
@@ -300,19 +317,31 @@ class DashboardNotifier extends StateNotifier<DashboardState> {
 
 
   Future<void> syncSteps(int stepCount) async {
-    try {
-      final today = DateTime.now().toIso8601String().split('T')[0];
+    if (stepCount == _lastSyncedSteps) return;
+
+    final now = DateTime.now();
+    final stepDiff = (stepCount - _lastSyncedSteps).abs();
+    final timeDiff = _lastSyncedTime == null ? const Duration(seconds: 999) : now.difference(_lastSyncedTime!);
+
+    // Throttling: Only hit the backend if the user walked at least 10 steps, or 30 seconds have passed since the last sync
+    if (stepDiff >= 10 || timeDiff.inSeconds >= 30) {
+      _lastSyncedSteps = stepCount;
+      _lastSyncedTime = now;
       
-      await _apiService.post('/steps/sync', data: {
-        'date': today,
-        'stepCount': stepCount,
-        'source': 'manual',
-      });
-      
-      // Refresh data
-      await fetchTodayData();
-    } catch (e) {
-      // Handle error
+      try {
+        final today = now.toIso8601String().split('T')[0];
+        
+        await _apiService.post('/steps/sync', data: {
+          'date': today,
+          'stepCount': stepCount,
+          'source': 'phone_sensors',
+        });
+        
+        // Refresh data to keep weekly chart and statistics updated in real-time
+        await fetchTodayData();
+      } catch (e) {
+        print('Pedometer: Failed to sync stepCount $stepCount: $e');
+      }
     }
   }
   Future<void> updateDailyGoal(int newGoal) async {
