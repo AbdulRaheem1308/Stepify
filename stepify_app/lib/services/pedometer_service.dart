@@ -10,11 +10,11 @@ class PedometerService {
   factory PedometerService() => _instance;
   PedometerService._internal();
 
-  StreamSubscription<StepCount>? _subscription;
+  final Pedometer _pedometer = Pedometer();
+  StreamSubscription<int>? _subscription;
   void Function(int stepsToday)? _onStepsChanged;
   
   bool _isListening = false;
-  int _todayStepsOffset = 0;
   
   // Storage keys
   static const _baselineKey = 'pedometer_baseline_steps';
@@ -40,24 +40,22 @@ class PedometerService {
 
     // 2. Begin listening to the physical step counter stream
     try {
-      _subscription = Pedometer.stepCountStream.listen(
+      _subscription = _pedometer.stepCountStream().listen(
         _onStepCountEvent,
         onError: _onStepCountError,
         cancelOnError: false,
       );
       _isListening = true;
-      print('🔴 Direct Hardware Pedometer Service Listening');
+      print('🟢 Direct Hardware Pedometer Service Listening');
     } catch (e) {
       print('Pedometer: Error starting stream: $e');
     }
   }
 
   /// Process step count event from the physical mobile sensor
-  void _onStepCountEvent(StepCount event) {
+  void _onStepCountEvent(int sensorSteps) {
     final now = DateTime.now();
     final todayStr = now.toIso8601String().split('T')[0];
-    
-    final sensorSteps = event.steps;
     
     // Load previously stored data
     final lastSyncDate = StorageService.get<String>(_lastDateKey) ?? '';
@@ -80,14 +78,12 @@ class PedometerService {
       stepsToday = 0;
     }
 
-    _todayStepsOffset = stepsToday;
-    
     if (_onStepsChanged != null) {
       _onStepsChanged!(stepsToday);
     }
   }
 
-  void _onStepCountError(error) {
+  void _onStepCountError(dynamic error) {
     print('Pedometer: Hardware sensor error: $error');
   }
 
