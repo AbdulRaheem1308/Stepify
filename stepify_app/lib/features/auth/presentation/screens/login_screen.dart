@@ -125,7 +125,7 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
                 else ...[
                   // Google Button
                   _SocialButton(
-                    icon: FontAwesomeIcons.google,
+                    icon: FontAwesomeIcons.google.data,
                     label: 'Continue with Google',
                     onTap: () => _handleSocialLogin(_socialAuth.signInWithGoogle, 'Google'),
                     color: Colors.white,
@@ -137,7 +137,7 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
                   // Apple Button (Only on iOS usually, but can be on Android too service-wise)
                   if (Platform.isIOS) 
                     _SocialButton(
-                      icon: FontAwesomeIcons.apple,
+                      icon: FontAwesomeIcons.apple.data,
                       label: 'Continue with Apple',
                       onTap: () => _handleSocialLogin(_socialAuth.signInWithGoogle, 'Apple'), // Using Google placeholder for now as Apple setup is complex locally without certs
                       // TODO: Switch to _socialAuth.signInWithApple when provisioned
