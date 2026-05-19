@@ -317,6 +317,26 @@ class DashboardNotifier extends StateNotifier<DashboardState> {
 
 
   Future<void> syncSteps(int stepCount) async {
+    // 1. Optimistic UI update instantly on every step event
+    if (state.todaySteps != null) {
+      final currentSteps = state.todaySteps!.stepCount;
+      // Only update if steps actually increased (or we had 0)
+      if (stepCount > currentSteps || currentSteps == 0) {
+        final goal = state.todaySteps!.goal > 0 ? state.todaySteps!.goal : 10000;
+        state = state.copyWith(
+          todaySteps: TodaySteps(
+            stepCount: stepCount,
+            caloriesBurned: (stepCount * 0.045).round(),
+            distanceKm: stepCount * 0.000762,
+            activeMinutes: state.todaySteps!.activeMinutes,
+            goal: goal,
+            progress: ((stepCount / goal) * 100).toInt(),
+            goalReached: stepCount >= goal,
+          ),
+        );
+      }
+    }
+
     if (stepCount == _lastSyncedSteps) return;
 
     final now = DateTime.now();
@@ -337,8 +357,7 @@ class DashboardNotifier extends StateNotifier<DashboardState> {
           'source': 'phone_sensors',
         });
         
-        // Refresh data to keep weekly chart and statistics updated in real-time
-        await fetchTodayData();
+        // Removed fetchTodayData() here to prevent infinite loop and health dialog popups
       } catch (e) {
         print('Pedometer: Failed to sync stepCount $stepCount: $e');
       }
