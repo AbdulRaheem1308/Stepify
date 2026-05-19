@@ -21,6 +21,11 @@ jobs:
       working-directory: ${{ env.PROJECT_DIR }}
       run: flutter pub get
 
+    - name: Pre-populate podhelper.rb from Flutter SDK
+      run: |
+        mkdir -p ${{ env.PROJECT_DIR }}/ios/Flutter
+        cp ${{ env.FLUTTER_ROOT }}/packages/flutter_tools/bin/podhelper.rb ${{ env.PROJECT_DIR }}/ios/Flutter/
+
     - name: Generate Flutter iOS configuration files
       working-directory: ${{ env.PROJECT_DIR }}
       run: flutter build ios --config-only --no-codesign
