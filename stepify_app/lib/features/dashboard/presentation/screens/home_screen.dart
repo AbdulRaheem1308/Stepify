@@ -67,7 +67,8 @@ class _HomeScreenState extends ConsumerState<HomeScreen> with SingleTickerProvid
   Widget build(BuildContext context) {
     final dashboard = ref.watch(dashboardProvider);
     
-    // Listen for errors
+    // Listen for errors (Commented out to prevent intrusive popups)
+    /*
     ref.listen(dashboardProvider, (prev, next) {
       if (!next.isLoading && next.error != null && next.error != prev?.error) {
         ScaffoldMessenger.of(context).showSnackBar(
@@ -79,6 +80,7 @@ class _HomeScreenState extends ConsumerState<HomeScreen> with SingleTickerProvid
         );
       }
     });
+    */
 
     // Loading State
     if (dashboard.isLoading && dashboard.todaySteps == null) {
@@ -98,10 +100,13 @@ class _HomeScreenState extends ConsumerState<HomeScreen> with SingleTickerProvid
             children: [
               Icon(Icons.error_outline, size: 48, color: Colors.red[300]),
               const SizedBox(height: 16),
-              Text(
-                dashboard.error!,
-                textAlign: TextAlign.center,
-                style: const TextStyle(color: Colors.grey),
+              const Padding(
+                padding: EdgeInsets.symmetric(horizontal: 32.0),
+                child: Text(
+                  'Something went wrong. Please check your internet connection and try again.',
+                  textAlign: TextAlign.center,
+                  style: TextStyle(color: Colors.grey),
+                ),
               ),
               const SizedBox(height: 16),
               ElevatedButton(

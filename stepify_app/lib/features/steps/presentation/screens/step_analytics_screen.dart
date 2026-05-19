@@ -69,26 +69,8 @@ class _StepAnalyticsScreenState extends ConsumerState<StepAnalyticsScreen>
           _monthlyData ??= _getEmptyMonthlyData();
           _isLoading = false;
         });
-
-        // Show a premium floating error SnackBar instead of wiping the page to blank
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(
-            content: Row(
-              children: [
-                const Icon(Icons.error_outline, color: Colors.white),
-                const SizedBox(width: 12),
-                const Expanded(
-                  child: Text('Unable to refresh analytics. Displaying offline data.'),
-                ),
-              ],
-            ),
-            backgroundColor: Colors.redAccent,
-            behavior: SnackBarBehavior.floating,
-            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
-            margin: const EdgeInsets.all(20),
-          ),
-        );
       }
+    }
     }
   }
 

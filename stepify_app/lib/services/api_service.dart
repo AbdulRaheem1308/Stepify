@@ -225,7 +225,17 @@ class ApiError implements Exception {
       );
     }
     
-    return ApiError(message: error.toString().replaceAll('Exception: ', ''));
+    final errStr = error.toString();
+    if (errStr.contains('NoSuchMethodError') || 
+        errStr.contains('NullThrownError') || 
+        errStr.contains('TypeError') || 
+        errStr.contains('AssertionError') ||
+        errStr.contains('RangeError') ||
+        errStr.contains('FormatException')) {
+      return ApiError(message: 'An unexpected application error occurred. Please try again.');
+    }
+    
+    return ApiError(message: errStr.replaceAll('Exception: ', ''));
   }
 
   // Backwards compatibility for AuthProvider
