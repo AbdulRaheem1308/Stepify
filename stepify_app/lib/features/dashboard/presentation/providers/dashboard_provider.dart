@@ -1,3 +1,4 @@
+import 'dart:async';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:dio/dio.dart';
 
@@ -179,6 +180,8 @@ class DashboardNotifier extends StateNotifier<DashboardState> {
   int _currentPedometerSteps = 0;
   int _pedometerOffset = 0;
   bool _pedometerOffsetInitialized = false;
+  
+  Timer? _uiBatchTimer;
 
   DashboardNotifier(this._apiService, this._healthService) : super(DashboardState()) {
     _loadUser();
@@ -197,17 +200,33 @@ class DashboardNotifier extends StateNotifier<DashboardState> {
             _pedometerOffset = backendSteps - stepsToday;
             if (_pedometerOffset < 0) _pedometerOffset = 0;
             _pedometerOffsetInitialized = true;
-          }
-
-          if (_pedometerOffsetInitialized) {
+            
+            // Immediately sync once when initializing
             syncSteps(stepsToday + _pedometerOffset);
-          } else {
-            // Backend data hasn't loaded yet, use raw pedometer
-            syncSteps(stepsToday);
           }
         },
       );
+      
+      // Batch UI updates every 5 seconds to prevent jitter and save resources
+      _uiBatchTimer = Timer.periodic(const Duration(seconds: 5), (timer) {
+        if (_currentPedometerSteps > 0 || _pedometerOffsetInitialized) {
+          final totalStepsToSync = _pedometerOffsetInitialized 
+              ? _currentPedometerSteps + _pedometerOffset 
+              : _currentPedometerSteps;
+          
+          // Only trigger if steps actually changed
+          if (state.todaySteps == null || totalStepsToSync > state.todaySteps!.stepCount) {
+             syncSteps(totalStepsToSync);
+          }
+        }
+      });
     });
+  }
+
+  @override
+  void dispose() {
+    _uiBatchTimer?.cancel();
+    super.dispose();
   }
 
   void _loadUser() {
