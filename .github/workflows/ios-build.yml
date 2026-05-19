@@ -17,6 +17,9 @@ jobs:
       with:
         channel: stable
 
+    - name: Disable Swift Package Manager globally
+      run: flutter config --no-enable-swift-package-manager
+
     - name: Flutter pub get
       working-directory: ${{ env.PROJECT_DIR }}
       run: flutter pub get
