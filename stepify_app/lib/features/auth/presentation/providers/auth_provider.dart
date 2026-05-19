@@ -5,7 +5,7 @@ import '../../../../services/api_service.dart';
 import '../../../../services/storage_service.dart';
 
 import '../../domain/models/user_model.dart';
-import '../services/social_auth_service.dart';
+import '../../services/social_auth_service.dart';
 
 /// Auth state
 class AuthState {
