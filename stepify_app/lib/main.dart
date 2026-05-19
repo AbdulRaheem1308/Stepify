@@ -20,6 +20,7 @@ import 'core/services/consent_service.dart';
 import 'package:firebase_core/firebase_core.dart';
 import 'package:firebase_crashlytics/firebase_crashlytics.dart';
 import 'package:flutter/foundation.dart';
+import 'package:safe_device/safe_device.dart';
 
 void main() {
   runZonedGuarded(() async {
@@ -39,6 +40,32 @@ void main() {
       
       await Hive.initFlutter();
       await StorageService.init();
+
+      // --- Security: Jailbreak, Root, and Emulator Detection ---
+      if (isAndroid || isIOS) {
+        try {
+          final isJailBroken = await SafeDevice.isJailBroken;
+          final isRealDevice = await SafeDevice.isRealDevice;
+          final isMockLocation = await SafeDevice.isMockLocation;
+          
+          if (isJailBroken) {
+            throw Exception("Security Violation: Jailbroken or Rooted device detected.");
+          }
+          if (!isRealDevice) {
+            // Optional: You can remove this if you want to allow emulators for development
+            debugPrint("Warning: App is running on an emulator.");
+          }
+          if (isMockLocation) {
+            debugPrint("Warning: Mock location detected.");
+          }
+        } catch (e) {
+          debugPrint("SafeDevice check failed or blocked: $e");
+          if (e.toString().contains("Security Violation")) {
+             rethrow; // Pass it to the UI error screen
+          }
+        }
+      }
+      // ---------------------------------------------------------
 
       /*
       if (isAndroid || isIOS) {
