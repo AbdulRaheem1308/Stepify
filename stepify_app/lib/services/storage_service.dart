@@ -6,7 +6,10 @@ import '../core/constants/app_constants.dart';
 /// Local storage service using Hive and Secure Storage
 class StorageService {
   static late Box _box;
-  static const FlutterSecureStorage _secureStorage = FlutterSecureStorage();
+  static const FlutterSecureStorage _secureStorage = FlutterSecureStorage(
+    iOptions: IOSOptions(accessibility: KeychainAccessibility.first_unlock),
+    aOptions: AndroidOptions(encryptedSharedPreferences: true),
+  );
   
   static Future<void> init() async {
     _box = await Hive.openBox('stepify_storage');

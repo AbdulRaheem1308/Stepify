@@ -1,5 +1,6 @@
 import Flutter
 import UIKit
+import workmanager
 
 @main
 @objc class AppDelegate: FlutterAppDelegate {
@@ -8,6 +9,13 @@ import UIKit
     didFinishLaunchingWithOptions launchOptions: [UIApplication.LaunchOptionsKey: Any]?
   ) -> Bool {
     GeneratedPluginRegistrant.register(with: self)
+    
+    // Register background sync task identifier
+    WorkmanagerPlugin.registerTask(withIdentifier: "stepify.backgroundSync")
+    
+    // Set minimum background fetch interval (15 minutes)
+    UIApplication.shared.setMinimumBackgroundFetchInterval(TimeInterval(60 * 15))
+    
     return super.application(application, didFinishLaunchingWithOptions: launchOptions)
   }
 }

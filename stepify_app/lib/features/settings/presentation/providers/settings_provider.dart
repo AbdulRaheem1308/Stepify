@@ -23,12 +23,12 @@ class AppSettings {
     this.language = 'en',
     this.pushNotificationsEnabled = true,
     this.dailyRemindersEnabled = true,
-    this.dataSyncOverCellular = false,
+    this.dataSyncOverCellular = true,
     this.soundEnabled = true,
     this.isPublic = true,
     this.showOnLeaderboard = true,
     this.showMilestones = true,
-    this.backgroundSyncEnabled = false,
+    this.backgroundSyncEnabled = true,
     this.distanceUnit = 'km',
     this.syncFrequency = 'Auto (15m)',
   });
@@ -81,15 +81,19 @@ class SettingsNotifier extends StateNotifier<AppSettings> {
         language: data['language'] ?? 'en',
         pushNotificationsEnabled: data['pushNotifications'] ?? true,
         dailyRemindersEnabled: data['dailyReminders'] ?? true,
-        dataSyncOverCellular: data['dataSyncOverCellular'] ?? false,
+        dataSyncOverCellular: data['dataSyncOverCellular'] ?? true,
         soundEnabled: data['soundEnabled'] ?? true,
         isPublic: data['isPublic'] ?? true,
         showOnLeaderboard: data['showOnLeaderboard'] ?? true,
         showMilestones: data['showMilestones'] ?? true,
-        backgroundSyncEnabled: StorageService.get('backgroundSyncEnabled', defaultValue: false) ?? false,
+        backgroundSyncEnabled: StorageService.get('backgroundSyncEnabled', defaultValue: true) ?? true,
         distanceUnit: data['distanceUnit'] ?? 'km',
         syncFrequency: StorageService.get('syncFrequency', defaultValue: 'Auto (15m)') ?? 'Auto (15m)',
       );
+      
+      if (state.backgroundSyncEnabled) {
+        await BackgroundService.registerPeriodicTask();
+      }
     } catch (e) {
       print('Error loading settings: $e');
     }

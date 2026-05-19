@@ -53,5 +53,14 @@
 		<string>We need access to motion sensors to strictly track your steps count.</string>
 		<key>UIStatusBarHidden</key>
 		<false/>
+		<key>UIBackgroundModes</key>
+		<array>
+			<string>fetch</string>
+			<string>processing</string>
+		</array>
+		<key>BGTaskSchedulerPermittedIdentifiers</key>
+		<array>
+			<string>stepify.backgroundSync</string>
+		</array>
 	</dict>
 </plist>

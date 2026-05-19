@@ -67,15 +67,17 @@ void main() {
       }
       // ---------------------------------------------------------
 
-      /*
       if (isAndroid || isIOS) {
         try {
           await BackgroundService.init();
+          final isBgSyncEnabled = StorageService.get('backgroundSyncEnabled', defaultValue: true) ?? true;
+          if (isBgSyncEnabled) {
+            await BackgroundService.registerPeriodicTask();
+          }
         } catch (e) {
-          debugPrint("Background Service init failed (non-fatal): $e");
+          debugPrint("Background Service init/register failed (non-fatal): $e");
         }
       }
-      */
       
       // Set preferred orientations
       await SystemChrome.setPreferredOrientations([
