@@ -139,7 +139,7 @@ class ReferralNotifier extends StateNotifier<ReferralState> {
         ),
         leaderboard: leaderboard,
       );
-    } on DioException catch (e) {
+    } catch (e) {
       state = ReferralState(
         isLoading: false,
         error: ApiError.from(e).message,

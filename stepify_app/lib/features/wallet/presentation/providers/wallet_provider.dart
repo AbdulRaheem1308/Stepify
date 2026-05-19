@@ -114,7 +114,7 @@ class WalletNotifier extends StateNotifier<WalletState> {
             ?.map((e) => WalletTransaction.fromJson(e))
             .toList() ?? [],
       );
-    } on DioException catch (e) {
+    } catch (e) {
       // Error handling
       state = state.copyWith(isLoading: false, error: ApiError.from(e).message);
     }

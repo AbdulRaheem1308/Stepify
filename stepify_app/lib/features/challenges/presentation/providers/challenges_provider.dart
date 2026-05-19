@@ -147,7 +147,7 @@ class ChallengesNotifier extends StateNotifier<ChallengesState> {
         ongoingChallenges: (results[1].data as List).map((e) => UserChallenge.fromJson(e)).toList(),
         completedChallenges: (results[2].data as List).map((e) => UserChallenge.fromJson(e)).toList(),
       );
-    } on DioException catch (e) {
+    } catch (e) {
       // Error handling
       state = state.copyWith(isLoading: false, error: ApiError.from(e).message);
     }

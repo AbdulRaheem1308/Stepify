@@ -221,8 +221,8 @@ class DashboardNotifier extends StateNotifier<DashboardState> {
         user: userData,
         userStats: userStats,
       );
-    } on DioException catch (e) {
-      // On error, use demo data for development
+    } catch (e) {
+      // On error, handle gracefully and reset loading state
       state = state.copyWith(
         isLoading: false,
         error: ApiError.from(e).message,

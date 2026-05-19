@@ -7,7 +7,7 @@ class AppConstants {
   // API
   static const String apiBaseUrl = String.fromEnvironment(
     'API_BASE_URL',
-    defaultValue: 'http://192.168.1.5:3000/api/v1',
+    defaultValue: 'http://192.168.1.2:3000/api/v1',
   );
   
   // Storage Keys

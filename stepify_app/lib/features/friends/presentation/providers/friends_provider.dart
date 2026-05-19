@@ -122,7 +122,7 @@ class FriendsNotifier extends StateNotifier<FriendsState> {
         friends: (results[0].data as List).map((e) => Friend.fromJson(e)).toList(),
         leaderboard: (results[1].data as List).map((e) => Friend.fromJson(e)).toList(),
       );
-    } on DioException catch (e) {
+    } catch (e) {
       // Error handling
       state = state.copyWith(isLoading: false, error: ApiError.from(e).message);
     }

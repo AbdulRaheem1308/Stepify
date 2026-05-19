@@ -154,7 +154,7 @@ class RewardsCatalogNotifier extends StateNotifier<RewardsCatalogState> {
         rewards: (response.data as List).map((e) => Reward.fromJson(e)).toList(),
         selectedCategory: category ?? 'ALL',
       );
-    } on DioException catch (e) {
+    } catch (e) {
       // Error handling
       state = state.copyWith(isLoading: false, error: ApiError.from(e).message);
     }

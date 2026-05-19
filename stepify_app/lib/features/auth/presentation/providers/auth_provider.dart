@@ -77,8 +77,8 @@ class AuthNotifier extends StateNotifier<AuthState> {
       });
       
       state = state.copyWith(isLoading: false);
-    } on DioException catch (e) {
-      final error = ApiError.fromDioError(e);
+    } catch (e) {
+      final error = ApiError.from(e);
       state = state.copyWith(isLoading: false, error: error.message);
       throw error;
     }
@@ -118,8 +118,8 @@ class AuthNotifier extends StateNotifier<AuthState> {
       );
       
       return data['isNewUser'] == true;
-    } on DioException catch (e) {
-      final error = ApiError.fromDioError(e);
+    } catch (e) {
+      final error = ApiError.from(e);
       state = state.copyWith(isLoading: false, error: error.message);
       throw error;
     }
@@ -154,8 +154,8 @@ class AuthNotifier extends StateNotifier<AuthState> {
       );
       
       return data['isNewUser'] == true;
-    } on DioException catch (e) {
-      final error = ApiError.fromDioError(e);
+    } catch (e) {
+      final error = ApiError.from(e);
       state = state.copyWith(isLoading: false, error: error.message);
       throw error;
     }
@@ -194,8 +194,8 @@ class AuthNotifier extends StateNotifier<AuthState> {
         isLoading: false,
         user: updatedUser,
       );
-    } on DioException catch (e) {
-      final error = ApiError.fromDioError(e);
+    } catch (e) {
+      final error = ApiError.from(e);
       state = state.copyWith(isLoading: false, error: error.message);
       throw error;
     }
