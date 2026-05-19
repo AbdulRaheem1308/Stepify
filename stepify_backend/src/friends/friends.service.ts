@@ -1,9 +1,13 @@
 import { Injectable, NotFoundException, ConflictException, BadRequestException } from '@nestjs/common';
 import { PrismaService } from '../prisma/prisma.service';
+import { RedisService } from '../redis/redis.service';
 
 @Injectable()
 export class FriendsService {
-    constructor(private prisma: PrismaService) { }
+    constructor(
+        private prisma: PrismaService,
+        private redis: RedisService
+    ) { }
 
     /**
      * Get user's friends list with their step stats
@@ -302,9 +306,23 @@ export class FriendsService {
     }
 
     /**
+    /**
      * Get global leaderboard (all users)
      */
     async getGlobalLeaderboard(timeFrame: string = 'weekly') {
+        const cacheKey = `leaderboard:global:${timeFrame}`;
+        
+        try {
+            // 1. Try to fetch from Redis cache first
+            const cachedData = await this.redis.getClient().get(cacheKey);
+            if (cachedData) {
+                return JSON.parse(cachedData);
+            }
+        } catch (err) {
+            console.warn('⚠️ Redis error reading leaderboard cache:', err);
+        }
+
+        let result: any[] = [];
         let orderBy: any = {};
 
         if (timeFrame === 'monthly') {
@@ -314,7 +332,7 @@ export class FriendsService {
                 orderBy: { monthlyXp: 'desc' } as any,
                 include: { user: { select: { id: true, name: true, avatarUrl: true } } }
             });
-            return wallets.map((w: any, index) => ({
+            result = wallets.map((w: any, index) => ({
                 id: w.user.id,
                 name: w.user.name || 'Unknown',
                 avatarUrl: w.user.avatarUrl,
@@ -329,7 +347,7 @@ export class FriendsService {
                 orderBy: { lifetimePoints: 'desc' },
                 include: { user: { select: { id: true, name: true, avatarUrl: true } } }
             });
-            return wallets.map((w, index) => ({
+            result = wallets.map((w, index) => ({
                 id: w.user.id,
                 name: w.user.name || 'Unknown',
                 avatarUrl: w.user.avatarUrl,
@@ -337,41 +355,48 @@ export class FriendsService {
                 todaySteps: w.lifetimePoints,
                 rank: index + 1
             }));
+        } else {
+            // Daily/Weekly - Default to steps (simpler for now, ideally strictly weekly steps)
+            const today = new Date();
+            today.setHours(0, 0, 0, 0);
+
+            // Fetch users with their step count
+            const users = await this.prisma.user.findMany({
+                take: 50,
+                select: {
+                    id: true,
+                    name: true,
+                    avatarUrl: true,
+                    steps: {
+                        where: { date: { gte: today } }, // Only today's steps
+                        select: { stepCount: true }
+                    }
+                }
+            });
+
+            // Calculate steps and sort
+            result = users
+                .map((u: any) => ({
+                    id: u.id,
+                    name: u.name || 'Unknown',
+                    avatarUrl: u.avatarUrl,
+                    todaySteps: u.steps.reduce((sum: number, s: any) => sum + s.stepCount, 0),
+                    xp: u.steps.reduce((sum: number, s: any) => sum + s.stepCount, 0),
+                }))
+                .sort((a: any, b: any) => b.todaySteps - a.todaySteps)
+                .map((u: any, index: number) => ({
+                    ...u,
+                    rank: index + 1
+                }));
         }
 
-        // Daily/Weekly - Default to steps (simpler for now, ideally strictly weekly steps)
-        const today = new Date();
-        today.setHours(0, 0, 0, 0);
+        try {
+            // 2. Store in Redis for 5 minutes (300 seconds) to prevent heavy DB queries
+            await this.redis.getClient().set(cacheKey, JSON.stringify(result), 'EX', 300);
+        } catch (err) {
+            console.warn('⚠️ Redis error setting leaderboard cache:', err);
+        }
 
-        // Fetch users with their step count
-        const users = await this.prisma.user.findMany({
-            take: 50,
-            select: {
-                id: true,
-                name: true,
-                avatarUrl: true,
-                steps: {
-                    where: { date: { gte: today } }, // Only today's steps
-                    select: { stepCount: true }
-                }
-            }
-        });
-
-        // Calculate steps and sort
-        const leaderboard = users
-            .map((u: any) => ({
-                id: u.id,
-                name: u.name || 'Unknown',
-                avatarUrl: u.avatarUrl,
-                todaySteps: u.steps.reduce((sum: number, s: any) => sum + s.stepCount, 0),
-                xp: u.steps.reduce((sum: number, s: any) => sum + s.stepCount, 0),
-            }))
-            .sort((a: any, b: any) => b.todaySteps - a.todaySteps)
-            .map((u: any, index: number) => ({
-                ...u,
-                rank: index + 1
-            }));
-
-        return leaderboard;
+        return result;
     }
 }
