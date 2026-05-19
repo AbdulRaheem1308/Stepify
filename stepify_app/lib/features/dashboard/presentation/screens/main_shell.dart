@@ -74,21 +74,31 @@ class _MainShellState extends ConsumerState<MainShell> {
     final navItems = _getNavItems(l10n);
     final location = GoRouterState.of(context).uri.path;
     final selectedIndex = _getSelectedIndex(navItems, location);
+    final isHome = location == '/home';
 
-    return Scaffold(
-      body: widget.child,
-      bottomNavigationBar: Container(
-        decoration: BoxDecoration(
-          color: Theme.of(context).colorScheme.surface,
-          boxShadow: [
-            BoxShadow(
-              color: Colors.black.withOpacity(0.05),
-              blurRadius: 20,
-              offset: const Offset(0, -5),
-            ),
-          ],
-        ),
+    return PopScope(
+      canPop: isHome,
+      onPopInvokedWithResult: (bool didPop, Object? result) {
+        if (didPop) return;
+        if (!isHome) {
+          context.go('/home');
+        }
+      },
+      child: Scaffold(
+        body: widget.child,
+        bottomNavigationBar: Container(
+          decoration: BoxDecoration(
+            color: Theme.of(context).colorScheme.surface,
+            boxShadow: [
+              BoxShadow(
+                color: Colors.black.withOpacity(0.05),
+                blurRadius: 20,
+                offset: const Offset(0, -5),
+              ),
+            ],
+          ),
         child: SafeArea(
+          top: false,
           child: Column(
             mainAxisSize: MainAxisSize.min,
             children: [
@@ -100,7 +110,7 @@ class _MainShellState extends ConsumerState<MainShell> {
                   child: AdWidget(ad: _bannerAd!),
                 ),
               Padding(
-                padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 8),
+                padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
                 child: Row(
                   children: List.generate(navItems.length, (index) {
                     final item = navItems[index];
@@ -121,8 +131,9 @@ class _MainShellState extends ConsumerState<MainShell> {
           ),
         ),
       ),
-    );
-  }
+    ),
+  );
+}
 
   Widget _buildNavItem({
     required IconData icon,
@@ -136,7 +147,7 @@ class _MainShellState extends ConsumerState<MainShell> {
         behavior: HitTestBehavior.opaque,
         child: AnimatedContainer(
           duration: const Duration(milliseconds: 200),
-          padding: const EdgeInsets.symmetric(vertical: 8, horizontal: 4),
+          padding: const EdgeInsets.symmetric(vertical: 6, horizontal: 4),
           decoration: BoxDecoration(
             color: isSelected 
                 ? AppTheme.primaryGreen.withOpacity(0.08) 

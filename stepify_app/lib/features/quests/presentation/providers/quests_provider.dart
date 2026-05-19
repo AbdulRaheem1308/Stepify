@@ -23,9 +23,29 @@ class QuestsNotifier extends StateNotifier<QuestsState> {
     state = QuestsState(isLoading: true, quests: state.quests);
     try {
       final allQuests = await _service.getAllQuests();
-      // Ideally we merge with user status (myQuests)
-      // For now, simple list
-      state = QuestsState(isLoading: false, quests: allQuests);
+      List<Quest> finalQuests = allQuests;
+
+      if (_userId != null) {
+        try {
+          final myQuests = await _service.getMyQuests(_userId!);
+          final myQuestsMap = {for (var mq in myQuests) mq.id: mq};
+          
+          finalQuests = allQuests.map((quest) {
+            if (myQuestsMap.containsKey(quest.id)) {
+              final userQuest = myQuestsMap[quest.id]!;
+              return quest.copyWith(
+                status: userQuest.status,
+                currentStageIndex: userQuest.currentStageIndex,
+              );
+            }
+            return quest;
+          }).toList();
+        } catch (e) {
+          print('Error loading user specific quests: $e');
+        }
+      }
+
+      state = QuestsState(isLoading: false, quests: finalQuests);
     } catch (e) {
       state = QuestsState(isLoading: false, quests: []);
     }

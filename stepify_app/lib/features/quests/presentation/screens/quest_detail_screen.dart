@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 import 'package:stepify_app/core/theme/app_theme.dart';
@@ -26,8 +27,26 @@ class QuestDetailScreen extends ConsumerWidget {
           SliverAppBar(
             expandedHeight: 250,
             pinned: true,
+            foregroundColor: Colors.white,
+            iconTheme: const IconThemeData(color: Colors.white),
+            systemOverlayStyle: SystemUiOverlayStyle.light,
+            backgroundColor: AppTheme.neutral900,
             flexibleSpace: FlexibleSpaceBar(
-              title: Text(quest.title),
+              title: Text(
+                quest.title,
+                style: const TextStyle(
+                  color: Colors.white,
+                  fontWeight: FontWeight.bold,
+                  fontSize: 18,
+                  shadows: [
+                    Shadow(
+                      color: Colors.black54,
+                      blurRadius: 8,
+                      offset: Offset(0, 2),
+                    ),
+                  ],
+                ),
+              ),
               background: Stack(
                 fit: StackFit.expand,
                 children: [
@@ -41,9 +60,12 @@ class QuestDetailScreen extends ConsumerWidget {
                         begin: Alignment.topCenter,
                         end: Alignment.bottomCenter,
                         colors: [
+                          Colors.black.withOpacity(0.6), // Protection for top back button/status bar
                           Colors.transparent,
-                          Colors.black.withOpacity(0.8),
+                          Colors.transparent,
+                          Colors.black.withOpacity(0.7), // Protection for title
                         ],
+                        stops: const [0.0, 0.25, 0.6, 1.0],
                       ),
                     ),
                   ),

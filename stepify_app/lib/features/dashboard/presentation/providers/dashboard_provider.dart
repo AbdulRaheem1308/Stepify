@@ -3,6 +3,8 @@ import 'package:dio/dio.dart';
 
 import '../../../../services/api_service.dart';
 import '../../../../services/storage_service.dart';
+import 'package:stepify_app/services/health_service.dart';
+import 'package:stepify_app/features/devices/presentation/providers/device_provider.dart';
 
 /// Dashboard state model
 class DashboardState {
@@ -159,13 +161,17 @@ class DailyStep {
 
 /// Dashboard Provider
 final dashboardProvider = StateNotifierProvider<DashboardNotifier, DashboardState>((ref) {
-  return DashboardNotifier(ref.watch(apiServiceProvider));
+  return DashboardNotifier(
+    ref.watch(apiServiceProvider),
+    ref.watch(healthServiceProvider),
+  );
 });
 
 class DashboardNotifier extends StateNotifier<DashboardState> {
   final ApiService _apiService;
+  final HealthService _healthService;
 
-  DashboardNotifier(this._apiService) : super(DashboardState()) {
+  DashboardNotifier(this._apiService, this._healthService) : super(DashboardState()) {
     _loadUser();
   }
 
@@ -176,6 +182,21 @@ class DashboardNotifier extends StateNotifier<DashboardState> {
 
   Future<void> fetchTodayData() async {
     state = state.copyWith(isLoading: true, syncStatus: SyncStatus.syncing);
+
+    // Auto-sync steps from local sensors first
+    try {
+      final localSteps = await _healthService.getTodaySteps();
+      if (localSteps > 0) {
+        final today = DateTime.now().toIso8601String().split('T')[0];
+        await _apiService.post('/steps/sync', data: {
+          'date': today,
+          'stepCount': localSteps,
+          'source': 'phone_sensors',
+        });
+      }
+    } catch (e) {
+      print('Auto-sync steps error: $e');
+    }
 
     try {
       // Fetch all data in parallel

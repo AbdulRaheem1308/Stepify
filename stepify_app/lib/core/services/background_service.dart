@@ -42,7 +42,7 @@ void callbackDispatcher() {
              // Re-using the sync logic. 
              // Ideally we call a repository, but direct API call is safer in isolated background task to avoid complex DI.
              await apiService.post('/steps/sync', data: {
-               'count': steps,
+               'stepCount': steps,
                'date': DateTime.now().toIso8601String(),
                'source': 'BACKGROUND_WEARABLE'
              });

@@ -55,6 +55,19 @@ export class QuestsService implements OnModuleInit {
     }
 
     async joinQuest(userId: string, questId: string) {
+        const existing = await this.prisma.userQuest.findUnique({
+            where: {
+                userId_questId: {
+                    userId,
+                    questId,
+                },
+            },
+        });
+
+        if (existing) {
+            return existing;
+        }
+
         return this.prisma.userQuest.create({
             data: {
                 userId,

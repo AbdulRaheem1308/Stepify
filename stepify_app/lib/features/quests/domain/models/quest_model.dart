@@ -51,6 +51,32 @@ class Quest {
     required this.rewardXp,
     required this.rewardCoins,
   });
+
+  Quest copyWith({
+    String? id,
+    String? title,
+    String? description,
+    String? imageUrl,
+    QuestDifficulty? difficulty,
+    QuestStatus? status,
+    List<QuestStage>? stages,
+    int? currentStageIndex,
+    int? rewardXp,
+    int? rewardCoins,
+  }) {
+    return Quest(
+      id: id ?? this.id,
+      title: title ?? this.title,
+      description: description ?? this.description,
+      imageUrl: imageUrl ?? this.imageUrl,
+      difficulty: difficulty ?? this.difficulty,
+      status: status ?? this.status,
+      stages: stages ?? this.stages,
+      currentStageIndex: currentStageIndex ?? this.currentStageIndex,
+      rewardXp: rewardXp ?? this.rewardXp,
+      rewardCoins: rewardCoins ?? this.rewardCoins,
+    );
+  }
   
   // Helper to check progress
   double get progress {
