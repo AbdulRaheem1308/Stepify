@@ -143,24 +143,67 @@ class DeviceSyncScreen extends ConsumerWidget {
                   ],
                 ),
               ),
-              // Sync Action
-              IconButton(
-                onPressed: isSyncing 
-                  ? null 
-                  : () async { // Trigger Sync
-                      await ref.read(deviceProvider.notifier).syncDevice(device.id);
-                      
-                      if (context.mounted) {
-                         // Show Interstitial Ad after sync (simulating post-workout)
-                         ref.read(adServiceProvider).showInterstitialAd();
-                      }
-                    },
-                icon: isSyncing 
-                  ? const SizedBox(
-                      width: 20, height: 20, 
-                      child: CircularProgressIndicator(strokeWidth: 2)
-                    )
-                  : const Icon(Icons.sync, color: AppTheme.primaryGreen),
+              // Action Buttons
+              Row(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  // Sync Button
+                  IconButton(
+                    onPressed: isSyncing 
+                      ? null 
+                      : () async { // Trigger Sync
+                          await ref.read(deviceProvider.notifier).syncDevice(device.id);
+                          
+                          if (context.mounted) {
+                             // Show Interstitial Ad after sync (simulating post-workout)
+                             ref.read(adServiceProvider).showInterstitialAd();
+                          }
+                        },
+                    icon: isSyncing 
+                      ? const SizedBox(
+                          width: 20, height: 20, 
+                          child: CircularProgressIndicator(strokeWidth: 2)
+                        )
+                      : const Icon(Icons.sync, color: AppTheme.primaryGreen),
+                    tooltip: 'Sync steps',
+                  ),
+                  
+                  // Disconnect Button
+                  IconButton(
+                    onPressed: isSyncing 
+                      ? null 
+                      : () async {
+                          final confirm = await showDialog<bool>(
+                            context: context,
+                            builder: (ctx) => AlertDialog(
+                              title: const Text('Disconnect Device?'),
+                              content: Text('Are you sure you want to disconnect "${device.name}"?'),
+                              actions: [
+                                TextButton(
+                                  onPressed: () => Navigator.pop(ctx, false),
+                                  child: const Text('Cancel'),
+                                ),
+                                TextButton(
+                                  onPressed: () => Navigator.pop(ctx, true),
+                                  style: TextButton.styleFrom(foregroundColor: AppTheme.error),
+                                  child: const Text('Disconnect'),
+                                ),
+                              ],
+                            ),
+                          );
+                          if (confirm == true) {
+                            await ref.read(deviceProvider.notifier).removeDevice(device.id);
+                            if (context.mounted) {
+                              ScaffoldMessenger.of(context).showSnackBar(
+                                SnackBar(content: Text('"${device.name}" disconnected successfully')),
+                              );
+                            }
+                          }
+                        },
+                    icon: const Icon(Icons.delete_outline, color: AppTheme.error),
+                    tooltip: 'Disconnect device',
+                  ),
+                ],
               ),
             ],
           ),
