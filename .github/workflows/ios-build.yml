@@ -31,7 +31,13 @@ jobs:
 
     - name: Generate Flutter iOS configuration files
       working-directory: ${{ env.PROJECT_DIR }}
-      run: flutter build ios --config-only --no-codesign
+      run: |
+        flutter build ios --config-only --no-codesign || {
+          echo "⚠️ flutter build ios failed! Running verbose pod install to print detailed errors..."
+          cd ios
+          pod install --verbose
+          exit 1
+        }
 
     - name: Install CocoaPods
       working-directory: ${{ env.PROJECT_DIR }}/ios
