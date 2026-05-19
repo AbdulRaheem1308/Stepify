@@ -235,6 +235,8 @@ class DeviceSyncScreen extends ConsumerWidget {
       case 'Apple': return Icons.apple;
       case 'Fitbit': return Icons.watch;
       case 'Garmin': return Icons.gps_fixed;
+      case 'Phone': return Icons.phone_android;
+      case 'Google': return Icons.android;
       default: return Icons.watch;
     }
   }

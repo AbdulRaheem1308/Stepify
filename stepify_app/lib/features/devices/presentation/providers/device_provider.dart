@@ -96,9 +96,28 @@ class DeviceNotifier extends StateNotifier<DeviceState> {
     state = state.copyWith(isLoading: true);
     try {
       final response = await _apiService.get('/devices');
-      final devices = (response.data as List)
+      var devices = (response.data as List)
           .map((json) => ConnectedDevice.fromJson(json))
           .toList();
+
+      // Automatically register the user's physical phone built-in pedometer as a connected device if not already present
+      final hasPhone = devices.any((d) => d.type == 'PHONE');
+      if (!hasPhone) {
+        try {
+          await _apiService.post('/devices', data: {
+            'name': 'Built-in Phone Sensors',
+            'type': 'PHONE',
+          });
+          // Reload list to include the newly auto-registered phone device
+          final reloadResponse = await _apiService.get('/devices');
+          devices = (reloadResponse.data as List)
+              .map((json) => ConnectedDevice.fromJson(json))
+              .toList();
+        } catch (addErr) {
+          print('Auto-register phone device error: $addErr');
+        }
+      }
+
       state = state.copyWith(devices: devices, isLoading: false);
     } catch (e) {
       state = state.copyWith(isLoading: false, error: ApiError.from(e).message);
@@ -129,8 +148,8 @@ class DeviceNotifier extends StateNotifier<DeviceState> {
   Future<void> syncDevice(String id) async {
     // 1. Find device
     final device = state.devices.firstWhere((d) => d.id == id);
-    if (!['WATCH_APPLE', 'WATCH_ANDROID'].contains(device.type)) {
-       // Only handle local health/google fit sync here for now
+    if (!['WATCH_APPLE', 'WATCH_ANDROID', 'PHONE'].contains(device.type)) {
+       // Only handle local health/google fit/phone sensor sync here for now
        return; 
     }
 
