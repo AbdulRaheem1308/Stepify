@@ -30,6 +30,7 @@ class QuestListScreen extends ConsumerWidget {
           ),
         ),
         child: CustomScrollView(
+          physics: const BouncingScrollPhysics(parent: AlwaysScrollableScrollPhysics()),
           slivers: [
             SliverPadding(
               padding: const EdgeInsets.only(top: 100, left: 16, right: 16, bottom: 20),
@@ -112,7 +113,7 @@ class QuestListScreen extends ConsumerWidget {
               ),
             ),
              SliverPadding(
-              padding: const EdgeInsets.all(16),
+              padding: const EdgeInsets.only(left: 16, right: 16, top: 16, bottom: 80),
               sliver: SliverList(
                 delegate: SliverChildBuilderDelegate(
                   (context, index) {

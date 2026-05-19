@@ -5,6 +5,7 @@ import '../../../../services/api_service.dart';
 import '../../../../services/storage_service.dart';
 
 import '../../domain/models/user_model.dart';
+import '../services/social_auth_service.dart';
 
 /// Auth state
 class AuthState {
@@ -172,6 +173,15 @@ class AuthNotifier extends StateNotifier<AuthState> {
       }
     } catch (e) {
       // Ignore logout errors
+    }
+
+    // Sign out from social logins (Google Sign-In SDK & Firebase Auth)
+    try {
+      final socialAuth = SocialAuthService();
+      await socialAuth.signOut();
+    } catch (e) {
+      // Ignore social sign out errors
+      print('Social Sign-out error: $e');
     }
     
     await StorageService.clearTokens();

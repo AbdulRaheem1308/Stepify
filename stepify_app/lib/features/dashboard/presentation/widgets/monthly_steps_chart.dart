@@ -16,7 +16,8 @@ class MonthlyStepsChart extends StatelessWidget {
 
     // Find max steps for Y-axis scaling
     final maxSteps = monthlyHistory.fold<int>(0, (max, current) => current.steps > max ? current.steps : max);
-    final maxY = (maxSteps * 1.2).toDouble();
+    // Fallback to 1000 steps if max is 0 to render clean baseline grid
+    final double maxY = maxSteps > 0 ? (maxSteps * 1.2).toDouble() : 1000.0;
 
     final isDark = Theme.of(context).brightness == Brightness.dark;
 

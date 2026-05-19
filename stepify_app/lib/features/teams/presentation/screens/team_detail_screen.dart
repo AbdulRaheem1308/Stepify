@@ -7,6 +7,7 @@ import 'package:share_plus/share_plus.dart';
 import '../../../../core/theme/app_theme.dart';
 import '../../data/models/team_model.dart';
 import '../providers/teams_provider.dart';
+import 'package:stepify_app/features/auth/presentation/providers/auth_provider.dart';
 
 /// Team Detail Screen - View team members, challenges, and stats
 class TeamDetailScreen extends ConsumerStatefulWidget {
@@ -162,10 +163,20 @@ class _TeamDetailScreenState extends ConsumerState<TeamDetailScreen> {
         PopupMenuButton<String>(
           icon: const Icon(Icons.more_vert, color: Colors.white),
           onSelected: (value) => _handleMenuAction(value, team),
-          itemBuilder: (context) => [
-            const PopupMenuItem(value: 'share', child: Text('Share Team')),
-            const PopupMenuItem(value: 'leave', child: Text('Leave Team')),
-          ],
+          itemBuilder: (context) {
+            final currentUserId = ref.watch(authProvider).user?['id'];
+            final isCaptain = team.captainId == currentUserId;
+            return [
+              const PopupMenuItem(value: 'share', child: Text('Share Team')),
+              if (isCaptain)
+                const PopupMenuItem(
+                  value: 'delete',
+                  child: Text('Delete Team', style: TextStyle(color: AppTheme.error)),
+                )
+              else
+                const PopupMenuItem(value: 'leave', child: Text('Leave Team')),
+            ];
+          },
         ),
       ],
     );
@@ -421,7 +432,54 @@ class _TeamDetailScreenState extends ConsumerState<TeamDetailScreen> {
       case 'leave':
         _showLeaveConfirmation(team);
         break;
+      case 'delete':
+        _showDeleteConfirmation(team);
+        break;
     }
+  }
+
+  void _showDeleteConfirmation(Team team) {
+    showDialog(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        title: const Text('Delete Team?'),
+        content: Text(
+          'Are you sure you want to permanently delete "${team.name}"? This action cannot be undone.\n\n'
+          'Restrictions:\n'
+          '• Only the captain/creator can delete.\n'
+          '• Cannot have active challenges.\n'
+          '• Cannot have other members in the team.',
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(ctx),
+            child: const Text('Cancel'),
+          ),
+          ElevatedButton(
+            onPressed: () async {
+              Navigator.pop(ctx);
+              final success = await ref.read(teamsProvider.notifier).deleteTeam(team.id);
+              if (success && mounted) {
+                Navigator.pop(context); // Close details page
+                ScaffoldMessenger.of(context).showSnackBar(
+                  const SnackBar(content: Text('Team deleted successfully')),
+                );
+              } else if (mounted) {
+                final error = ref.read(teamsProvider).error;
+                ScaffoldMessenger.of(context).showSnackBar(
+                  SnackBar(
+                    content: Text(error ?? 'Failed to delete team'),
+                    backgroundColor: AppTheme.error,
+                  ),
+                );
+              }
+            },
+            style: ElevatedButton.styleFrom(backgroundColor: AppTheme.error),
+            child: const Text('Delete', style: TextStyle(color: Colors.white)),
+          ),
+        ],
+      ),
+    );
   }
 
   void _showLeaveConfirmation(Team team) {

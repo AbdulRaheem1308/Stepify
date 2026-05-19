@@ -16,8 +16,8 @@ class WeeklyStepsChart extends StatelessWidget {
 
     // Find max steps for Y-axis scaling
     final maxSteps = weeklyHistory.fold<int>(0, (max, current) => current.steps > max ? current.steps : max);
-    // Add 20% buffer
-    final maxY = (maxSteps * 1.2).toDouble();
+    // Add 20% buffer, fallback to 1000 steps if max is 0 to render clean baseline grid
+    final double maxY = maxSteps > 0 ? (maxSteps * 1.2).toDouble() : 1000.0;
 
     final isDark = Theme.of(context).brightness == Brightness.dark;
 
@@ -80,7 +80,8 @@ class WeeklyStepsChart extends StatelessWidget {
                       getTitlesWidget: (value, meta) {
                         if (value < 0 || value >= weeklyHistory.length) return const SizedBox.shrink();
                         final date = weeklyHistory[value.toInt()].date;
-                        final isToday = value.toInt() == weeklyHistory.length - 1;
+                        final now = DateTime.now();
+                        final isToday = date.day == now.day && date.month == now.month && date.year == now.year;
                         return Padding(
                            padding: const EdgeInsets.only(top: 8),
                            child: Text(
@@ -114,7 +115,8 @@ class WeeklyStepsChart extends StatelessWidget {
                 barGroups: weeklyHistory.asMap().entries.map((entry) {
                   final index = entry.key;
                   final item = entry.value;
-                  final isToday = index == weeklyHistory.length - 1;
+                  final now = DateTime.now();
+                  final isToday = item.date.day == now.day && item.date.month == now.month && item.date.year == now.year;
                   
                   return BarChartGroupData(
                     x: index,

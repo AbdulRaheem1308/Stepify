@@ -135,6 +135,7 @@ class _HomeScreenState extends ConsumerState<HomeScreen> with SingleTickerProvid
       body: Stack(
         children: [
           SafeArea(
+            bottom: false,
             child: RefreshIndicator(
               onRefresh: () => ref.read(dashboardProvider.notifier).fetchTodayData(),
               child: SingleChildScrollView(

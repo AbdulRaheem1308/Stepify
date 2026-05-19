@@ -143,6 +143,22 @@ class TeamsNotifier extends StateNotifier<TeamsState> {
     }
   }
 
+  /// Delete a team
+  Future<bool> deleteTeam(String teamId) async {
+    state = state.copyWith(isLoading: true, error: null);
+    try {
+      await _api.delete('/teams/$teamId');
+      state = state.copyWith(
+        myTeams: state.myTeams.where((t) => t.id != teamId).toList(),
+        isLoading: false,
+      );
+      return true;
+    } catch (e) {
+      state = state.copyWith(isLoading: false, error: e.toString());
+      return false;
+    }
+  }
+
   /// Fetch team challenges
   Future<void> fetchTeamChallenges(String teamId) async {
     try {

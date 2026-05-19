@@ -132,6 +132,7 @@ class _StepAnalyticsScreenState extends ConsumerState<StepAnalyticsScreen>
     return Scaffold(
       backgroundColor: Theme.of(context).scaffoldBackgroundColor,
       body: SafeArea(
+        bottom: false,
         child: _isLoading
             ? const Center(child: CircularProgressIndicator())
             : Column(
@@ -236,7 +237,14 @@ class _StepAnalyticsScreenState extends ConsumerState<StepAnalyticsScreen>
         crossAxisAlignment: CrossAxisAlignment.stretch,
         children: [
            // 1. Hero Card
-           _buildTotalStepsHero(context, data['totalSteps'] ?? 0, 'This Week', trendPercentage: 12.5),
+           _buildTotalStepsHero(
+             context, 
+             data['totalSteps'] ?? 0, 
+             'This Week', 
+             trendPercentage: 12.5,
+             goalLabel: 'Weekly Goal',
+             goalTarget: 70000,
+           ),
            const SizedBox(height: 24),
            
            // 2. Chart Section (Now using the Shared Widget from Streak Screen)
@@ -289,7 +297,14 @@ class _StepAnalyticsScreenState extends ConsumerState<StepAnalyticsScreen>
 
 
 
-  Widget _buildTotalStepsHero(BuildContext context, int steps, String subtitle, {double? trendPercentage}) {
+  Widget _buildTotalStepsHero(
+    BuildContext context, 
+    int steps, 
+    String subtitle, {
+    double? trendPercentage,
+    required String goalLabel,
+    required int goalTarget,
+  }) {
     return Container(
       width: double.infinity,
       padding: const EdgeInsets.all(24),
@@ -384,9 +399,9 @@ class _StepAnalyticsScreenState extends ConsumerState<StepAnalyticsScreen>
               Row(
                 mainAxisAlignment: MainAxisAlignment.spaceBetween,
                 children: [
-                  const Text('Weekly Goal', style: TextStyle(color: Colors.white70, fontSize: 14)),
+                  Text(goalLabel, style: const TextStyle(color: Colors.white70, fontSize: 14)),
                   Text(
-                    '${(steps / 70000 * 100).toInt()}%',
+                    '${(steps / goalTarget * 100).toInt()}%',
                     style: const TextStyle(color: AppTheme.primaryGreen, fontWeight: FontWeight.bold),
                   ),
                 ],
@@ -395,7 +410,7 @@ class _StepAnalyticsScreenState extends ConsumerState<StepAnalyticsScreen>
               ClipRRect(
                 borderRadius: BorderRadius.circular(4),
                 child: LinearProgressIndicator(
-                  value: (steps / 70000).clamp(0.0, 1.0),
+                  value: (steps / goalTarget).clamp(0.0, 1.0),
                   backgroundColor: Colors.white10,
                   color: AppTheme.primaryGreen,
                   minHeight: 6,
@@ -556,7 +571,14 @@ class _StepAnalyticsScreenState extends ConsumerState<StepAnalyticsScreen>
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.stretch,
         children: [
-            _buildTotalStepsHero(context, data['totalSteps'] ?? 0, 'This Month', trendPercentage: -5.2),
+            _buildTotalStepsHero(
+              context, 
+              data['totalSteps'] ?? 0, 
+              'This Month', 
+              trendPercentage: -5.2,
+              goalLabel: 'Monthly Goal',
+              goalTarget: 300000,
+            ),
            const SizedBox(height: 24),
            
            // Monthly Chart

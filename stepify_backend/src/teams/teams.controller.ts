@@ -2,6 +2,7 @@ import {
     Controller,
     Get,
     Post,
+    Delete,
     Body,
     Param,
     UseGuards,
@@ -79,5 +80,11 @@ export class TeamsController {
     @Post(':id/leave')
     async leaveTeam(@Param('id') id: string, @Request() req: AuthenticatedRequest) {
         return this.teamsService.leaveTeam(id, req.user.id);
+    }
+
+    // DELETE /teams/:id - Delete a team (Captain only)
+    @Delete(':id')
+    async deleteTeam(@Param('id') id: string, @Request() req: AuthenticatedRequest) {
+        return this.teamsService.deleteTeam(id, req.user.id);
     }
 }

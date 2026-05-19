@@ -204,22 +204,22 @@ export class StepsService {
         const diff = dayOfWeek === 0 ? 6 : dayOfWeek - 1;
         startOfWeek.setDate(today.getDate() - diff);
 
+        // To make query timezone-safe, add a 1-day safety buffer on both ends of the query bounds.
+        // This ensures the database returns all possible matching records, and then in-memory
+        // matching by exact local date string filters correctly.
+        const queryStart = new Date(startOfWeek.getTime() - 24 * 60 * 60 * 1000);
+        const queryEnd = new Date(today.getTime() + 24 * 60 * 60 * 1000);
+
         const steps = await this.prisma.step.findMany({
             where: {
                 userId,
                 date: {
-                    gte: startOfWeek,
-                    lte: today,
+                    gte: queryStart,
+                    lte: queryEnd,
                 },
             },
             orderBy: { date: 'asc' },
         });
-
-        // Calculate totals
-        const totalSteps = steps.reduce((sum, s) => sum + s.stepCount, 0);
-        const totalCalories = steps.reduce((sum, s) => sum + s.caloriesBurned, 0);
-        const totalDistance = steps.reduce((sum, s) => sum + Number(s.distanceKm), 0);
-        const avgSteps = steps.length > 0 ? Math.round(totalSteps / steps.length) : 0;
 
         // Create daily breakdown
         const dailyData = [];
@@ -227,17 +227,17 @@ export class StepsService {
             const date = new Date(startOfWeek);
             date.setDate(startOfWeek.getDate() + i);
 
-            // Use local date string to avoid UTC shifts
+            // Use local date string for the target daily breakdown keys
             const year = date.getFullYear();
             const month = String(date.getMonth() + 1).padStart(2, '0');
             const day = String(date.getDate()).padStart(2, '0');
             const dateStr = `${year}-${month}-${day}`;
 
+            // Match using UTC date format because @db.Date column returned from database
+            // is represented as midnight UTC in the Date object.
             const dayData = steps.find(s => {
-                const sYear = s.date.getFullYear();
-                const sMonth = String(s.date.getMonth() + 1).padStart(2, '0');
-                const sDay = String(s.date.getDate()).padStart(2, '0');
-                return `${sYear}-${sMonth}-${sDay}` === dateStr;
+                const sDateStr = s.date.toISOString().split('T')[0];
+                return sDateStr === dateStr;
             });
 
             dailyData.push({
@@ -247,6 +247,15 @@ export class StepsService {
                 caloriesBurned: dayData?.caloriesBurned || 0,
             });
         }
+
+        // Calculate totals for ONLY the 7 days of the active week to avoid any buffer spillover
+        const totalSteps = dailyData.reduce((sum, d) => sum + d.stepCount, 0);
+        const totalCalories = dailyData.reduce((sum, d) => sum + d.caloriesBurned, 0);
+        const totalDistance = dailyData.reduce((sum, d) => {
+            const match = steps.find(s => s.date.toISOString().split('T')[0] === d.date);
+            return sum + (match ? Number(match.distanceKm) : 0);
+        }, 0);
+        const avgSteps = Math.round(totalSteps / 7);
 
         return {
             startDate: startOfWeek.toISOString().split('T')[0],

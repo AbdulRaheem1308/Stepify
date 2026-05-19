@@ -266,23 +266,109 @@ export class RewardsService {
     }
 
     /**
+     * Recalculate streak values from step history (Self-Healing & Timezone-Resilient)
+     */
+    async recalculateStreakFromSteps(userId: string) {
+        const allSteps = await this.prisma.step.findMany({
+            where: {
+                userId,
+                stepCount: { gt: 0 }
+            },
+            orderBy: { date: 'asc' },
+            select: { date: true }
+        });
+
+        let calculatedCurrentStreak = 0;
+        let calculatedLongestStreak = 0;
+        let lastActiveDate: Date | null = null;
+
+        if (allSteps.length > 0) {
+            const uniqueDates = Array.from(new Set(
+                allSteps.map(s => {
+                    const d = s.date;
+                    const year = d.getUTCFullYear();
+                    const month = String(d.getUTCMonth() + 1).padStart(2, '0');
+                    const day = String(d.getUTCDate()).padStart(2, '0');
+                    return `${year}-${month}-${day}`;
+                })
+            )).sort();
+
+            if (uniqueDates.length > 0) {
+                let tempStreak = 1;
+                calculatedLongestStreak = 1;
+
+                for (let i = 1; i < uniqueDates.length; i++) {
+                    const prevDate = new Date(uniqueDates[i - 1]);
+                    const currDate = new Date(uniqueDates[i]);
+                    const diffTime = Math.abs(currDate.getTime() - prevDate.getTime());
+                    const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24));
+                    
+                    if (diffDays === 1) {
+                        tempStreak++;
+                        if (tempStreak > calculatedLongestStreak) {
+                            calculatedLongestStreak = tempStreak;
+                        }
+                    } else if (diffDays > 1) {
+                        tempStreak = 1;
+                    }
+                }
+
+                // Check if current streak is still active today or yesterday (Server Local & UTC safe matching)
+                const now = new Date();
+                const todayLocalStr = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}-${String(now.getDate()).padStart(2, '0')}`;
+                const todayUtcStr = now.toISOString().split('T')[0];
+                
+                const yesterday = new Date();
+                yesterday.setDate(now.getDate() - 1);
+                const yesterdayLocalStr = `${yesterday.getFullYear()}-${String(yesterday.getMonth() + 1).padStart(2, '0')}-${String(yesterday.getDate()).padStart(2, '0')}`;
+                
+                const yesterdayUtc = new Date(Date.now() - 86400000);
+                const yesterdayUtcStr = yesterdayUtc.toISOString().split('T')[0];
+                
+                const lastActiveDateStr = uniqueDates[uniqueDates.length - 1];
+                lastActiveDate = new Date(lastActiveDateStr + 'T00:00:00.000Z');
+
+                const matchesToday = lastActiveDateStr === todayLocalStr || lastActiveDateStr === todayUtcStr;
+                const matchesYesterday = lastActiveDateStr === yesterdayLocalStr || lastActiveDateStr === yesterdayUtcStr;
+
+                if (matchesToday || matchesYesterday) {
+                    calculatedCurrentStreak = tempStreak;
+                } else {
+                    calculatedCurrentStreak = 0;
+                }
+            }
+        }
+
+        const streak = await this.prisma.streak.findUnique({ where: { userId } });
+        if (streak) {
+            // Keep longestStreak at the max of existing longestStreak and newly calculated longestStreak
+            const finalLongest = Math.max(streak.longestStreak, calculatedLongestStreak);
+            return this.prisma.streak.update({
+                where: { userId },
+                data: {
+                    currentStreak: calculatedCurrentStreak,
+                    longestStreak: finalLongest,
+                    lastActiveDate: lastActiveDate || streak.lastActiveDate,
+                }
+            });
+        } else {
+            return this.prisma.streak.create({
+                data: {
+                    userId,
+                    currentStreak: calculatedCurrentStreak,
+                    longestStreak: calculatedLongestStreak,
+                    lastActiveDate,
+                }
+            });
+        }
+    }
+
+    /**
      * Get user streak info
      */
     async getStreak(userId: string) {
         try {
-            let streak = await this.prisma.streak.findUnique({
-                where: { userId },
-            });
-
-            if (!streak) {
-                streak = await this.prisma.streak.create({
-                    data: {
-                        userId,
-                        currentStreak: 0,
-                        longestStreak: 0,
-                    },
-                });
-            }
+            const streak = await this.recalculateStreakFromSteps(userId);
 
             // Calculate next milestone
             const milestones = [7, 30, 100, 365];
@@ -380,13 +466,15 @@ export class RewardsService {
      * Check and unlock new achievements
      */
     async checkAchievements(userId: string) {
+        // Self-heal streak from step history to ensure perfect consistency with the calendar
+        const streak = await this.recalculateStreakFromSteps(userId);
+
         // Get user stats
-        const [stepsTotal, streak, wallet, challengesCompleted, friendships] = await Promise.all([
+        const [stepsTotal, wallet, challengesCompleted, friendships] = await Promise.all([
             this.prisma.step.aggregate({
                 where: { userId },
                 _sum: { stepCount: true },
             }),
-            this.prisma.streak.findUnique({ where: { userId } }),
             this.prisma.wallet.findUnique({ where: { userId } }),
             this.prisma.userChallenge.count({
                 where: { userId, status: 'COMPLETED' },
@@ -397,8 +485,8 @@ export class RewardsService {
         ]);
 
         const lifetimeSteps = stepsTotal._sum.stepCount || 0;
-        const currentStreak = streak?.currentStreak || 0;
-        const longestStreak = streak?.longestStreak || 0;
+        const currentStreak = streak.currentStreak;
+        const longestStreak = streak.longestStreak;
         const lifetimeCoins = wallet?.lifetimePoints || 0;
 
         // Get all active achievements

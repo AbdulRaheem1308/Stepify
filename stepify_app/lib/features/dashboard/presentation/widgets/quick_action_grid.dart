@@ -26,81 +26,45 @@ class QuickActionGrid extends StatelessWidget {
     
     return Column(
       children: [
-        Row(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Expanded(
-              child: _buildActionItem(
-                context,
-                l10n.challenges,
-                l10n.viewActive,
-                Icons.emoji_events,
-                const Color(0xFFFF6F00), // Orange
-                onChallengesTap,
+        IntrinsicHeight(
+          child: Row(
+            crossAxisAlignment: CrossAxisAlignment.stretch,
+            children: [
+              Expanded(
+                child: _buildActionItem(
+                  context,
+                  l10n.challenges,
+                  l10n.viewActive,
+                  Icons.emoji_events,
+                  const Color(0xFFFF6F00), // Orange
+                  onChallengesTap,
+                ),
               ),
-            ),
-            const SizedBox(width: 12),
-            Expanded(
-              child: _buildActionItem(
-                context,
-                'Teams',
-                'Compete',
-                Icons.groups,
-                const Color(0xFF009688), // Teal
-                onTeamsTap ?? () {},
+              const SizedBox(width: 12),
+              Expanded(
+                child: _buildActionItem(
+                  context,
+                  'Teams',
+                  'Compete',
+                  Icons.groups,
+                  const Color(0xFF009688), // Teal
+                  onTeamsTap ?? () {},
+                ),
               ),
-            ),
-            const SizedBox(width: 12),
-            Expanded(
-              child: _buildActionItem(
-                context,
-                l10n.earnOffers,
-                l10n.watchAdsDeals, // Shortened
-                Icons.local_offer,
-                const Color(0xFFE91E63), // Pink
-                onOffersTap,
+              const SizedBox(width: 12),
+              Expanded(
+                child: _buildActionItem(
+                  context,
+                  l10n.earnOffers,
+                  l10n.watchAdsDeals, // Shortened
+                  Icons.local_offer,
+                  const Color(0xFFE91E63), // Pink
+                  onOffersTap,
+                ),
               ),
-            ),
-          ],
+            ],
+          ),
         ),
-        // const SizedBox(height: 12),
-        // Row(
-        //   crossAxisAlignment: CrossAxisAlignment.start,
-        //   children: [
-        //     Expanded(
-        //       child: _buildActionItem(
-        //         context,
-        //         l10n.community,
-        //         l10n.feedMilestones, // Shortened for 3-col
-        //         Icons.public,
-        //         const Color(0xFF3F51B5), // Indigo
-        //         onCommunityTap,
-        //       ),
-        //     ),
-        //     const SizedBox(width: 12),
-        //     Expanded(
-        //       child: _buildActionItem(
-        //         context,
-        //         'Log',
-        //         '+ Points',
-        //         Icons.directions_run_rounded,
-        //         const Color(0xFF9C27B0), // Purple
-        //         onActivitiesTap ?? () {},
-        //       ),
-        //     ),
-        //     const SizedBox(width: 12),
-        //     Expanded(
-        //       child: _buildActionItem(
-        //         context,
-        //         'History',
-        //         'Past',
-        //         Icons.history_rounded,
-        //         const Color(0xFF607D8B), // Blue Grey
-        //         onHistoryTap ?? () {},
-        //       ),
-        //     ),
-        //   ],
-        // ),
       ],
     );
   }
@@ -109,7 +73,7 @@ class QuickActionGrid extends StatelessWidget {
     return GestureDetector(
       onTap: onTap,
       child: Container(
-        padding: const EdgeInsets.all(16),
+        padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 14),
         decoration: BoxDecoration(
           color: Theme.of(context).cardColor,
           borderRadius: BorderRadius.circular(16),
@@ -125,22 +89,26 @@ class QuickActionGrid extends StatelessWidget {
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
             Container(
-              padding: const EdgeInsets.all(8),
+              padding: const EdgeInsets.all(6),
               decoration: BoxDecoration(
                 color: color,
                 borderRadius: BorderRadius.circular(8),
               ),
-              child: Icon(icon, color: Colors.white, size: 24),
+              child: Icon(icon, color: Colors.white, size: 20),
             ),
-            const SizedBox(height: 16),
+            const SizedBox(height: 12),
             Text(
               title,
-              style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 16),
+              maxLines: 1,
+              overflow: TextOverflow.ellipsis,
+              style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 13),
             ),
-            const SizedBox(height: 4),
+            const SizedBox(height: 2),
             Text(
               subtitle,
-              style: Theme.of(context).textTheme.bodySmall,
+              maxLines: 1,
+              overflow: TextOverflow.ellipsis,
+              style: Theme.of(context).textTheme.bodySmall?.copyWith(fontSize: 10),
             ),
           ],
         ),

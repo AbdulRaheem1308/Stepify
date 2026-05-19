@@ -1,4 +1,4 @@
-import { Injectable } from '@nestjs/common';
+import { Injectable, BadRequestException, ForbiddenException, NotFoundException } from '@nestjs/common';
 import { PrismaService } from '../prisma/prisma.service';
 
 @Injectable()
@@ -222,6 +222,45 @@ export class TeamsService {
             weeklySteps: t.weeklySteps,
             rank: index + 1,
         }));
+    }
+
+    // Delete a team (with creator checks and active member/challenge restrictions)
+    async deleteTeam(teamId: string, userId: string) {
+        const team = await this.prisma.team.findUnique({
+            where: { id: teamId },
+            include: {
+                members: true,
+                teamChallenges: {
+                    where: { status: 'active' },
+                },
+            },
+        });
+
+        if (!team) {
+            throw new NotFoundException('Team not found');
+        }
+
+        if (team.captainId !== userId) {
+            throw new ForbiddenException('Only the team captain (creator) can delete this team');
+        }
+
+        // Restriction 1: Active Challenges
+        if (team.teamChallenges.length > 0) {
+            throw new BadRequestException('Cannot delete team while it is participating in active challenges.');
+        }
+
+        // Restriction 2: Other members are still in the team
+        const otherMembers = team.members.filter((m) => m.userId !== userId);
+        if (otherMembers.length > 0) {
+            throw new BadRequestException('Cannot delete team with active members. Ask members to leave first.');
+        }
+
+        // Delete team (Prisma Cascade deletes all team memberships and challenges automatically)
+        await this.prisma.team.delete({
+            where: { id: teamId },
+        });
+
+        return { success: true, message: 'Team deleted successfully' };
     }
 
     // Helper to format team

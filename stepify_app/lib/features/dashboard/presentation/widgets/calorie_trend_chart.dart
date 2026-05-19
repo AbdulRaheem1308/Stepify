@@ -25,7 +25,8 @@ class CalorieTrendChart extends StatelessWidget {
       final cals = current.steps * 0.04;
       return cals > max ? cals : max;
     });
-    final maxY = (maxCals * 1.2).toDouble();
+    // Fallback to 100 kcal if max is 0 to render clean baseline grid
+    final double maxY = maxCals > 0 ? (maxCals * 1.2).toDouble() : 100.0;
 
     final isDark = Theme.of(context).brightness == Brightness.dark;
 

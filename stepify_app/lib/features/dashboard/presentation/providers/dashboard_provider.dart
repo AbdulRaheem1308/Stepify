@@ -183,16 +183,27 @@ class DashboardNotifier extends StateNotifier<DashboardState> {
   Future<void> fetchTodayData() async {
     state = state.copyWith(isLoading: true, syncStatus: SyncStatus.syncing);
 
-    // Auto-sync steps from local sensors first
+    // Auto-sync steps from local sensors first (sync last 7 days of history in parallel to capture past offline steps)
     try {
-      final localSteps = await _healthService.getTodaySteps();
-      if (localSteps > 0) {
-        final today = DateTime.now().toIso8601String().split('T')[0];
-        await _apiService.post('/steps/sync', data: {
-          'date': today,
-          'stepCount': localSteps,
-          'source': 'phone_sensors',
-        });
+      final historyMap = await _healthService.getStepHistory(7);
+      final List<Future> syncTasks = [];
+      for (final entry in historyMap.entries) {
+        final dateStr = entry.key.toIso8601String().split('T')[0];
+        final steps = entry.value;
+        if (steps > 0) {
+          syncTasks.add(
+            _apiService.post('/steps/sync', data: {
+              'date': dateStr,
+              'stepCount': steps,
+              'source': 'phone_sensors',
+            }).catchError((err) {
+              print('Failed to sync steps for $dateStr: $err');
+            }),
+          );
+        }
+      }
+      if (syncTasks.isNotEmpty) {
+        await Future.wait(syncTasks);
       }
     } catch (e) {
       print('Auto-sync steps error: $e');
