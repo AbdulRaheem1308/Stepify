@@ -479,12 +479,16 @@ class DashboardNotifier extends StateNotifier<DashboardState> {
       // Only update if steps actually increased (or we had 0)
       if (stepCount > currentSteps || currentSteps == 0) {
         final goal = state.todaySteps!.goal > 0 ? state.todaySteps!.goal : 10000;
+        // Estimate active minutes: assume 30 steps ≈ 1 active minute
+        final stepDiff = stepCount - currentSteps;
+        final addedMinutes = (stepDiff / 30).floor();
+        final newActiveMinutes = (state.todaySteps!.activeMinutes ?? 0) + addedMinutes;
         state = state.copyWith(
           todaySteps: TodaySteps(
             stepCount: stepCount,
             caloriesBurned: (stepCount * 0.045).round(),
             distanceKm: stepCount * 0.000762,
-            activeMinutes: state.todaySteps!.activeMinutes,
+            activeMinutes: newActiveMinutes,
             goal: goal,
             progress: ((stepCount / goal) * 100).toInt(),
             goalReached: stepCount >= goal,
@@ -492,6 +496,7 @@ class DashboardNotifier extends StateNotifier<DashboardState> {
         );
       }
     }
+
 
     if (stepCount == _lastSyncedSteps) return;
 
