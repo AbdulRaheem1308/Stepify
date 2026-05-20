@@ -20,6 +20,7 @@ import 'core/services/consent_service.dart';
 import 'package:firebase_core/firebase_core.dart';
 import 'package:firebase_crashlytics/firebase_crashlytics.dart';
 import 'package:safe_device/safe_device.dart';
+import 'package:posthog_flutter/posthog_flutter.dart';
 
 void main() {
   runZonedGuarded(() async {
@@ -35,6 +36,14 @@ void main() {
         
         // Pass all uncaught "fatal" errors from the framework to Crashlytics
         FlutterError.onError = FirebaseCrashlytics.instance.recordFlutterError;
+
+        // Initialize PostHog
+        try {
+          await Posthog().setup('phc_stepify_placeholder'); // Replace with actual key
+          await Posthog().capture(eventName: 'app_opened');
+        } catch (e) {
+          debugPrint('Failed to initialize PostHog: $e');
+        }
       }
       
       await Hive.initFlutter();
@@ -51,10 +60,15 @@ void main() {
             throw Exception("Security Violation: Jailbroken or Rooted device detected.");
           }
           if (!isRealDevice) {
-            // Optional: You can remove this if you want to allow emulators for development
+            if (kReleaseMode) {
+              throw Exception("Security Violation: stepify is not supported on emulators or virtual machines.");
+            }
             debugPrint("Warning: App is running on an emulator.");
           }
           if (isMockLocation) {
+            if (kReleaseMode) {
+              throw Exception("Security Violation: Mock location / GPS spoofing is prohibited.");
+            }
             debugPrint("Warning: Mock location detected.");
           }
         } catch (e) {

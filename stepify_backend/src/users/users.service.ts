@@ -1,12 +1,16 @@
 import { Injectable, NotFoundException } from '@nestjs/common';
 import { PrismaService } from '../prisma/prisma.service';
+import { RedisService } from '../redis/redis.service';
 import { CreateUserDto, UpdateUserDto } from './dto/user.dto';
 import { TransactionType } from '@prisma/client';
 import { randomUUID } from 'crypto';
 
 @Injectable()
 export class UsersService {
-    constructor(private prisma: PrismaService) { }
+    constructor(
+        private prisma: PrismaService,
+        private redis: RedisService,
+    ) { }
 
     /**
      * Find user by ID
@@ -51,6 +55,7 @@ export class UsersService {
                 email: dto.email,
                 name: dto.name,
                 referralCode,
+                referredBy: dto.referredBy,
                 wallet: {
                     create: {
                         balance: 0,
@@ -191,6 +196,13 @@ export class UsersService {
      * Get referral leaderboard (Screen 18)
      */
     async getReferralLeaderboard(limit = 20) {
+        const cacheKey = `referral:leaderboard:${limit}`;
+        const cached = await this.redis.getCache<any[]>(cacheKey);
+        
+        if (cached) {
+            return cached;
+        }
+
         const topReferrers = await this.prisma.user.findMany({
             where: { referralCount: { gt: 0 } },
             orderBy: { referralCount: 'desc' },
@@ -204,10 +216,15 @@ export class UsersService {
             },
         });
 
-        return topReferrers.map((user, index) => ({
+        const result = topReferrers.map((user, index) => ({
             rank: index + 1,
             ...user,
         }));
+
+        // Cache for 5 minutes (300 seconds)
+        await this.redis.setCache(cacheKey, result, 300);
+
+        return result;
     }
 
     /**
@@ -255,18 +272,28 @@ export class UsersService {
             throw new NotFoundException('User not found');
         }
 
-        return this.prisma.user.update({
+        // Auto-compute fitness level when physical stats change
+        let fitnessLevel = dto.fitnessLevel;
+        if (!fitnessLevel && (dto.heightCm || dto.weightKg || dto.dailyStepGoal)) {
+            fitnessLevel = await this.computeFitnessLevel(id);
+        }
+
+        const updateData: any = {
+            name: dto.name,
+            phone: dto.phone,
+            email: dto.email,
+            heightCm: dto.heightCm,
+            weightKg: dto.weightKg,
+            age: dto.age,
+            dailyStepGoal: dto.dailyStepGoal,
+            avatarUrl: dto.avatarUrl,
+            activityPreferences: dto.activityPreferences ?? undefined,
+            fitnessLevel: fitnessLevel ?? undefined,
+        };
+
+        return (this.prisma.user.update as any)({
             where: { id },
-            data: {
-                name: dto.name,
-                phone: dto.phone,
-                email: dto.email,
-                heightCm: dto.heightCm,
-                weightKg: dto.weightKg,
-                age: dto.age,
-                dailyStepGoal: dto.dailyStepGoal,
-                avatarUrl: dto.avatarUrl,
-            },
+            data: updateData,
             include: {
                 wallet: true,
                 streak: true,
@@ -311,7 +338,15 @@ export class UsersService {
             where: { userId: id },
         });
 
+        // Compute and persist fitness level
+        const fitnessLevel = await this.computeFitnessLevel(id);
+        await (this.prisma.user.update as any)({
+            where: { id },
+            data: { fitnessLevel },
+        });
+
         return {
+            fitnessLevel,
             lifetimeSteps: stepsAggregate._sum.stepCount || 0,
             lifetimeCalories: stepsAggregate._sum.caloriesBurned || 0,
             lifetimeDistanceKm: Number(distanceAggregate._sum.distanceKm || 0),
@@ -322,6 +357,29 @@ export class UsersService {
             currentBalance: user.wallet?.balance || 0,
             bestDaySteps: bestDay?.stepCount || 0,
         };
+    }
+
+    /**
+     * Compute fitness level based on last 30 days average daily steps
+     * Levels: beginner < 5000 | active 5000-7999 | athlete 8000-11999 | elite >= 12000
+     */
+    async computeFitnessLevel(userId: string): Promise<string> {
+        const thirtyDaysAgo = new Date();
+        thirtyDaysAgo.setDate(thirtyDaysAgo.getDate() - 30);
+
+        const stepsData = await this.prisma.step.findMany({
+            where: { userId, date: { gte: thirtyDaysAgo } },
+            select: { stepCount: true },
+        });
+
+        if (stepsData.length === 0) return 'beginner';
+
+        const avgSteps = stepsData.reduce((sum, s) => sum + s.stepCount, 0) / stepsData.length;
+
+        if (avgSteps >= 12000) return 'elite';
+        if (avgSteps >= 8000)  return 'athlete';
+        if (avgSteps >= 5000)  return 'active';
+        return 'beginner';
     }
 
     /**
@@ -366,6 +424,67 @@ export class UsersService {
         const { refreshTokens, ...sanitizedUser } = user;
         return sanitizedUser;
     }
+    /**
+     * Delete user settings (helper)
+     */
+    async deleteSettings(userId: string) {
+        return this.prisma.userSettings.delete({
+            where: { userId },
+        });
+    }
+
+    /**
+     * GDPR: Export User Data
+     * Returns a JSON object containing all personal data linked to the user.
+     */
+    async exportData(userId: string) {
+        const user = await this.prisma.user.findUnique({
+            where: { id: userId },
+            include: {
+                wallet: true,
+                settings: true,
+                steps: {
+                    orderBy: { date: 'desc' },
+                    take: 100 // Limit for export payload size
+                },
+                activities: {
+                    orderBy: { startTime: 'desc' },
+                    take: 50
+                },
+                transactions: {
+                    orderBy: { createdAt: 'desc' },
+                    take: 50
+                }
+            }
+        });
+
+        if (!user) throw new NotFoundException('User not found');
+
+        // Sanitize sensitive backend data (like FCM tokens) from export
+        const { fcmToken, ...safeUser } = user;
+        
+        return {
+            exportDate: new Date().toISOString(),
+            data: safeUser
+        };
+    }
+
+    /**
+     * GDPR: Delete Account
+     * Hard-deletes the user and relies on Prisma's onDelete: Cascade to clean up relationships.
+     */
+    async deleteAccount(userId: string) {
+        const user = await this.prisma.user.findUnique({ where: { id: userId } });
+        if (!user) throw new NotFoundException('User not found');
+
+        // Delete user (Prisma cascade will handle steps, wallet, settings, etc.)
+        await this.prisma.user.delete({
+            where: { id: userId }
+        });
+
+        return { success: true, message: 'Account and all associated data permanently deleted.' };
+    }
+
     /**
      * Get user settings
      */

@@ -84,4 +84,97 @@ export class QuestsService implements OnModuleInit {
             include: { quest: { include: { stages: true } } }
         });
     }
+
+    async processQuestProgress(userId: string, stepCount: number) {
+        const activeQuests = await this.prisma.userQuest.findMany({
+            where: { userId, status: 'IN_PROGRESS' },
+            include: {
+                quest: {
+                    include: {
+                        stages: { orderBy: { order: 'asc' } }
+                    }
+                }
+            }
+        });
+
+        for (const userQuest of activeQuests) {
+            const { quest, currentStageIndex } = userQuest;
+            const stages = quest.stages;
+            if (!stages || stages.length === 0) continue;
+
+            const currentStage = stages[currentStageIndex];
+            if (!currentStage) continue;
+
+            // Check if steps satisfy the target
+            if (stepCount >= currentStage.targetSteps) {
+                const nextStageIndex = currentStageIndex + 1;
+                
+                if (nextStageIndex >= stages.length) {
+                    // Completed the entire quest!
+                    await this.prisma.userQuest.update({
+                        where: { id: userQuest.id },
+                        data: {
+                            status: 'COMPLETED',
+                            currentStageIndex: nextStageIndex,
+                            completedAt: new Date()
+                        }
+                    });
+
+                    // Award points & XP
+                    await this.prisma.wallet.upsert({
+                        where: { userId },
+                        update: {
+                            balance: { increment: quest.rewardCoins },
+                            lifetimePoints: { increment: quest.rewardCoins },
+                            monthlyXp: { increment: quest.rewardXp }
+                        },
+                        create: {
+                            userId,
+                            balance: quest.rewardCoins,
+                            lifetimePoints: quest.rewardCoins,
+                            monthlyXp: quest.rewardXp
+                        }
+                    });
+
+                    // Create transaction
+                    await this.prisma.transaction.create({
+                        data: {
+                            userId,
+                            type: 'OFFER_REWARD',
+                            points: quest.rewardCoins,
+                            description: `Adventure Quest completed: ${quest.title}`
+                        }
+                    });
+
+                    // Create system notification
+                    await this.prisma.notification.create({
+                        data: {
+                            userId,
+                            title: 'Quest Completed! 🎉',
+                            message: `Congratulations! You completed "${quest.title}" and earned ${quest.rewardCoins} coins and ${quest.rewardXp} XP!`,
+                            type: 'achievement'
+                        }
+                    });
+                } else {
+                    // Advance to the next stage!
+                    await this.prisma.userQuest.update({
+                        where: { id: userQuest.id },
+                        data: {
+                            currentStageIndex: nextStageIndex
+                        }
+                    });
+
+                    // Create stage completed notification
+                    await this.prisma.notification.create({
+                        data: {
+                            userId,
+                            title: 'Quest Stage Cleared! 🚀',
+                            message: `You cleared Stage ${currentStageIndex + 1} of "${quest.title}". Next stage: "${stages[nextStageIndex].title}"!`,
+                            type: 'system'
+                        }
+                    });
+                }
+            }
+        }
+    }
 }

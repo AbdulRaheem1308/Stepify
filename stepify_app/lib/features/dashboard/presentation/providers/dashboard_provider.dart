@@ -2,6 +2,8 @@ import 'dart:async';
 import 'package:flutter/foundation.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:dio/dio.dart';
+import 'package:uuid/uuid.dart';
+import 'package:safe_device/safe_device.dart';
 
 import '../../../../services/api_service.dart';
 import '../../../../services/storage_service.dart';
@@ -356,17 +358,37 @@ class DashboardNotifier extends StateNotifier<DashboardState> {
       if (authorized) {
         final historyMap = await _healthService.getStepHistory(7);
         final List<Future> syncTasks = [];
+        
+        final isJailBroken = await SafeDevice.isJailBroken;
+        final isRealDevice = await SafeDevice.isRealDevice;
+        final isMockLocation = await SafeDevice.isMockLocation;
+        final deviceUUID = await StorageService.getOrCreateDeviceUUID();
+
         for (final entry in historyMap.entries) {
           final dateStr = entry.key.toIso8601String().split('T')[0];
-          final steps = entry.value;
+          // Security: Clamp steps to max 50,000 to prevent spoofed/injected backdated steps
+          final steps = entry.value.clamp(0, 50000);
+          
           if (steps > 0) {
             syncTasks.add(
               () async {
                 try {
+                  // Unique cryptographic nonce and timestamp per day sync
+                  final nonce = const Uuid().v4();
+                  final timestamp = DateTime.now().millisecondsSinceEpoch;
+                  
                   await _apiService.post('/steps/sync', data: {
+                    'deviceIdentifier': deviceUUID,
                     'date': dateStr,
                     'stepCount': steps,
                     'source': 'phone_sensors',
+                    'nonce': nonce,
+                    'timestamp': timestamp,
+                    'integrity': {
+                      'isJailBroken': isJailBroken,
+                      'isRealDevice': isRealDevice,
+                      'isMockLocation': isMockLocation,
+                    }
                   });
                 } catch (err) {
                   print('Failed to sync steps for $dateStr: $err');
@@ -486,7 +508,29 @@ class DashboardNotifier extends StateNotifier<DashboardState> {
   // Removed _generateDemoHistory
 
 
-  Future<void> syncSteps(int stepCount) async {
+  Future<void> syncSteps(int rawStepCount) async {
+    // ── Security & Sanity Checks (Fix #3, #4) ───────────────────────
+    // 1. Max absolute steps cap (50,000 steps per day)
+    int stepCount = rawStepCount.clamp(0, 50000);
+
+    // 2. Cadence Speed Cap: prevent injector hacks sending huge steps in seconds
+    final now = DateTime.now();
+    if (_lastSyncedTime != null && _lastSyncedSteps > 0) {
+      final timeDiff = now.difference(_lastSyncedTime!);
+      final stepDiff = stepCount - _lastSyncedSteps;
+      
+      if (stepDiff > 0 && timeDiff.inSeconds > 0) {
+        final stepsPerSecond = stepDiff / timeDiff.inSeconds;
+        // Elite athletes have ~4-5 steps/sec sprint cadence. 6.0 is a safe threshold
+        if (stepsPerSecond > 6.0) {
+          final allowedIncrease = (timeDiff.inSeconds * 6.0).toInt();
+          stepCount = _lastSyncedSteps + allowedIncrease;
+          debugPrint('⚠️ Security Warning: Cadence check failed ($stepsPerSecond steps/sec). Clamping steps to: $stepCount');
+        }
+      }
+    }
+    // ─────────────────────────────────────────────────────────────────
+
     // 1. Optimistic UI update instantly on every step event
     if (state.todaySteps != null) {
       final currentSteps = state.todaySteps!.stepCount;
@@ -514,7 +558,6 @@ class DashboardNotifier extends StateNotifier<DashboardState> {
 
     if (stepCount == _lastSyncedSteps) return;
 
-    final now = DateTime.now();
     final stepDiff = (stepCount - _lastSyncedSteps).abs();
     final timeDiff = _lastSyncedTime == null ? const Duration(seconds: 999) : now.difference(_lastSyncedTime!);
 
@@ -526,10 +569,28 @@ class DashboardNotifier extends StateNotifier<DashboardState> {
       try {
         final today = now.toIso8601String().split('T')[0];
         
+        // Attestation/device check parameters
+        final isJailBroken = await SafeDevice.isJailBroken;
+        final isRealDevice = await SafeDevice.isRealDevice;
+        final isMockLocation = await SafeDevice.isMockLocation;
+        final deviceUUID = await StorageService.getOrCreateDeviceUUID();
+        
+        // Generate cryptographic nonce and timestamp
+        final nonce = const Uuid().v4();
+        final timestamp = now.millisecondsSinceEpoch;
+
         await _apiService.post('/steps/sync', data: {
+          'deviceIdentifier': deviceUUID,
           'date': today,
           'stepCount': stepCount,
           'source': 'phone_sensors',
+          'nonce': nonce,
+          'timestamp': timestamp,
+          'integrity': {
+            'isJailBroken': isJailBroken,
+            'isRealDevice': isRealDevice,
+            'isMockLocation': isMockLocation,
+          }
         });
         
         // Removed fetchTodayData() here to prevent infinite loop and health dialog popups

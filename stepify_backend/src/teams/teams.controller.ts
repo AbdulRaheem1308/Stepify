@@ -82,6 +82,16 @@ export class TeamsController {
         return this.teamsService.leaveTeam(id, req.user.id);
     }
 
+    // POST /teams/:id/battle - Initiate a Team Battle
+    @Post(':id/battle')
+    async initiateBattle(
+        @Param('id') challengerTeamId: string,
+        @Body() body: { opponentTeamId: string },
+        @Request() req: AuthenticatedRequest
+    ) {
+        return this.teamsService.initiateBattle(challengerTeamId, body.opponentTeamId, req.user.id);
+    }
+
     // DELETE /teams/:id - Delete a team (Captain only)
     @Delete(':id')
     async deleteTeam(@Param('id') id: string, @Request() req: AuthenticatedRequest) {

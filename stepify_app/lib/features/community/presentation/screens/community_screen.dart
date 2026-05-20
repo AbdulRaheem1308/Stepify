@@ -7,6 +7,8 @@ import 'package:stepify_app/l10n/app_localizations.dart';
 import '../../../../core/theme/app_theme.dart';
 import '../providers/community_provider.dart';
 
+import '../../ads/presentation/widgets/native_ad_container.dart';
+
 /// Screen 19: Community Feed
 class CommunityScreen extends ConsumerWidget {
   const CommunityScreen({super.key});
@@ -61,6 +63,15 @@ class CommunityScreen extends ConsumerWidget {
                     padding: const EdgeInsets.all(16),
                     itemCount: state.posts.length,
                     itemBuilder: (context, index) {
+                      // Inject a Native Ad every 5 posts
+                      if (index > 0 && index % 5 == 0) {
+                        return Column(
+                          children: [
+                            const NativeAdContainer(factoryId: 'communityFeedAdFactory'),
+                            _buildFeedCard(context, ref, state.posts[index], index),
+                          ],
+                        );
+                      }
                       return _buildFeedCard(context, ref, state.posts[index], index);
                     },
                   ),

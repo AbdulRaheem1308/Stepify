@@ -1,6 +1,7 @@
 import { Injectable, Logger } from '@nestjs/common';
 import { PrismaService } from '../prisma/prisma.service';
 import * as admin from 'firebase-admin';
+import * as nodemailer from 'nodemailer';
 
 export interface NotificationItem {
     id: string;
@@ -15,6 +16,7 @@ export interface NotificationItem {
 export class NotificationsService {
     private readonly logger = new Logger(NotificationsService.name);
     private readonly fcmEnabled: boolean;
+    private transporter: nodemailer.Transporter;
 
     constructor(private prisma: PrismaService) {
         // Firebase Admin is initialized once in the app lifecycle.
@@ -41,6 +43,17 @@ export class NotificationsService {
         }
 
         this.fcmEnabled = admin.apps.length > 0;
+
+        // Initialize Nodemailer for Emails
+        this.transporter = nodemailer.createTransport({
+            host: process.env.SMTP_HOST || 'smtp.example.com',
+            port: parseInt(process.env.SMTP_PORT || '587'),
+            secure: process.env.SMTP_SECURE === 'true',
+            auth: {
+                user: process.env.SMTP_USER,
+                pass: process.env.SMTP_PASS,
+            },
+        });
     }
 
     // ── FCM Token Registration ─────────────────────────────────────────────────
@@ -174,10 +187,34 @@ export class NotificationsService {
         }
     }
 
-    // ── In-App Notifications (DB) ──────────────────────────────────────────────
+    // ── In-App Notifications & Email (DB) ──────────────────────────────────────────────
 
     /**
-     * Create an in-app notification record AND send push if user has FCM token.
+     * Send an Email Notification
+     */
+    async sendEmail(to: string, subject: string, html: string): Promise<boolean> {
+        if (!process.env.SMTP_USER) {
+            this.logger.debug(`Email not sent to ${to} (SMTP not configured)`);
+            return false;
+        }
+        
+        try {
+            await this.transporter.sendMail({
+                from: `"Stepify" <${process.env.SMTP_USER}>`,
+                to,
+                subject,
+                html,
+            });
+            this.logger.log(`Email sent successfully to ${to}`);
+            return true;
+        } catch (error) {
+            this.logger.error(`Failed to send email to ${to}`, error);
+            return false;
+        }
+    }
+
+    /**
+     * Create an in-app notification record AND send push/email if configured.
      */
     async createAndNotify(
         userId: string,
@@ -185,14 +222,27 @@ export class NotificationsService {
         message: string,
         type: string,
         pushData?: Record<string, string>,
+        sendEmail: boolean = false,
     ): Promise<void> {
         // Store in DB
         await this.prisma.notification.create({
             data: { userId, title, message, type },
         });
 
-        // Also push to device
+        // Push to device
         await this.sendPushToUser(userId, title, message, pushData);
+
+        // Send Email if requested
+        if (sendEmail) {
+            const user = await this.prisma.user.findUnique({ where: { id: userId }, select: { email: true } });
+            if (user?.email) {
+                await this.sendEmail(
+                    user.email,
+                    title,
+                    `<h3>${title}</h3><p>${message}</p><br/><p>Keep stepping with Stepify!</p>`
+                );
+            }
+        }
     }
 
     // Get user notifications from DB

@@ -4,6 +4,7 @@ import 'package:fl_chart/fl_chart.dart';
 import 'package:flutter_animate/flutter_animate.dart';
 import 'package:go_router/go_router.dart';
 import 'package:stepify_app/l10n/app_localizations.dart';
+import 'package:posthog_flutter/posthog_flutter.dart';
 
 import '../../../../core/theme/app_theme.dart';
 import '../../../../core/router/app_router.dart';
@@ -31,6 +32,7 @@ class _StepAnalyticsScreenState extends ConsumerState<StepAnalyticsScreen>
   @override
   void initState() {
     super.initState();
+    Posthog().capture(eventName: 'view_step_analytics');
     _tabController = TabController(length: 2, vsync: this);
     _fetchData();
   }

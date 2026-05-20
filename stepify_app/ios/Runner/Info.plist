@@ -62,5 +62,15 @@
 		<array>
 			<string>stepify.backgroundSync</string>
 		</array>
+		<key>NSLocationWhenInUseUsageDescription</key>
+		<string>Stepify uses your location to track outdoor walking routes and provide accurate distance measurements.</string>
+		<key>NSLocationAlwaysAndWhenInUseUsageDescription</key>
+		<string>Stepify uses your location in the background to track walking routes and log activities accurately.</string>
+		<key>NSCameraUsageDescription</key>
+		<string>Stepify uses your camera to let you update your profile photo.</string>
+		<key>NSPhotoLibraryUsageDescription</key>
+		<string>Stepify accesses your photo library so you can choose a profile picture.</string>
+		<key>NSBluetoothAlwaysUsageDescription</key>
+		<string>Stepify uses Bluetooth to sync data from compatible wearable fitness devices.</string>
 	</dict>
 </plist>

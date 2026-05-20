@@ -1,7 +1,9 @@
 import { Module } from '@nestjs/common';
-import { ConfigModule } from '@nestjs/config';
+import { ConfigModule, ConfigService } from '@nestjs/config';
 import { ThrottlerModule, ThrottlerGuard } from '@nestjs/throttler';
 import { APP_GUARD } from '@nestjs/core';
+import { BullModule } from '@nestjs/bullmq';
+import { ScheduleModule } from '@nestjs/schedule';
 
 // Core modules
 import { PrismaModule } from './prisma/prisma.module';
@@ -24,6 +26,8 @@ import { CompaniesModule } from './companies/companies.module';
 import { QuestsModule } from './quests/quests.module';
 import { MessagingModule } from './messaging/messaging.module';
 import { AnalyticsModule } from './analytics/analytics.module';
+import { AdminModule } from './admin/admin.module';
+import { ActivitiesModule } from './activities/activities.module';
 
 // Controllers
 import { HealthController } from './health.controller';
@@ -35,12 +39,26 @@ import { HealthController } from './health.controller';
             isGlobal: true,
             envFilePath: '.env',
         }),
+        ScheduleModule.forRoot(),
 
         // Rate limiting
         ThrottlerModule.forRoot([{
             ttl: 60000, // 1 minute
             limit: 100, // 100 requests per minute
         }]),
+
+        // Asynchronous Background Queues (BullMQ)
+        BullModule.forRootAsync({
+            imports: [ConfigModule],
+            inject: [ConfigService],
+            useFactory: (configService: ConfigService) => ({
+                connection: {
+                    host: configService.get('REDIS_HOST', 'localhost'),
+                    port: configService.get('REDIS_PORT', 6379),
+                    password: configService.get('REDIS_PASSWORD') || undefined,
+                },
+            }),
+        }),
 
         // Core
         PrismaModule,
@@ -63,6 +81,8 @@ import { HealthController } from './health.controller';
         QuestsModule,
         MessagingModule,
         AnalyticsModule,
+        AdminModule,
+        ActivitiesModule,
     ],
     controllers: [HealthController],
     providers: [
@@ -73,4 +93,3 @@ import { HealthController } from './health.controller';
     ],
 })
 export class AppModule { }
-

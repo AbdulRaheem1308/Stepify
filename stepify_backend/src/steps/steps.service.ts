@@ -4,6 +4,9 @@ import { ConfigService } from '@nestjs/config';
 import { SyncStepsDto } from './dto/steps.dto';
 import { RewardsService } from '../rewards/rewards.service';
 import { PostHogService } from '../analytics/posthog.service';
+import { RedisService } from '../redis/redis.service';
+import { Queue } from 'bullmq';
+import { InjectQueue } from '@nestjs/bullmq';
 
 // ── Anti-cheat thresholds ────────────────────────────────────────────────────
 // World record daily step count is ~53,491 (documented).
@@ -24,6 +27,8 @@ export class StepsService {
         private configService: ConfigService,
         private rewardsService: RewardsService,
         private postHog: PostHogService,
+        private redisService: RedisService,
+        @InjectQueue('steps-processing') private stepsQueue: Queue,
     ) {
         this.caloriesPerStep = parseFloat(this.configService.get('CALORIES_PER_STEP', '0.04'));
         this.kmPerStep = parseFloat(this.configService.get('KM_PER_STEP', '0.000762'));
@@ -36,8 +41,60 @@ export class StepsService {
      */
     async syncSteps(userId: string, dto: SyncStepsDto) {
         // ── Server-Side Anti-Cheat Validation ───────────────────────────────
+        
+        // 0. Physical Device Binding Validation
+        if (!dto.deviceIdentifier) {
+            throw new BadRequestException('Device identifier is required for step synchronization.');
+        }
+
+        const boundDevice = await this.prisma.device.findFirst({
+            where: {
+                userId,
+                identifier: dto.deviceIdentifier,
+                isActive: true,
+            },
+        });
+
+        if (!boundDevice) {
+            this.logger.warn(`🚨 SECURITY VIOLATION: User ${userId} attempted step sync from unauthorized device: ${dto.deviceIdentifier}`);
+            throw new BadRequestException('Step synchronization is only allowed from a registered, active bound device.');
+        }
+
         if (dto.stepCount < 0) {
             throw new BadRequestException('Step count cannot be negative.');
+        }
+
+        // 1. Replay attack validation (if nonce is provided)
+        if (dto.nonce) {
+            const isUnique = await this.redisService.setNonce(dto.nonce, 86400); // 24 hours
+            if (!isUnique) {
+                this.logger.warn(`🚨 REPLAY DETECTED: Nonce ${dto.nonce} already processed. Rejecting.`);
+                throw new BadRequestException('Request replay detected.');
+            }
+        }
+
+        // 2. Timestamp drift validation (if timestamp is provided)
+        if (dto.timestamp) {
+            const serverTime = Date.now();
+            const timeDiff = Math.abs(serverTime - dto.timestamp);
+            if (timeDiff > 5 * 60 * 1000) { // 5 minutes in milliseconds
+                this.logger.warn(
+                    `🚨 TIME DRIFT: Request timestamp ${dto.timestamp} differs from server time ${serverTime} by ${timeDiff}ms. Rejecting.`,
+                );
+                throw new BadRequestException('Request expired or timestamp invalid.');
+            }
+        }
+
+        // 3. Device integrity and attestation verification
+        if (dto.integrity) {
+            if (dto.integrity.isJailBroken) {
+                this.logger.warn(`🚨 JAILBROKEN DEVICE: Rejected steps from jailbroken user ${userId}`);
+                throw new BadRequestException('Jailbroken or rooted devices are blocked.');
+            }
+            if (dto.integrity.isMockLocation) {
+                this.logger.warn(`🚨 LOCATION SPOOFING: Rejected steps from mock location user ${userId}`);
+                throw new BadRequestException('Location spoofing is blocked.');
+            }
         }
 
         if (dto.stepCount > MAX_STEPS_PER_DAY) {
@@ -105,11 +162,13 @@ export class StepsService {
             },
         });
 
-        // Update streak and rewards
-        await this.rewardsService.processStepRewards(userId, effectiveStepCount, date);
-
-        // Track analytics event (non-blocking)
-        this.postHog.trackStepSync(userId, effectiveStepCount, effectiveSource).catch(() => {});
+        // Queue background job for streaks, achievements, rewards, corporate leaderboard updates, and analytics
+        await this.stepsQueue.add('process-sync', {
+            userId,
+            effectiveStepCount,
+            date: date.toISOString(),
+            effectiveSource,
+        });
 
         return step;
     }

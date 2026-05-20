@@ -52,6 +52,7 @@ class AuthNotifier extends StateNotifier<AuthState> {
   final ApiService _apiService;
 
   AuthNotifier(this._apiService) : super(AuthState()) {
+    _apiService.onAuthFailure = logout;
     _checkAuth();
   }
 

@@ -77,4 +77,19 @@ export class MessagingService implements OnModuleInit {
             }
         });
     }
+
+    /**
+     * Checks if a user is a participant in a conversation.
+     */
+    async isParticipant(conversationId: string, userId: string): Promise<boolean> {
+        const participant = await this.prisma.conversationParticipant.findUnique({
+            where: {
+                conversationId_userId: {
+                    conversationId,
+                    userId,
+                },
+            },
+        });
+        return !!participant;
+    }
 }

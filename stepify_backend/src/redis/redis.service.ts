@@ -144,4 +144,31 @@ export class RedisService implements OnModuleDestroy {
         if (!this.isRedisConnected()) return;
         await this.client.del(key);
     }
+
+    /**
+     * Nonce check to prevent replay attacks.
+     * Returns true if the nonce is unique and successfully recorded, false otherwise.
+     */
+    async setNonce(nonce: string, expirySeconds: number): Promise<boolean> {
+        const key = `nonce:${nonce}`;
+        if (!this.isRedisConnected()) {
+            const item = this.memoryStore.get(key);
+            if (item && item.expiry > Date.now()) {
+                return false; // Nonce already exists (replay)
+            }
+            this.memoryStore.set(key, {
+                value: 'used',
+                expiry: Date.now() + expirySeconds * 1000,
+            });
+            return true;
+        }
+        
+        try {
+            const result = await this.client.set(key, 'used', 'EX', expirySeconds, 'NX');
+            return result === 'OK';
+        } catch (e) {
+            // Fail secure (reject) on Redis issues to prevent reward exploits
+            return false;
+        }
+    }
 }

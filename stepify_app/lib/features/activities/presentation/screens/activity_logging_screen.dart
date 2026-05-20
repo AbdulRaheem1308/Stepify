@@ -132,17 +132,29 @@ class _ActivityLoggingScreenState extends ConsumerState<ActivityLoggingScreen> {
       distance = double.tryParse(_distanceController.text);
     }
     
-    await ref.read(activityProvider.notifier).logActivity(
+    final error = await ref.read(activityProvider.notifier).logActivity(
       type: _selectedType,
       duration: Duration(minutes: duration),
       distanceKm: distance,
     );
     
     if (mounted) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('Activity Logged! Points added.')),
-      );
-      context.pop();
+      if (error != null) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text(error),
+            backgroundColor: AppTheme.error,
+          ),
+        );
+      } else {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(
+            content: Text('Activity Logged! Points added.'),
+            backgroundColor: AppTheme.success,
+          ),
+        );
+        context.pop();
+      }
     }
   }
 

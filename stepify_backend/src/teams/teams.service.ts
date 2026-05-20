@@ -244,6 +244,54 @@ export class TeamsService {
         return challenges;
     }
 
+    // Initiate a Team Battle
+    async initiateBattle(challengerTeamId: string, opponentTeamId: string, userId: string) {
+        if (challengerTeamId === opponentTeamId) {
+            throw new BadRequestException('You cannot battle your own team.');
+        }
+
+        // Verify challenger is the captain of their team
+        const challengerTeam = await this.prisma.team.findUnique({ where: { id: challengerTeamId } });
+        if (!challengerTeam || challengerTeam.captainId !== userId) {
+            throw new ForbiddenException('Only the Team Captain can initiate a battle.');
+        }
+
+        // Verify opponent exists
+        const opponentTeam = await this.prisma.team.findUnique({ where: { id: opponentTeamId } });
+        if (!opponentTeam) {
+            throw new NotFoundException('Opponent team not found.');
+        }
+
+        // Check if an active battle already exists between these two teams
+        const existingBattle = await (this.prisma as any).teamBattle.findFirst({
+            where: {
+                OR: [
+                    { challengerId: challengerTeamId, opponentId: opponentTeamId, status: 'ACTIVE' },
+                    { challengerId: opponentTeamId, opponentId: challengerTeamId, status: 'ACTIVE' },
+                ]
+            }
+        });
+
+        if (existingBattle) {
+            throw new BadRequestException('An active battle already exists between these teams.');
+        }
+
+        const now = new Date();
+        const nextWeek = new Date(now.getTime() + 7 * 24 * 60 * 60 * 1000); // 7 days from now
+
+        const battle = await (this.prisma as any).teamBattle.create({
+            data: {
+                challengerId: challengerTeamId,
+                opponentId: opponentTeamId,
+                status: 'ACTIVE',
+                startsAt: now,
+                endsAt: nextWeek,
+            }
+        });
+
+        return { success: true, battle };
+    }
+
     // Get team leaderboard
     async getTeamLeaderboard() {
         const teams = await this.prisma.team.findMany({

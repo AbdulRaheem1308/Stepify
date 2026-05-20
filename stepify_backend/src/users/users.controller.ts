@@ -1,4 +1,4 @@
-import { Controller, Get, Put, Post, Body, Query, UseGuards } from '@nestjs/common';
+import { Controller, Get, Put, Post, Delete, Body, Query, UseGuards } from '@nestjs/common';
 import { UsersService } from './users.service';
 import { UpdateUserDto } from './dto/user.dto';
 import { JwtAuthGuard } from '../auth/guards/jwt-auth.guard';
@@ -96,5 +96,23 @@ export class UsersController {
     @Put('me/settings')
     async updateSettings(@CurrentUser() user: any, @Body() body: any) {
         return this.usersService.updateSettings(user.id, body);
+    }
+
+    /**
+     * GDPR: Export user data
+     * GET /api/v1/users/me/export
+     */
+    @Get('me/export')
+    async exportData(@CurrentUser() user: any) {
+        return this.usersService.exportData(user.id);
+    }
+
+    /**
+     * GDPR: Delete account
+     * DELETE /api/v1/users/me
+     */
+    @Delete('me')
+    async deleteAccount(@CurrentUser() user: any) {
+        return this.usersService.deleteAccount(user.id);
     }
 }

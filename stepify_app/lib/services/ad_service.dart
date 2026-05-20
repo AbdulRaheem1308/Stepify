@@ -11,6 +11,12 @@ class AdService {
   InterstitialAd? _interstitialAd;
   bool _isInterstitialAdReady = false;
 
+  RewardedAd? _rewardedAd;
+  bool _isRewardedAdReady = false;
+  
+  // Track loaded native ads
+  final Map<String, NativeAd> _nativeAds = {};
+
   // Check if Ads are supported (Android/iOS only, not Web)
   bool get _isSupported {
     if (kIsWeb) return false;
@@ -22,6 +28,7 @@ class AdService {
     try {
       await MobileAds.instance.initialize();
       _loadInterstitialAd();
+      loadRewardedAd();
     } catch (e) {
       debugPrint('AdMob Init Failed: $e');
     }
@@ -53,6 +60,34 @@ class AdService {
     return defaultTargetPlatform == TargetPlatform.android
         ? 'ca-app-pub-xxxxxxxxxxxxxxxx/3333333333'
         : 'ca-app-pub-xxxxxxxxxxxxxxxx/4444444444'; 
+  }
+
+  // Rewarded Ad Unit ID
+  String get rewardedAdUnitId {
+    if (!_isSupported) return '';
+
+    if (kDebugMode) {
+      return defaultTargetPlatform == TargetPlatform.android
+          ? 'ca-app-pub-3940256099942544/5224354917'
+          : 'ca-app-pub-3940256099942544/1712485313';
+    }
+    return defaultTargetPlatform == TargetPlatform.android
+        ? 'ca-app-pub-xxxxxxxxxxxxxxxx/5555555555'
+        : 'ca-app-pub-xxxxxxxxxxxxxxxx/6666666666';
+  }
+
+  // Native Ad Unit ID
+  String get nativeAdUnitId {
+    if (!_isSupported) return '';
+
+    if (kDebugMode) {
+      return defaultTargetPlatform == TargetPlatform.android
+          ? 'ca-app-pub-3940256099942544/2247696110' // Android native advanced test ID
+          : 'ca-app-pub-3940256099942544/3986624511'; // iOS native advanced test ID
+    }
+    return defaultTargetPlatform == TargetPlatform.android
+        ? 'ca-app-pub-xxxxxxxxxxxxxxxx/7777777777'
+        : 'ca-app-pub-xxxxxxxxxxxxxxxx/8888888888';
   }
 
   // Create Banner Ad
@@ -107,8 +142,62 @@ class AdService {
     );
   }
 
-  DateTime? _lastAdTime;
+  // Check if Rewarded Ad is ready
+  bool get isRewardedAdReady => _isRewardedAdReady && _rewardedAd != null;
 
+  // Load Rewarded Ad
+  void loadRewardedAd() {
+    if (!_isSupported) return;
+
+    RewardedAd.load(
+      adUnitId: rewardedAdUnitId,
+      request: const AdRequest(),
+      rewardedAdLoadCallback: RewardedAdLoadCallback(
+        onAdLoaded: (ad) {
+          _rewardedAd = ad;
+          _isRewardedAdReady = true;
+          debugPrint('Rewarded Ad loaded');
+          
+          ad.fullScreenContentCallback = FullScreenContentCallback(
+            onAdDismissedFullScreenContent: (ad) {
+              ad.dispose();
+              _isRewardedAdReady = false;
+              loadRewardedAd(); // Load next one
+            },
+            onAdFailedToShowFullScreenContent: (ad, error) {
+              ad.dispose();
+              _isRewardedAdReady = false;
+              loadRewardedAd();
+            },
+          );
+        },
+        onAdFailedToLoad: (error) {
+          debugPrint('Rewarded Ad failed to load: $error');
+          _isRewardedAdReady = false;
+        },
+      ),
+    );
+  }
+
+  // Show Rewarded Ad
+  void showRewardedAd({
+    required void Function(RewardItem reward) onUserEarnedReward,
+    required VoidCallback onAdFailedToShow,
+  }) {
+    if (!_isSupported || !_isRewardedAdReady || _rewardedAd == null) {
+      debugPrint('Rewarded ad not ready, calling fallback');
+      onAdFailedToShow();
+      return;
+    }
+
+    _rewardedAd!.show(
+      onUserEarnedReward: (AdWithoutView ad, RewardItem reward) {
+        onUserEarnedReward(reward);
+      },
+    );
+  }
+
+  DateTime? _lastAdTime;
   
   // Dynamic Interval from Remote Config
   Duration get _minAdInterval => Duration(seconds: _remoteConfigService.interstitialAdIntervalSeconds);
@@ -134,9 +223,37 @@ class AdService {
       if (!_isInterstitialAdReady) _loadInterstitialAd();
     }
   }
+
+  // Load a Native Ad
+  Future<NativeAd?> loadNativeAd({required String factoryId}) async {
+    if (!_isSupported) return null;
+    
+    final nativeAd = NativeAd(
+      adUnitId: nativeAdUnitId,
+      factoryId: factoryId, // Needs to be configured in MainActivity.java / AppDelegate.swift
+      request: const AdRequest(),
+      listener: NativeAdListener(
+        onAdLoaded: (ad) {
+          debugPrint('Native Ad loaded.');
+        },
+        onAdFailedToLoad: (ad, error) {
+          debugPrint('Native Ad failed to load: $error');
+          ad.dispose();
+        },
+      ),
+    );
+    
+    await nativeAd.load();
+    return nativeAd;
+  }
   
   void dispose() {
     _interstitialAd?.dispose();
+    _rewardedAd?.dispose();
+    for (final ad in _nativeAds.values) {
+      ad.dispose();
+    }
+    _nativeAds.clear();
   }
 }
 

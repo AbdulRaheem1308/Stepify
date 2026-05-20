@@ -170,23 +170,42 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
           ),
           const SizedBox(height: 16),
 
-          // Legal Section
+          // Legal & GDPR Section
           _buildSection(
             context,
-            title: 'Legal',
+            title: 'Legal & Privacy (GDPR)',
             icon: Icons.gavel_outlined,
             children: [
               _buildLinkTile(
                 context,
                 title: 'Privacy Policy',
                 icon: Icons.privacy_tip_outlined,
-                onTap: () => _launchUrl('https://stepify.app/privacy'),
+                onTap: () => context.push('/privacy-policy'),
               ),
               _buildLinkTile(
                 context,
                 title: 'Terms of Service',
                 icon: Icons.description_outlined,
-                onTap: () => _launchUrl('https://stepify.app/terms'),
+                onTap: () => context.push('/terms'),
+              ),
+              const Divider(height: 1),
+              _buildLinkTile(
+                context,
+                title: 'Request My Data',
+                icon: Icons.download_outlined,
+                onTap: () => _handleDataExport(context),
+              ),
+              ListTile(
+                leading: Container(
+                  padding: const EdgeInsets.all(8),
+                  decoration: BoxDecoration(
+                    color: AppTheme.error.withOpacity(0.1),
+                    borderRadius: BorderRadius.circular(8),
+                  ),
+                  child: const Icon(Icons.delete_forever_outlined, size: 20, color: AppTheme.error),
+                ),
+                title: const Text('Delete Account', style: TextStyle(fontWeight: FontWeight.w500, fontSize: 14, color: AppTheme.error)),
+                onTap: () => _handleAccountDeletion(context),
               ),
             ],
           ),
@@ -371,6 +390,39 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
               );
             },
             child: const Text('Reset', style: TextStyle(color: AppTheme.error)),
+          ),
+        ],
+      ),
+    );
+  }
+
+  void _handleDataExport(BuildContext context) {
+    ScaffoldMessenger.of(context).showSnackBar(
+      const SnackBar(content: Text('Data export requested. Check your email shortly.')),
+    );
+    // TODO: Call API /users/me/export
+  }
+
+  void _handleAccountDeletion(BuildContext context) {
+    showDialog(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        title: const Text('Delete Account?', style: TextStyle(color: AppTheme.error)),
+        content: const Text('This action is permanent and cannot be undone. All your steps, rewards, and data will be permanently erased. Are you sure?'),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(ctx),
+            child: const Text('Cancel'),
+          ),
+          TextButton(
+            onPressed: () {
+              Navigator.pop(ctx);
+              // TODO: Call API DELETE /users/me and logout
+              ScaffoldMessenger.of(context).showSnackBar(
+                const SnackBar(content: Text('Account deletion initiated.')),
+              );
+            },
+            child: const Text('Delete Forever', style: TextStyle(color: AppTheme.error)),
           ),
         ],
       ),

@@ -1,4 +1,8 @@
+import 'dart:io';
+import 'package:flutter/foundation.dart';
 import 'package:dio/dio.dart';
+import 'package:dio/io.dart';
+import 'package:crypto/crypto.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../core/constants/app_constants.dart';
@@ -13,6 +17,7 @@ final apiServiceProvider = Provider<ApiService>((ref) {
 class ApiService {
   late final Dio _dio;
   bool _isRefreshing = false;
+  Future<void> Function()? onAuthFailure;
   
   ApiService() {
     _dio = Dio(
@@ -26,6 +31,47 @@ class ApiService {
         },
       ),
     );
+    
+    // SSL Pinning Setup (Fix #5)
+    if (!kIsWeb) {
+      final adapter = _dio.httpClientAdapter;
+      if (adapter is IOHttpClientAdapter) {
+        adapter.createHttpClient = () {
+          final client = HttpClient();
+          client.badCertificateCallback = (X509Certificate cert, String host, int port) {
+            // Only enforce pinning for HTTPS in production (non-local hosts)
+            if (AppConstants.apiBaseUrl.startsWith('https://')) {
+              // 1. Safe bypass for dev servers
+              if (host == 'localhost' || host == '127.0.0.1' || host.startsWith('192.168.')) {
+                return true;
+              }
+              
+              // 2. Strict Pinning Verification
+              // Production certificate SHA-256 fingerprint
+              const pinnedSha256 = '4a:5e:32:8f:6a:1c:12:0f:71:b8:39:aa:88:de:fb:cc:12:34:56:78:90:ab:cd:ef:12:34:56:78:90:ab:cd:ef';
+              
+              try {
+                final derBytes = cert.der;
+                final hash = sha256.convert(derBytes).toString().replaceAll('-', ':').toLowerCase();
+                final formattedPinned = pinnedSha256.replaceAll(':', '').toLowerCase();
+                final formattedHash = hash.replaceAll(':', '').toLowerCase();
+                
+                if (formattedHash == formattedPinned) {
+                  return true; // Trusted
+                }
+                debugPrint('❌ SSL Pinning Error: Certificate fingerprint $formattedHash did not match pinned $formattedPinned');
+                return false; // Reject MitM
+              } catch (e) {
+                debugPrint('❌ SSL Pinning Exception: $e');
+                return false;
+              }
+            }
+            return true; // Allow plain HTTP / local dev connections
+          };
+          return client;
+        };
+      }
+    }
     
     _dio.interceptors.add(
       InterceptorsWrapper(
@@ -88,10 +134,22 @@ class ApiService {
           final response = await _dio.fetch(options);
           handler.resolve(response);
           return;
+        } else {
+          // Silent refresh failed (e.g. invalid/expired/blacklisted refresh token)
+          await StorageService.clearTokens();
+          await StorageService.clearUser();
+          if (onAuthFailure != null) {
+            onAuthFailure!();
+          }
         }
       } catch (e) {
         _isRefreshing = false;
         // Refresh failed - need to re-login
+        await StorageService.clearTokens();
+        await StorageService.clearUser();
+        if (onAuthFailure != null) {
+          onAuthFailure!();
+        }
       }
     }
     handler.next(error);

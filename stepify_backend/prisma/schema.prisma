@@ -54,7 +54,9 @@ model User {
   heightCm      Decimal?  @db.Decimal(5, 2)
   weightKg      Decimal?  @db.Decimal(5, 2)
   age           Int?
-  dailyStepGoal Int       @default(10000)
+  dailyStepGoal       Int       @default(10000)
+  activityPreferences String[]  // e.g. ["walking", "running", "cycling"]
+  fitnessLevel        String?   @default("beginner") // beginner | active | athlete | elite
 
   // Referral System
   referralCode  String?   @unique // The code this user shares
@@ -97,6 +99,9 @@ model User {
   sentMessages               Message[]
   participatingConversations ConversationParticipant[]
 
+  // Activities
+  activities                 Activity[]
+
   @@map("users")
 }
 
@@ -134,7 +139,7 @@ model RefreshToken {
 }
 
 // ============================================
-// STEP TRACKING
+// STEP TRACKING & ACTIVITIES
 // ============================================
 
 model Step {
@@ -153,6 +158,23 @@ model Step {
 
   @@unique([userId, date])
   @@map("steps")
+}
+
+model Activity {
+  id             String   @id @default(uuid())
+  userId         String
+  user           User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  type           String   // running, cycling, walking, swimming, yoga, gym, hiking
+  durationMinutes Int
+  distanceKm     Decimal  @default(0) @db.Decimal(6, 2)
+  caloriesBurned Int      @default(0)
+  pointsEarned   Int      @default(0)
+  startTime      DateTime
+  source         String   @default("manual") // manual, gps
+  createdAt      DateTime @default(now())
+
+  @@index([userId, startTime])
+  @@map("activities")
 }
 
 // ============================================
@@ -649,6 +671,8 @@ model Team {
 
   members         TeamMember[]
   teamChallenges  TeamChallenge[]
+  battlesInitiated TeamBattle[] @relation("BattleChallenger")
+  battlesReceived  TeamBattle[] @relation("BattleOpponent")
 
   @@index([captainId])
   @@map("teams")
@@ -686,6 +710,22 @@ model TeamChallenge {
 
   @@index([teamId, status])
   @@map("team_challenges")
+}
+
+model TeamBattle {
+  id              String   @id @default(uuid())
+  challengerId    String
+  challenger      Team     @relation("BattleChallenger", fields: [challengerId], references: [id])
+  opponentId      String
+  opponent        Team     @relation("BattleOpponent", fields: [opponentId], references: [id])
+  status          String   @default("PENDING") // PENDING, ACTIVE, COMPLETED
+  challengerSteps Int      @default(0)
+  opponentSteps   Int      @default(0)
+  startsAt        DateTime
+  endsAt          DateTime
+  createdAt       DateTime @default(now())
+
+  @@map("team_battles")
 }
 
 // ============================================

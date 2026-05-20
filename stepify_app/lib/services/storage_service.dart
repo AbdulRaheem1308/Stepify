@@ -1,5 +1,6 @@
 import 'package:hive_flutter/hive_flutter.dart';
 import 'package:flutter_secure_storage/flutter_secure_storage.dart';
+import 'package:uuid/uuid.dart';
 
 import '../core/constants/app_constants.dart';
 
@@ -44,6 +45,15 @@ class StorageService {
   static Future<void> clearTokens() async {
     await _secureStorage.delete(key: AppConstants.accessTokenKey);
     await _secureStorage.delete(key: AppConstants.refreshTokenKey);
+  }
+
+  static Future<String> getOrCreateDeviceUUID() async {
+    String? uuidStr = await _secureStorage.read(key: AppConstants.deviceUuidKey);
+    if (uuidStr == null) {
+      uuidStr = const Uuid().v4();
+      await _secureStorage.write(key: AppConstants.deviceUuidKey, value: uuidStr);
+    }
+    return uuidStr;
   }
   
   // ============================================

@@ -2,6 +2,8 @@ import { Injectable, Logger } from '@nestjs/common';
 import { PrismaService } from '../prisma/prisma.service';
 import { ConfigService } from '@nestjs/config';
 import { TransactionType } from '@prisma/client';
+import { QuestsService } from '../quests/quests.service';
+import { Cron, CronExpression } from '@nestjs/schedule';
 
 @Injectable()
 export class RewardsService {
@@ -11,8 +13,59 @@ export class RewardsService {
     constructor(
         private prisma: PrismaService,
         private configService: ConfigService,
+        private questsService: QuestsService,
     ) {
         this.pointsPerStep = parseFloat(this.configService.get('POINTS_PER_STEP', '0.1'));
+    }
+
+    /**
+     * CRON: Wallet Expiry
+     * Runs daily at midnight to expire coins for users inactive for > 180 days.
+     */
+    @Cron(CronExpression.EVERY_DAY_AT_MIDNIGHT)
+    async processWalletExpiry() {
+        this.logger.log('Running CRON: processWalletExpiry');
+        
+        const sixMonthsAgo = new Date();
+        sixMonthsAgo.setDate(sixMonthsAgo.getDate() - 180);
+
+        // Find users with balance > 0 who haven't logged steps or transactions in 180 days
+        const inactiveUsers = await this.prisma.user.findMany({
+            where: {
+                wallet: { balance: { gt: 0 } },
+                updatedAt: { lt: sixMonthsAgo }
+            },
+            include: { wallet: true }
+        });
+
+        if (inactiveUsers.length === 0) {
+            this.logger.log('No inactive wallets to expire.');
+            return;
+        }
+
+        for (const user of inactiveUsers) {
+            if (!user.wallet) continue;
+            
+            // 1. Drain balance
+            await this.prisma.wallet.update({
+                where: { userId: user.id },
+                data: { balance: 0 }
+            });
+
+            // 2. Log expiration transaction
+            await this.prisma.transaction.create({
+                data: {
+                    userId: user.id,
+                    type: 'REDEMPTION', // Align with schema TransactionType
+                    points: -user.wallet.balance,
+                    description: 'Coins expired due to 180 days of inactivity.'
+                }
+            });
+            
+            this.logger.log(`Expired ${user.wallet.balance} coins for inactive user ${user.id}`);
+        }
+        
+        this.logger.log(`Wallet expiry complete. Expired ${inactiveUsers.length} wallets.`);
     }
 
     /**
@@ -104,6 +157,9 @@ export class RewardsService {
 
         // Check for new achievements
         await this.checkAchievements(userId);
+
+        // Process live quest progression
+        await this.questsService.processQuestProgress(userId, stepCount);
 
         // Check for monthly reset
         await this.checkMonthlyReset(userId);

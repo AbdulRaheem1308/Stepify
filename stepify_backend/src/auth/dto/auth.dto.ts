@@ -22,6 +22,10 @@ export class VerifyOtpDto {
     @IsString()
     @Length(4, 8)
     otp: string;
+
+    @IsOptional()
+    @IsString()
+    referralCode?: string;
 }
 
 export class RefreshTokenDto {
@@ -32,4 +36,8 @@ export class RefreshTokenDto {
 export class SocialLoginDto {
     @IsString()
     idToken: string;
+
+    @IsOptional()
+    @IsString()
+    referralCode?: string;
 }

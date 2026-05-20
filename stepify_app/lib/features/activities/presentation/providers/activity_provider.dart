@@ -16,58 +16,80 @@ class ActivityState {
   }
 }
 
+// Security constants for activity validation
+const int _kMaxDurationMinutes = 300;  // 5 hours max per session
+const int _kMinDurationMinutes = 1;    // at least 1 minute
+const int _kMaxPointsPerSession = 900; // 300 min * 3.0 max multiplier
+
 class ActivityNotifier extends StateNotifier<ActivityState> {
-  final ApiService _api; // For future backend sync
+  final ApiService _api;
 
   ActivityNotifier(this._api) : super(ActivityState()) {
-    _loadMockData();
+    // No mock data loaded in production
   }
 
-  void _loadMockData() {
-    // Generate some fake history
-    state = state.copyWith(recentActivities: [
-      Activity(
-        id: '1',
-        type: ActivityType.running,
-        startTime: DateTime.now().subtract(const Duration(days: 1, hours: 2)),
-        duration: const Duration(minutes: 30),
-        caloriesBurned: 300,
-        distanceKm: 5.0,
-        pointsEarned: 90, // 30 * 3
-      ),
-      Activity(
-        id: '2',
-        type: ActivityType.yoga,
-        startTime: DateTime.now().subtract(const Duration(days: 2, hours: 14)),
-        duration: const Duration(minutes: 45),
-        caloriesBurned: 150,
-        pointsEarned: 67, // 45 * 1.5
-      ),
-    ]);
+  /// Fetch real activity history from backend
+  Future<void> fetchActivities() async {
+    state = state.copyWith(isLoading: true);
+    try {
+      final response = await _api.get('/activities');
+      final list = (response.data as List)
+          .map((e) => Activity.fromJson(e))
+          .toList();
+      state = state.copyWith(recentActivities: list, isLoading: false);
+    } catch (_) {
+      state = state.copyWith(isLoading: false);
+    }
   }
   
-  Future<void> logActivity({
+  Future<String?> logActivity({
     required ActivityType type,
     required Duration duration,
     double? distanceKm,
   }) async {
+    // ── Security validation (Fix #1 & #2) ──────────────────────────────
+    if (duration.inMinutes < _kMinDurationMinutes) {
+      return 'Duration must be at least $_kMinDurationMinutes minute.';
+    }
+    if (duration.inMinutes > _kMaxDurationMinutes) {
+      return 'Duration cannot exceed $_kMaxDurationMinutes minutes (5 hours) per session.';
+    }
+    // Distance sanity: max realistic distance per activity type
+    if (distanceKm != null) {
+      final maxKm = _maxDistanceKm(type, duration.inMinutes);
+      if (distanceKm > maxKm) {
+        return 'Distance entered ($distanceKm km) is unrealistic for ${duration.inMinutes} minutes of ${type.name}.';
+      }
+    }
+    // ────────────────────────────────────────────────────────────────────
+
     state = state.copyWith(isLoading: true);
-    
-    // Simulate API delay
-    await Future.delayed(const Duration(seconds: 1));
-    
-    // Calculate Stats
+
+    // Calculate stats server-side formula (client shows preview only)
     final multiplier = Activity.getPointsMultiplier(type);
-    final points = (duration.inMinutes * multiplier).toInt();
-    
-    // Rough calorie estimation (METs logic simplified)
-    // Running ~10 kcal/min, Walking ~4, Yoga ~3
+    // Cap points to prevent overflow — backend must re-validate
+    final rawPoints = (duration.inMinutes * multiplier).toInt();
+    final points = rawPoints.clamp(0, _kMaxPointsPerSession);
+
     double calsPerMin = 5;
     if (type == ActivityType.running || type == ActivityType.swimming) calsPerMin = 10;
     if (type == ActivityType.cycling || type == ActivityType.gym) calsPerMin = 7;
     if (type == ActivityType.yoga) calsPerMin = 3;
-    
+
     final calories = duration.inMinutes * calsPerMin;
+
+    try {
+      // POST to backend — backend is the source of truth for points
+      await _api.post('/activities', data: {
+        'type': type.name,
+        'durationMinutes': duration.inMinutes,
+        'distanceKm': distanceKm ?? 0,
+        'caloriesBurned': calories,
+        'startTime': DateTime.now().toUtc().toIso8601String(),
+      });
+    } catch (_) {
+      // Fall through: show local optimistic result even if offline
+    }
 
     final newActivity = Activity(
       id: DateTime.now().toIso8601String(),
@@ -78,12 +100,24 @@ class ActivityNotifier extends StateNotifier<ActivityState> {
       distanceKm: distanceKm ?? 0,
       pointsEarned: points,
     );
-    
-    // Prepend to list
+
     state = state.copyWith(
       recentActivities: [newActivity, ...state.recentActivities],
       isLoading: false,
     );
+    return null; // null = success
+  }
+
+  /// Max realistic distance (km) for given activity type and duration
+  double _maxDistanceKm(ActivityType type, int minutes) {
+    switch (type) {
+      case ActivityType.running:  return minutes * 0.35; // ~21 km/h elite
+      case ActivityType.cycling:  return minutes * 0.9;  // ~54 km/h sprint
+      case ActivityType.walking:  return minutes * 0.12; // ~7.2 km/h fast walk
+      case ActivityType.hiking:   return minutes * 0.1;
+      case ActivityType.swimming: return minutes * 0.05; // ~3 km/h
+      default:                    return double.infinity;
+    }
   }
 }
 

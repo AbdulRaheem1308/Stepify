@@ -16,6 +16,7 @@ class AppConstants {
   static const String userKey = 'user_data';
   static const String onboardingCompleteKey = 'onboarding_complete';
   static const String themeKey = 'theme_mode';
+  static const String deviceUuidKey = 'device_uuid';
 
   // Step Tracking
   static const int defaultDailyGoal = 10000;

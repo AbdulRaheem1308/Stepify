@@ -1,9 +1,11 @@
+import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_animate/flutter_animate.dart';
 import 'package:go_router/go_router.dart';
 import 'package:stepify_app/l10n/app_localizations.dart';
 import '../../../../core/theme/app_theme.dart';
+import '../../../../services/ad_service.dart';
 import '../providers/offers_provider.dart';
 
 /// Screen 16: In-App Ads & Sponsor Offers
@@ -43,7 +45,7 @@ class OffersScreen extends ConsumerWidget {
                    itemBuilder: (context, index) {
                      return Padding(
                        padding: const EdgeInsets.only(right: 8, left: 16),
-                       child: _buildFeaturedCard(context, state.featuredOffers[index]),
+                       child: _buildFeaturedCard(context, ref, state.featuredOffers[index]),
                      );
                    },
                  ),
@@ -93,7 +95,7 @@ class OffersScreen extends ConsumerWidget {
     );
   }
 
-  Widget _buildFeaturedCard(BuildContext context, Offer offer) {
+  Widget _buildFeaturedCard(BuildContext context, WidgetRef ref, Offer offer) {
     return Container(
       decoration: BoxDecoration(
         borderRadius: BorderRadius.circular(20),
@@ -150,9 +152,37 @@ class OffersScreen extends ConsumerWidget {
                 ),
                 const SizedBox(height: 16),
                 ElevatedButton(
-                  onPressed: () {
-                    // Simulate ad watch
-                    showDialog(context: context, builder: (c) => _buildAdSimulationDialog(context, offer.rewardCoins));
+                  onPressed: () async {
+                    // Start the offer
+                    await ref.read(offersProvider.notifier).startOffer(offer.id);
+                    
+                    if (!context.mounted) return;
+                    
+                    final adService = ref.read(adServiceProvider);
+                    adService.showRewardedAd(
+                      onUserEarnedReward: (reward) async {
+                        final coinsEarned = await ref.read(offersProvider.notifier).completeOffer(offer.id);
+                        if (context.mounted) {
+                          _showRewardDialog(context, coinsEarned > 0 ? coinsEarned : offer.rewardCoins);
+                        }
+                      },
+                      onAdFailedToShow: () async {
+                        // Fall back to simulation dialog
+                        await showDialog(
+                          context: context,
+                          barrierDismissible: false,
+                          builder: (ctx) => _AdSimulationDialog(onComplete: () async {
+                            if (ctx.mounted) {
+                              Navigator.pop(ctx);
+                            }
+                            final coinsEarned = await ref.read(offersProvider.notifier).completeOffer(offer.id);
+                            if (context.mounted) {
+                              _showRewardDialog(context, coinsEarned > 0 ? coinsEarned : offer.rewardCoins);
+                            }
+                          }),
+                        );
+                      },
+                    );
                   },
                   style: ElevatedButton.styleFrom(
                     backgroundColor: Colors.white,
@@ -222,17 +252,92 @@ class OffersScreen extends ConsumerWidget {
     ).animate().fadeIn(delay: (100 * index).ms).slideX(begin: 0.05, end: 0);
   }
   
-  Widget _buildAdSimulationDialog(BuildContext context, int coins) {
-    return AlertDialog(
-       title: const Text('Watching Ad...'),
-       content: Column(
-         mainAxisSize: MainAxisSize.min,
-         children: [
-           const CircularProgressIndicator(),
-           const SizedBox(height: 16),
-           const Text('Please wait while the video plays.'),
-         ],
-       ),
-    ).animate().fadeIn(); // Simplified, in real app would use a video player
+  void _showRewardDialog(BuildContext context, int coins) {
+    showDialog(
+      context: context,
+      builder: (ctx) => Dialog(
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
+        child: Container(
+          padding: const EdgeInsets.all(24),
+          decoration: BoxDecoration(
+            gradient: AppTheme.rewardGradient,
+            borderRadius: BorderRadius.circular(20),
+          ),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              const Icon(Icons.celebration, size: 64, color: Colors.white),
+              const SizedBox(height: 16),
+              const Text('Offer Completed!',
+                  style: TextStyle(color: Colors.white, fontSize: 24, fontWeight: FontWeight.bold)),
+              Text('+$coins coins',
+                  style: const TextStyle(color: Colors.white, fontSize: 32, fontWeight: FontWeight.bold)),
+              const SizedBox(height: 24),
+              ElevatedButton(
+                onPressed: () => Navigator.pop(ctx),
+                style: ElevatedButton.styleFrom(backgroundColor: Colors.white, foregroundColor: AppTheme.accentOrange),
+                child: const Text('Awesome!'),
+              ),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+}
+
+class _AdSimulationDialog extends StatefulWidget {
+  final VoidCallback onComplete;
+  const _AdSimulationDialog({required this.onComplete});
+
+  @override
+  State<_AdSimulationDialog> createState() => _AdSimulationDialogState();
+}
+
+class _AdSimulationDialogState extends State<_AdSimulationDialog> {
+  double _progress = 0;
+  Timer? _timer;
+
+  @override
+  void initState() {
+    super.initState();
+    _timer = Timer.periodic(const Duration(milliseconds: 100), (t) {
+      if (mounted) {
+        setState(() => _progress += 0.02);
+      }
+      if (_progress >= 1) {
+        t.cancel();
+        Future.delayed(const Duration(milliseconds: 300), () {
+          if (mounted) {
+            widget.onComplete();
+          }
+        });
+      }
+    });
+  }
+
+  @override
+  void dispose() {
+    _timer?.cancel();
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return Dialog(
+      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
+      child: Padding(
+        padding: const EdgeInsets.all(24),
+        child: Column(mainAxisSize: MainAxisSize.min, children: [
+          const Icon(Icons.play_circle_filled, size: 80, color: AppTheme.primaryGreen),
+          const SizedBox(height: 16),
+          const Text('Watching Ad...', style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold)),
+          const SizedBox(height: 24),
+          Text('${(5 - _progress * 5).ceil()}', style: const TextStyle(fontSize: 32, fontWeight: FontWeight.bold, color: AppTheme.primaryGreen)),
+          const SizedBox(height: 16),
+          ClipRRect(borderRadius: BorderRadius.circular(8), child: LinearProgressIndicator(value: _progress, backgroundColor: AppTheme.neutral200, valueColor: const AlwaysStoppedAnimation(AppTheme.primaryGreen), minHeight: 10)),
+        ]),
+      ),
+    );
   }
 }

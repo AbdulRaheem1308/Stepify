@@ -33,6 +33,7 @@ void callbackDispatcher() {
 
         
         final healthService = HealthService();
+        final deviceUUID = await StorageService.getOrCreateDeviceUUID();
 
         // 3. Fetch Steps
         // We need permissions to be already granted.
@@ -43,8 +44,9 @@ void callbackDispatcher() {
            // 4. Send to Backend
            try {
              await apiService.post('/steps/sync', data: {
+               'deviceIdentifier': deviceUUID,
                'stepCount': steps,
-               'date': DateTime.now().toIso8601String(),
+               'date': DateTime.now().toIso8601String().split('T')[0],
                'source': 'BACKGROUND_WEARABLE'
              });
              debugPrint("Background Sync: Success");

@@ -43,6 +43,8 @@ import '../../features/quests/presentation/screens/quest_detail_screen.dart';
 import '../../features/companies/presentation/screens/join_company_screen.dart';
 import '../../features/companies/presentation/screens/company_dashboard_screen.dart';
 import '../../features/settings/presentation/screens/sensor_diagnostics_screen.dart';
+import '../../features/legal/presentation/screens/privacy_policy_screen.dart';
+import '../../features/legal/presentation/screens/terms_screen.dart';
 
 /// App Router Provider using GoRouter
 final appRouterProvider = Provider<GoRouter>((ref) {
@@ -50,6 +52,18 @@ final appRouterProvider = Provider<GoRouter>((ref) {
     initialLocation: '/',
     debugLogDiagnostics: true,
     routes: [
+      // Legal Routes
+      GoRoute(
+        path: '/privacy-policy',
+        name: 'privacy-policy',
+        builder: (context, state) => const PrivacyPolicyScreen(),
+      ),
+      GoRoute(
+        path: '/terms',
+        name: 'terms',
+        builder: (context, state) => const TermsScreen(),
+      ),
+      
       // Splash Screen
       GoRoute(
         path: '/',

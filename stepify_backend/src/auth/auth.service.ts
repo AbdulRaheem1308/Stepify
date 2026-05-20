@@ -5,7 +5,7 @@ import { PrismaService } from '../prisma/prisma.service';
 import { RedisService } from '../redis/redis.service';
 import { OtpService } from './otp.service';
 import { UsersService } from '../users/users.service';
-import { SendOtpDto, VerifyOtpDto, RefreshTokenDto } from './dto/auth.dto';
+import { SendOtpDto, VerifyOtpDto, RefreshTokenDto, SocialLoginDto } from './dto/auth.dto';
 import { SocialAuthService } from './social-auth.service';
 
 export interface JwtPayload {
@@ -96,8 +96,13 @@ export class AuthService {
             user = await this.usersService.create({
                 phone: dto.phone,
                 email: dto.email,
+                referredBy: dto.referralCode,
             });
             isNewUser = true;
+            
+            if (dto.referralCode) {
+                await this.attributeReferralRewards(user.id, dto.referralCode);
+            }
         } else if (!user.name) {
             // Treat as new user if profile is incomplete (no name)
             isNewUser = true;
@@ -119,9 +124,9 @@ export class AuthService {
     /**
      * Social Login (Google/Apple) via Firebase ID Token
      */
-    async loginWithSocial(idToken: string): Promise<{ tokens: AuthTokens; user: any; isNewUser: boolean }> {
+    async loginWithSocial(dto: SocialLoginDto): Promise<{ tokens: AuthTokens; user: any; isNewUser: boolean }> {
         // 1. Verify Token with Firebase Admin
-        const decodedToken = await this.socialAuth.verifyIdToken(idToken);
+        const decodedToken = await this.socialAuth.verifyIdToken(dto.idToken);
         const { email, picture, name, uid } = decodedToken;
 
         if (!email) {
@@ -136,8 +141,13 @@ export class AuthService {
             user = await this.usersService.create({
                 email: email,
                 name: name || undefined,
+                referredBy: dto.referralCode,
             });
             isNewUser = true;
+            
+            if (dto.referralCode) {
+                await this.attributeReferralRewards(user.id, dto.referralCode);
+            }
         }
 
         // 3. Generate Tokens
@@ -232,5 +242,57 @@ export class AuthService {
             throw new UnauthorizedException();
         }
         return user;
+    }
+
+    /**
+     * Process Referral Rewards
+     * Attributes 500 coins to the inviter and 200 coins to the invitee.
+     */
+    private async attributeReferralRewards(newUserId: string, referralCode: string) {
+        // Find the inviter
+        const inviter = await this.prisma.user.findUnique({
+            where: { referralCode },
+            select: { id: true }
+        });
+
+        if (!inviter) return; // Invalid referral code, fail silently
+
+        // 1. Reward Inviter (500 coins)
+        await this.prisma.$transaction([
+            this.prisma.wallet.upsert({
+                where: { userId: inviter.id },
+                update: { balance: { increment: 500 }, lifetimePoints: { increment: 500 } },
+                create: { userId: inviter.id, balance: 500, lifetimePoints: 500 }
+            }),
+            this.prisma.transaction.create({
+                data: {
+                    userId: inviter.id,
+                    type: 'REFERRAL',
+                    points: 500,
+                    description: 'Bonus for referring a new friend!'
+                }
+            }),
+            this.prisma.user.update({
+                where: { id: inviter.id },
+                data: { 
+                    referralCount: { increment: 1 },
+                    referralCoinsEarned: { increment: 500 }
+                }
+            }),
+            // 2. Reward Invitee (200 coins)
+            this.prisma.wallet.upsert({
+                where: { userId: newUserId },
+                update: { balance: { increment: 200 }, lifetimePoints: { increment: 200 } },
+                create: { userId: newUserId, balance: 200, lifetimePoints: 200 }
+            }),
+            this.prisma.transaction.create({
+                data: {
+                    userId: newUserId,
+                    type: 'REFERRAL',
+                    points: 200,
+                    description: 'Bonus for using a referral code!'
+                }
+            })
+        ]);
     }
 }

@@ -1,6 +1,6 @@
 import { Controller, Post, Body, UseGuards, Req, HttpCode, HttpStatus } from '@nestjs/common';
 import { AuthService } from './auth.service';
-import { SendOtpDto, VerifyOtpDto, RefreshTokenDto } from './dto/auth.dto';
+import { SendOtpDto, VerifyOtpDto, RefreshTokenDto, SocialLoginDto } from './dto/auth.dto';
 import { JwtAuthGuard } from './guards/jwt-auth.guard';
 
 @Controller('auth')
@@ -33,8 +33,8 @@ export class AuthController {
      */
     @Post('social-login')
     @HttpCode(HttpStatus.OK)
-    async socialLogin(@Body() dto: { idToken: string }) {
-        return this.authService.loginWithSocial(dto.idToken);
+    async socialLogin(@Body() dto: SocialLoginDto) {
+        return this.authService.loginWithSocial(dto);
     }
 
 

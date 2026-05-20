@@ -1,10 +1,73 @@
-import { Injectable, NotFoundException, BadRequestException, ConflictException } from '@nestjs/common';
+import { Injectable, NotFoundException, BadRequestException, ConflictException, Logger } from '@nestjs/common';
+import { Cron, CronExpression } from '@nestjs/schedule';
 import { PrismaService } from '../prisma/prisma.service';
 import { CreateChallengeDto, JoinChallengeDto, ChallengeStatus } from './dto/challenge.dto';
 
 @Injectable()
 export class ChallengesService {
+    private readonly logger = new Logger(ChallengesService.name);
+
     constructor(private prisma: PrismaService) { }
+
+    @Cron(CronExpression.EVERY_DAY_AT_MIDNIGHT)
+    async generateDailyMissions() {
+        this.logger.log('Running CRON: generateDailyMissions');
+        
+        // 1. Expire old daily missions
+        await this.prisma.challenge.updateMany({
+            where: { 
+                challengeType: 'SOLO', 
+                title: { startsWith: 'Daily Mission:' },
+                isActive: true 
+            },
+            data: { isActive: false }
+        });
+
+        const todayDateStr = new Date().toISOString().split('T')[0];
+
+        // 2. Create 3 new daily missions
+        const missions = [
+            {
+                title: `Daily Mission: Walk 5K (${todayDateStr})`,
+                description: 'Walk 5,000 steps today to earn a quick bonus!',
+                stepTarget: 5000,
+                rewardCoins: 50,
+                rewardXp: 20,
+                durationDays: 1,
+                challengeType: 'SOLO' as any,
+                difficulty: 'EASY' as any,
+                imageUrl: 'assets/images/missions/daily_walk.png',
+            },
+            {
+                title: `Daily Mission: 10K Push (${todayDateStr})`,
+                description: 'Hit the 10,000 step mark for a solid reward.',
+                stepTarget: 10000,
+                rewardCoins: 150,
+                rewardXp: 50,
+                durationDays: 1,
+                challengeType: 'SOLO' as any,
+                difficulty: 'MEDIUM' as any,
+                imageUrl: 'assets/images/missions/daily_push.png',
+            },
+            {
+                title: `Daily Mission: Watch & Win (${todayDateStr})`,
+                description: 'Watch 2 ads today to support the app and earn!',
+                stepTarget: 2, // Treated as ad views internally in a different hook
+                rewardCoins: 30,
+                rewardXp: 10,
+                durationDays: 1,
+                challengeType: 'SOLO' as any,
+                difficulty: 'EASY' as any,
+                imageUrl: 'assets/images/missions/daily_ads.png',
+            }
+        ];
+
+        for (const mission of missions) {
+            await this.prisma.challenge.create({ data: mission });
+        }
+        
+        this.logger.log('Daily Missions generated successfully.');
+    }
 
     /**
      * Get all available challenges (active and not expired)

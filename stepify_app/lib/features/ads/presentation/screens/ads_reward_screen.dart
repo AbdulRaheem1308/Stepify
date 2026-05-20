@@ -6,6 +6,7 @@ import 'package:stepify_app/l10n/app_localizations.dart';
 
 import '../../../../core/theme/app_theme.dart';
 import '../../../../services/api_service.dart';
+import '../../../../services/ad_service.dart';
 
 /// Ads Reward Screen
 class AdsRewardScreen extends ConsumerStatefulWidget {
@@ -57,6 +58,7 @@ class _AdsRewardScreenState extends ConsumerState<AdsRewardScreen> {
   }
 
   void _startCooldownTimer() {
+    _cooldownTimer?.cancel();
     _cooldownTimer = Timer.periodic(const Duration(seconds: 1), (timer) {
       if (_cooldownRemaining > 0) {
         setState(() => _cooldownRemaining--);
@@ -67,21 +69,56 @@ class _AdsRewardScreenState extends ConsumerState<AdsRewardScreen> {
     });
   }
 
-  Future<void> _watchAd() async {
-    // Simulate ad with dialog
-    await showDialog(
-      context: context,
-      barrierDismissible: false,
-      builder: (ctx) => _AdSimulationDialog(onComplete: () {
-        Navigator.pop(ctx);
+  Future<void> _claimRewardOnBackend() async {
+    setState(() => _isLoading = true);
+    try {
+      final api = ref.read(apiServiceProvider);
+      final adService = ref.read(adServiceProvider);
+      
+      final response = await api.post(
+        '/ads/claim',
+        data: {
+          'adType': 'REWARDED',
+          'adUnitId': adService.rewardedAdUnitId,
+        },
+      );
+      
+      if (response.statusCode == 200 || response.statusCode == 201) {
         _showRewardDialog();
-        setState(() {
-          _todayViews++;
-          _canWatch = false;
-          _cooldownRemaining = 300;
-        });
-        _startCooldownTimer();
-      }),
+        await _checkAdAvailability();
+      } else {
+        throw Exception('Failed to claim reward');
+      }
+    } catch (e) {
+      setState(() => _isLoading = false);
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text('Failed to claim reward: $e')),
+        );
+      }
+    }
+  }
+
+  Future<void> _watchAd() async {
+    final adService = ref.read(adServiceProvider);
+    
+    adService.showRewardedAd(
+      onUserEarnedReward: (reward) async {
+        await _claimRewardOnBackend();
+      },
+      onAdFailedToShow: () async {
+        // Fall back to simulation dialog
+        await showDialog(
+          context: context,
+          barrierDismissible: false,
+          builder: (ctx) => _AdSimulationDialog(onComplete: () async {
+            if (ctx.mounted) {
+              Navigator.pop(ctx);
+            }
+            await _claimRewardOnBackend();
+          }),
+        );
+      },
     );
   }
 

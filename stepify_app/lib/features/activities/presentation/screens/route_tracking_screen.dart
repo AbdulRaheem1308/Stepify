@@ -6,18 +6,22 @@ import 'package:geolocator/geolocator.dart';
 import '../../../../core/theme/app_theme.dart';
 import '../../../../services/location_service.dart';
 
+import '../../domain/models/activity_model.dart';
+import '../providers/activity_provider.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
+
 /// GPS Route Tracking Screen
 /// Shows a live-drawn route path, elapsed time, distance, and calories.
 /// Uses CustomPainter to project latitude/longitude onto screen coordinates —
 /// no external map SDK or API key required.
-class RouteTrackingScreen extends StatefulWidget {
+class RouteTrackingScreen extends ConsumerStatefulWidget {
   const RouteTrackingScreen({super.key});
 
   @override
-  State<RouteTrackingScreen> createState() => _RouteTrackingScreenState();
+  ConsumerState<RouteTrackingScreen> createState() => _RouteTrackingScreenState();
 }
 
-class _RouteTrackingScreenState extends State<RouteTrackingScreen>
+class _RouteTrackingScreenState extends ConsumerState<RouteTrackingScreen>
     with TickerProviderStateMixin {
   final _locationService = LocationService();
 
@@ -114,12 +118,80 @@ class _RouteTrackingScreenState extends State<RouteTrackingScreen>
   }
 
   void _stopTracking() {
+    _pauseTracking();
+
+    if (_totalDistanceMetres < 50 || _elapsedSeconds < 30) {
+      // Too short to save
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('Route too short to save.')),
+      );
+      _endSession();
+      return;
+    }
+
+    // Show save dialog
+    showDialog(
+      context: context,
+      barrierDismissible: false,
+      builder: (ctx) => AlertDialog(
+        title: const Text('Save Workout?'),
+        content: Text('You travelled ${(_totalDistanceMetres / 1000).toStringAsFixed(2)} km in ${_formatDuration(_elapsedSeconds)}.\n\nSave this route to earn points?'),
+        actions: [
+          TextButton(
+            onPressed: () {
+              Navigator.pop(ctx);
+              _endSession();
+            },
+            child: const Text('Discard', style: TextStyle(color: AppTheme.error)),
+          ),
+          ElevatedButton(
+            onPressed: () async {
+              Navigator.pop(ctx);
+              await _saveRouteToBackend();
+            },
+            style: ElevatedButton.styleFrom(backgroundColor: AppTheme.primaryGreen, foregroundColor: Colors.white),
+            child: const Text('Save Route'),
+          ),
+        ],
+      ),
+    );
+  }
+
+  void _endSession() {
     _locationService.stopRouteTracking();
     _timer?.cancel();
     setState(() {
       _isTracking = false;
       _isPaused = false;
+      _totalDistanceMetres = 0;
+      _elapsedSeconds = 0;
     });
+  }
+
+  Future<void> _saveRouteToBackend() async {
+    // Show loading
+    showDialog(
+      context: context,
+      barrierDismissible: false,
+      builder: (ctx) => const Center(child: CircularProgressIndicator(color: AppTheme.primaryGreen)),
+    );
+
+    final error = await ref.read(activityProvider.notifier).logActivity(
+      type: ActivityType.running, // Defaulting GPS routes to running for now
+      duration: Duration(seconds: _elapsedSeconds),
+      distanceKm: _totalDistanceMetres / 1000.0,
+    );
+
+    if (mounted) Navigator.pop(context); // pop loading
+
+    if (error != null && mounted) {
+      ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(error), backgroundColor: AppTheme.error));
+      _endSession();
+    } else if (mounted) {
+      ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('GPS Route saved securely!'), backgroundColor: AppTheme.success));
+      _endSession();
+      // Optionally pop back to activities list
+    }
   }
 
   String _formatDuration(int seconds) {

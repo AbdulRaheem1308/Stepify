@@ -1,13 +1,24 @@
 import { Injectable } from '@nestjs/common';
 import { PrismaService } from '../prisma/prisma.service';
-
+import { RedisService } from '../redis/redis.service';
 
 @Injectable()
 export class CommunityService {
-    constructor(private prisma: PrismaService) { }
+    constructor(
+        private prisma: PrismaService,
+        private redis: RedisService,
+    ) { }
 
     // Get community feed (Screen 19)
     async getFeed(limit = 20, cursor?: string) {
+        const cacheKey = `community:feed:${limit}`;
+        
+        // Only cache the first page
+        if (!cursor) {
+            const cached = await this.redis.getCache<any[]>(cacheKey);
+            if (cached) return cached;
+        }
+
         const posts = await this.prisma.feedPost.findMany({
             take: limit,
             ...(cursor && {
@@ -25,11 +36,18 @@ export class CommunityService {
             orderBy: { createdAt: 'desc' },
         });
 
-        return posts.map((post) => ({
+        const result = posts.map((post) => ({
             ...post,
             likesCount: post._count.reactions,
             commentsCount: post._count.comments,
         }));
+
+        // Cache the first page for 2 minutes
+        if (!cursor) {
+            await this.redis.setCache(cacheKey, result, 120);
+        }
+
+        return result;
     }
 
     // Create a feed post (auto-generated on milestones or manual)

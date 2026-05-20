@@ -24,3 +24,23 @@ ios/.symlinks/
 
 # Test
 coverage/
+
+# ── Logs & crash dumps ──────────────────────────────────────────────────────
+*.log
+hs_err_pid*.log
+replay_pid*.log
+flutter_*.log
+
+# ── Backup / old files ──────────────────────────────────────────────────────
+**(old).plist
+*(old).*
+
+# ── Node.js ─────────────────────────────────────────────────────────────────
+node_modules/
+dist/
+.env
+.env.*
+!.env.example
+
+# ── Backend build artefacts ──────────────────────────────────────────────────
+stepify_backend/dist/

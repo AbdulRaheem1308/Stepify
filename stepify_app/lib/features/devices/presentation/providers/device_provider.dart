@@ -1,6 +1,7 @@
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../../../../services/api_service.dart';
 import '../../../../services/health_service.dart';
+import '../../../../services/storage_service.dart';
 import 'package:flutter/foundation.dart';
 
 enum SyncStatus { connected, syncing, error, disconnected }
@@ -9,6 +10,7 @@ class ConnectedDevice {
   final String id;
   final String name;
   final String type; // 'PHONE', 'WATCH_APPLE', 'WATCH_ANDROID', 'FITBIT', 'GARMIN'
+  final String? identifier;
   final SyncStatus status;
   final DateTime? lastSyncTime;
   final int syncedSteps;
@@ -17,6 +19,7 @@ class ConnectedDevice {
     required this.id,
     required this.name,
     required this.type,
+    this.identifier,
     this.status = SyncStatus.disconnected,
     this.lastSyncTime,
     this.syncedSteps = 0,
@@ -27,6 +30,7 @@ class ConnectedDevice {
       id: json['id'] ?? '',
       name: json['name'] ?? 'Unknown Device',
       type: json['type'] ?? 'OTHER',
+      identifier: json['identifier'],
       status: json['lastSyncedAt'] != null ? SyncStatus.connected : SyncStatus.disconnected,
       lastSyncTime: json['lastSyncedAt'] != null ? DateTime.parse(json['lastSyncedAt']) : null,
       syncedSteps: 0, // This would come from steps API
@@ -38,6 +42,7 @@ class ConnectedDevice {
       id: id,
       name: name,
       type: type,
+      identifier: identifier,
       status: status ?? this.status,
       lastSyncTime: lastSyncTime ?? this.lastSyncTime,
       syncedSteps: syncedSteps ?? this.syncedSteps,
@@ -100,13 +105,15 @@ class DeviceNotifier extends StateNotifier<DeviceState> {
           .map((json) => ConnectedDevice.fromJson(json))
           .toList();
 
+      final deviceUUID = await StorageService.getOrCreateDeviceUUID();
       // Automatically register the user's physical phone built-in pedometer as a connected device if not already present
-      final hasPhone = devices.any((d) => d.type == 'PHONE');
+      final hasPhone = devices.any((d) => d.type == 'PHONE' && d.identifier == deviceUUID);
       if (!hasPhone) {
         try {
           await _apiService.post('/devices', data: {
             'name': 'Built-in Phone Sensors',
             'type': 'PHONE',
+            'identifier': deviceUUID,
           });
           // Reload list to include the newly auto-registered phone device
           final reloadResponse = await _apiService.get('/devices');
@@ -161,11 +168,13 @@ class DeviceNotifier extends StateNotifier<DeviceState> {
     try {
       // 2. Fetch data from HealthKit/Google Fit
       final todaySteps = await _healthService.getTodaySteps();
+      final deviceUUID = await StorageService.getOrCreateDeviceUUID();
       
       // 3. Send to backend
-      await _apiService.post('/steps', data: {
-        'count': todaySteps,
-        'date': DateTime.now().toIso8601String(),
+      await _apiService.post('/steps/sync', data: {
+        'deviceIdentifier': deviceUUID,
+        'stepCount': todaySteps,
+        'date': DateTime.now().toIso8601String().split('T')[0],
         'source': device.type == 'WATCH_APPLE' ? 'apple_health' : 'google_fit',
       });
       
@@ -198,7 +207,12 @@ class DeviceNotifier extends StateNotifier<DeviceState> {
       final exists = state.devices.any((d) => d.type == type);
       if (exists) return;
 
-      await _apiService.post('/devices', data: {'name': name, 'type': type});
+      final deviceUUID = await StorageService.getOrCreateDeviceUUID();
+      await _apiService.post('/devices', data: {
+        'name': name,
+        'type': type,
+        'identifier': deviceUUID,
+      });
       await loadDevices();
     } catch (e) {
       // Handle error

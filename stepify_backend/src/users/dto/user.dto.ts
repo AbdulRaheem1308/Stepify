@@ -1,4 +1,4 @@
-import { IsString, IsOptional, IsNumber, IsEmail, IsPhoneNumber, Min, Max } from 'class-validator';
+import { IsString, IsOptional, IsNumber, IsEmail, IsPhoneNumber, Min, Max, IsArray } from 'class-validator';
 
 export class CreateUserDto {
     @IsOptional()
@@ -12,6 +12,10 @@ export class CreateUserDto {
     @IsOptional()
     @IsString()
     name?: string;
+
+    @IsOptional()
+    @IsString()
+    referredBy?: string;
 }
 
 export class UpdateUserDto {
@@ -54,4 +58,13 @@ export class UpdateUserDto {
     @IsOptional()
     @IsEmail()
     email?: string;
+
+    @IsOptional()
+    @IsArray()
+    @IsString({ each: true })
+    activityPreferences?: string[];
+
+    @IsOptional()
+    @IsString()
+    fitnessLevel?: string;
 }
