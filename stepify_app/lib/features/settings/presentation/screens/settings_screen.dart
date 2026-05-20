@@ -203,14 +203,16 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
           const SizedBox(height: 40),
 
           // App Version — hidden developer access: tap 7 times
-          GestureDetector(
-            onTap: _onVersionTapped,
-            behavior: HitTestBehavior.opaque,
-            child: Padding(
-              padding: const EdgeInsets.symmetric(vertical: 8),
-              child: Text(
-                'Stepify v1.0.0',
-                style: TextStyle(color: AppTheme.neutral400, fontSize: 12),
+          Center(
+            child: GestureDetector(
+              onTap: _onVersionTapped,
+              behavior: HitTestBehavior.opaque,
+              child: Padding(
+                padding: const EdgeInsets.only(top: 8, bottom: 80), // Extra padding to clear bottom nav
+                child: Text(
+                  'Stepify v1.0.0',
+                  style: TextStyle(color: AppTheme.neutral400, fontSize: 14, fontWeight: FontWeight.w600),
+                ),
               ),
             ),
           ),
