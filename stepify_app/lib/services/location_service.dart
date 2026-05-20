@@ -1,58 +1,132 @@
+import 'dart:async';
+import 'package:flutter/foundation.dart';
 import 'package:geocoding/geocoding.dart';
 import 'package:geolocator/geolocator.dart';
 
+/// Extended Location Service — country detection + continuous GPS route tracking
 class LocationService {
-  /// Determine the current position of the device.
-  ///
-  /// When the location services are not enabled or permissions
-  /// are denied the `Future` will return an error.
-  static Future<String?> getCurrentCountryCode() async {
-    bool serviceEnabled;
-    LocationPermission permission;
+  // ─── Singleton ──────────────────────────────────────────────────────────────
+  static final LocationService _instance = LocationService._internal();
+  factory LocationService() => _instance;
+  LocationService._internal();
 
-    // Test if location services are enabled.
-    serviceEnabled = await Geolocator.isLocationServiceEnabled();
-    if (!serviceEnabled) {
-      // Location services are not enabled don't continue
-      // accessing the position and request users of the 
-      // App to enable the location services.
-      return null;
+  StreamSubscription<Position>? _positionSubscription;
+  final List<Position> _routePoints = [];
+  bool _isTracking = false;
+
+  List<Position> get routePoints => List.unmodifiable(_routePoints);
+  bool get isTracking => _isTracking;
+
+  /// Total distance walked in the current route session (metres)
+  double get totalDistanceMetres {
+    if (_routePoints.length < 2) return 0.0;
+    double total = 0.0;
+    for (int i = 1; i < _routePoints.length; i++) {
+      total += Geolocator.distanceBetween(
+        _routePoints[i - 1].latitude,
+        _routePoints[i - 1].longitude,
+        _routePoints[i].latitude,
+        _routePoints[i].longitude,
+      );
     }
+    return total;
+  }
 
-    permission = await Geolocator.checkPermission();
+  // ─── Permission Helper ──────────────────────────────────────────────────────
+
+  /// Ensures location permission is granted. Returns true if ready to use.
+  static Future<bool> ensurePermission() async {
+    final serviceEnabled = await Geolocator.isLocationServiceEnabled();
+    if (!serviceEnabled) return false;
+
+    LocationPermission permission = await Geolocator.checkPermission();
     if (permission == LocationPermission.denied) {
       permission = await Geolocator.requestPermission();
-      if (permission == LocationPermission.denied) {
-        // Permissions are denied, next time you could try
-        // requesting permissions again (this is also where
-        // Android's shouldShowRequestPermissionRationale 
-        // returned true. According to Android guidelines
-        // your App should show an explanatory UI now.
-        return null;
-      }
     }
-    
-    if (permission == LocationPermission.deniedForever) {
-      // Permissions are denied forever, handle appropriately. 
-      return null;
-    } 
+    return permission == LocationPermission.whileInUse ||
+        permission == LocationPermission.always;
+  }
 
-    // When we reach here, permissions are granted and we can
-    // continue accessing the position of the device.
+  // ─── Country Detection ──────────────────────────────────────────────────────
+
+  /// Returns the ISO country code of the device's current location (e.g. 'IN', 'US').
+  static Future<String?> getCurrentCountryCode() async {
+    final granted = await ensurePermission();
+    if (!granted) return null;
+
     try {
-      Position position = await Geolocator.getCurrentPosition();
-      List<Placemark> placemarks = await placemarkFromCoordinates(
+      final position = await Geolocator.getCurrentPosition(
+        desiredAccuracy: LocationAccuracy.low,
+        timeLimit: const Duration(seconds: 10),
+      );
+      final placemarks = await placemarkFromCoordinates(
         position.latitude,
         position.longitude,
       );
-      
-      if (placemarks.isNotEmpty) {
-        return placemarks.first.isoCountryCode;
-      }
+      return placemarks.isNotEmpty ? placemarks.first.isoCountryCode : null;
     } catch (e) {
-      return null; // Fallback to default
+      debugPrint('LocationService.getCurrentCountryCode error: $e');
+      return null;
     }
-    
-    return null;
+  }
+
+  // ─── Route Tracking ─────────────────────────────────────────────────────────
+
+  /// Start recording GPS route points.
+  /// [onUpdate] is called every time a new position arrives.
+  Future<bool> startRouteTracking({
+    required void Function(Position position) onUpdate,
+    void Function(String error)? onError,
+  }) async {
+    if (_isTracking) return true;
+
+    final granted = await ensurePermission();
+    if (!granted) {
+      onError?.call('Location permission not granted');
+      return false;
+    }
+
+    _routePoints.clear();
+
+    const locationSettings = LocationSettings(
+      accuracy: LocationAccuracy.high,
+      distanceFilter: 5, // Emit update only when moved 5+ metres (battery saving)
+    );
+
+    try {
+      _positionSubscription = Geolocator.getPositionStream(
+        locationSettings: locationSettings,
+      ).listen(
+        (position) {
+          _routePoints.add(position);
+          onUpdate(position);
+        },
+        onError: (error) {
+          debugPrint('LocationService stream error: $error');
+          onError?.call('GPS error: $error');
+        },
+        cancelOnError: false,
+      );
+      _isTracking = true;
+      debugPrint('🟢 GPS Route Tracking started');
+      return true;
+    } catch (e) {
+      debugPrint('LocationService.startRouteTracking error: $e');
+      onError?.call('Failed to start GPS: $e');
+      return false;
+    }
+  }
+
+  /// Stop recording the GPS route.
+  void stopRouteTracking() {
+    _positionSubscription?.cancel();
+    _positionSubscription = null;
+    _isTracking = false;
+    debugPrint('🔴 GPS Route Tracking stopped (${_routePoints.length} points recorded)');
+  }
+
+  /// Clear saved route points (call before starting a new session).
+  void clearRoute() {
+    _routePoints.clear();
   }
 }

@@ -19,7 +19,6 @@ import 'core/services/background_service.dart';
 import 'core/services/consent_service.dart';
 import 'package:firebase_core/firebase_core.dart';
 import 'package:firebase_crashlytics/firebase_crashlytics.dart';
-import 'package:flutter/foundation.dart';
 import 'package:safe_device/safe_device.dart';
 
 void main() {

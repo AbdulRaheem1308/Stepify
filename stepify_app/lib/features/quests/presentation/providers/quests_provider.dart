@@ -27,7 +27,7 @@ class QuestsNotifier extends StateNotifier<QuestsState> {
 
       if (_userId != null) {
         try {
-          final myQuests = await _service.getMyQuests(_userId!);
+          final myQuests = await _service.getMyQuests(_userId);
           final myQuestsMap = {for (var mq in myQuests) mq.id: mq};
           
           finalQuests = allQuests.map((quest) {
@@ -54,7 +54,7 @@ class QuestsNotifier extends StateNotifier<QuestsState> {
   Future<void> joinQuest(String questId) async {
     if (_userId == null) return;
     try {
-      await _service.joinQuest(questId, _userId!);
+      await _service.joinQuest(questId, _userId);
       // Refresh list to update status
       _loadQuests();
     } catch (e) {

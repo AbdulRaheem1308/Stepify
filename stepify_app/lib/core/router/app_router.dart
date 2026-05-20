@@ -34,6 +34,7 @@ import '../../features/teams/presentation/screens/team_detail_screen.dart';
 import '../../features/teams/presentation/screens/team_leaderboard_screen.dart';
 import '../../features/activities/presentation/screens/activity_logging_screen.dart';
 import '../../features/activities/presentation/screens/activity_history_screen.dart';
+import '../../features/activities/presentation/screens/route_tracking_screen.dart';
 import '../../features/messaging/presentation/screens/conversations_screen.dart';
 import '../../features/messaging/presentation/screens/chat_screen.dart';
 import '../../features/quests/domain/models/quest_model.dart';
@@ -41,6 +42,7 @@ import '../../features/quests/presentation/screens/quest_list_screen.dart';
 import '../../features/quests/presentation/screens/quest_detail_screen.dart';
 import '../../features/companies/presentation/screens/join_company_screen.dart';
 import '../../features/companies/presentation/screens/company_dashboard_screen.dart';
+import '../../features/settings/presentation/screens/sensor_diagnostics_screen.dart';
 
 /// App Router Provider using GoRouter
 final appRouterProvider = Provider<GoRouter>((ref) {
@@ -230,6 +232,11 @@ final appRouterProvider = Provider<GoRouter>((ref) {
         builder: (context, state) => const ActivityHistoryScreen(),
       ),
       GoRoute(
+        path: '/route-tracking',
+        name: 'route-tracking',
+        builder: (context, state) => const RouteTrackingScreen(),
+      ),
+      GoRoute(
         path: '/messages',
         name: 'messages',
         builder: (context, state) => const ConversationsScreen(),
@@ -267,6 +274,12 @@ final appRouterProvider = Provider<GoRouter>((ref) {
         name: 'company-dashboard',
         builder: (context, state) => const CompanyDashboardScreen(),
       ),
+      // Hidden developer-only diagnostics route
+      GoRoute(
+        path: '/sensor-diagnostics',
+        name: 'sensor-diagnostics',
+        builder: (context, state) => const SensorDiagnosticsScreen(),
+      ),
     ],
   );
 });
@@ -299,8 +312,10 @@ class AppRoutes {
   static const String teams = '/teams';
   static const String activityLog = '/activity/log';
   static const String activityHistory = '/activity/history';
+  static const String routeTracking = '/route-tracking';
   static const String messages = '/messages';
   static const String quests = '/quests';
   static const String companyJoin = '/company/join';
   static const String companyDashboard = '/company/dashboard';
+  static const String sensorDiagnostics = '/sensor-diagnostics';
 }

@@ -2,23 +2,56 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_animate/flutter_animate.dart';
 import 'package:url_launcher/url_launcher.dart';
-import 'package:flutter/foundation.dart';
 import 'package:go_router/go_router.dart';
 import 'package:stepify_app/l10n/app_localizations.dart';
 
-import '../../../dashboard/presentation/providers/dashboard_provider.dart';
+
+import '../../../../core/router/app_router.dart';
 import '../../../../core/theme/app_theme.dart';
 import '../providers/settings_provider.dart';
 
 /// Settings & Preferences Screen (Screen 7)
-class SettingsScreen extends ConsumerWidget {
+class SettingsScreen extends ConsumerStatefulWidget {
   const SettingsScreen({super.key});
 
   @override
-  Widget build(BuildContext context, WidgetRef ref) {
+  ConsumerState<SettingsScreen> createState() => _SettingsScreenState();
+}
+
+class _SettingsScreenState extends ConsumerState<SettingsScreen> {
+  int _versionTapCount = 0;
+  static const int _tapThreshold = 7;
+  DateTime? _firstTapTime;
+
+  void _onVersionTapped() {
+    final now = DateTime.now();
+    if (_firstTapTime == null || now.difference(_firstTapTime!) > const Duration(seconds: 5)) {
+      _firstTapTime = now;
+      _versionTapCount = 1;
+    } else {
+      _versionTapCount++;
+    }
+
+    final remaining = _tapThreshold - _versionTapCount;
+    if (remaining > 0 && remaining <= 3) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text('$remaining more taps to unlock Developer Mode'),
+          duration: const Duration(milliseconds: 800),
+        ),
+      );
+    }
+
+    if (_versionTapCount >= _tapThreshold) {
+      _versionTapCount = 0;
+      context.push(AppRoutes.sensorDiagnostics);
+    }
+  }
+
+  @override
+  Widget build(BuildContext context) {
     final l10n = AppLocalizations.of(context)!;
     final settings = ref.watch(settingsProvider);
-    final dashboard = ref.watch(dashboardProvider);
 
     return Scaffold(
       appBar: AppBar(
@@ -169,11 +202,16 @@ class SettingsScreen extends ConsumerWidget {
           ),
           const SizedBox(height: 40),
 
-          // App Version
-          Center(
-            child: Text(
-              'Stepify v1.0.0',
-              style: TextStyle(color: AppTheme.neutral400, fontSize: 12),
+          // App Version — hidden developer access: tap 7 times
+          GestureDetector(
+            onTap: _onVersionTapped,
+            behavior: HitTestBehavior.opaque,
+            child: Padding(
+              padding: const EdgeInsets.symmetric(vertical: 8),
+              child: Text(
+                'Stepify v1.0.0',
+                style: TextStyle(color: AppTheme.neutral400, fontSize: 12),
+              ),
             ),
           ),
         ],

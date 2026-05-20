@@ -14,18 +14,21 @@ void callbackDispatcher() {
     
     try {
       if (task == kBackgroundSyncTask) {
+        final prefs = await SharedPreferences.getInstance();
+        final nowStr = DateTime.now().toIso8601String();
+        await prefs.setString('bg_sync_last_run', nowStr);
+        await prefs.setString('bg_sync_status', 'Running...');
+
         // 1. Get Token (Secure Storage works without init)
         final token = await StorageService.getAccessToken();
         
         if (token == null) {
           debugPrint("No token found in background task. Skipping sync.");
+          await prefs.setString('bg_sync_status', 'Skipped: No access token found');
           return Future.value(true);
         }
 
         // 2. Initialize Services
-        // ApiService usually reads token from storage, but in background we might need to be explicit
-        // if ApiService's internal check relies on other state. 
-        // However, looking at standard implementation, it likely calls StorageService.getAccessToken().
         final apiService = ApiService(); 
 
         
@@ -39,22 +42,28 @@ void callbackDispatcher() {
            debugPrint("Background Sync: Syncing $steps steps");
            // 4. Send to Backend
            try {
-             // Re-using the sync logic. 
-             // Ideally we call a repository, but direct API call is safer in isolated background task to avoid complex DI.
              await apiService.post('/steps/sync', data: {
                'stepCount': steps,
                'date': DateTime.now().toIso8601String(),
                'source': 'BACKGROUND_WEARABLE'
              });
              debugPrint("Background Sync: Success");
+             await prefs.setString('bg_sync_status', 'Success: Synced $steps steps');
            } catch (e) {
              debugPrint("Background Sync API Error: $e");
-             // Don't fail the task, it will retry safely or just run next time
+             await prefs.setString('bg_sync_status', 'API Error: $e');
            }
+        } else {
+           debugPrint("Background Sync: 0 steps today, skipping API call");
+           await prefs.setString('bg_sync_status', 'Skipped: Today\'s steps is 0');
         }
       }
     } catch (e) {
       debugPrint("Background Task Error: $e");
+      try {
+        final prefs = await SharedPreferences.getInstance();
+        await prefs.setString('bg_sync_status', 'Fatal Error: $e');
+      } catch (_) {}
       return Future.value(false); // Task failed
     }
 

@@ -1,8 +1,6 @@
-import { Injectable } from '@nestjs/common';
+import { Injectable, Logger } from '@nestjs/common';
 import { PrismaService } from '../prisma/prisma.service';
-
-// For now, we'll generate notifications dynamically from transactions
-// In a real app, you'd have a dedicated Notification model
+import * as admin from 'firebase-admin';
 
 export interface NotificationItem {
     id: string;
@@ -15,18 +13,197 @@ export interface NotificationItem {
 
 @Injectable()
 export class NotificationsService {
-    constructor(private prisma: PrismaService) { }
+    private readonly logger = new Logger(NotificationsService.name);
+    private readonly fcmEnabled: boolean;
+
+    constructor(private prisma: PrismaService) {
+        // Firebase Admin is initialized once in the app lifecycle.
+        // If it hasn't been initialized yet (first service to use it), initialize now.
+        if (!admin.apps.length) {
+            const serviceAccountJson = process.env.FIREBASE_SERVICE_ACCOUNT_JSON;
+
+            if (serviceAccountJson) {
+                try {
+                    const serviceAccount = JSON.parse(serviceAccountJson);
+                    admin.initializeApp({
+                        credential: admin.credential.cert(serviceAccount),
+                    });
+                    this.logger.log('Firebase Admin SDK initialized from FIREBASE_SERVICE_ACCOUNT_JSON');
+                } catch (e) {
+                    this.logger.error('Failed to parse FIREBASE_SERVICE_ACCOUNT_JSON', e);
+                }
+            } else {
+                this.logger.warn(
+                    'FIREBASE_SERVICE_ACCOUNT_JSON not set — FCM push notifications disabled. ' +
+                    'Download your Firebase service account JSON and set it as a single-line env var.',
+                );
+            }
+        }
+
+        this.fcmEnabled = admin.apps.length > 0;
+    }
+
+    // ── FCM Token Registration ─────────────────────────────────────────────────
+
+    /**
+     * Store the FCM token for a user (called from mobile on login or token refresh).
+     * The token is updated on every login so we always have the latest device token.
+     */
+    async registerFcmToken(userId: string, token: string): Promise<{ success: boolean }> {
+        await this.prisma.user.update({
+            where: { id: userId },
+            data: { fcmToken: token },
+        });
+        this.logger.log(`FCM token registered for user ${userId}`);
+        return { success: true };
+    }
+
+    // ── FCM Push Dispatch ──────────────────────────────────────────────────────
+
+    /**
+     * Send a push notification to a specific user.
+     * Silently skips if user has no FCM token or FCM is not configured.
+     */
+    async sendPushToUser(
+        userId: string,
+        title: string,
+        body: string,
+        data?: Record<string, string>,
+    ): Promise<void> {
+        if (!this.fcmEnabled) return;
+
+        const user = await this.prisma.user.findUnique({
+            where: { id: userId },
+            select: { fcmToken: true },
+        });
+
+        if (!user?.fcmToken) {
+            this.logger.debug(`No FCM token for user ${userId} — skipping push`);
+            return;
+        }
+
+        await this.sendFcmMessage(user.fcmToken, title, body, data);
+    }
+
+    /**
+     * Send a push notification directly to a known FCM token.
+     */
+    async sendFcmMessage(
+        token: string,
+        title: string,
+        body: string,
+        data?: Record<string, string>,
+    ): Promise<void> {
+        if (!this.fcmEnabled) return;
+
+        const message: admin.messaging.Message = {
+            token,
+            notification: { title, body },
+            data: data ?? {},
+            android: {
+                priority: 'high',
+                notification: {
+                    channelId: 'stepify_default',
+                    sound: 'default',
+                    icon: 'ic_notification',
+                },
+            },
+            apns: {
+                payload: {
+                    aps: {
+                        sound: 'default',
+                        badge: 1,
+                    },
+                },
+            },
+        };
+
+        try {
+            const result = await admin.messaging().send(message);
+            this.logger.log(`FCM message sent: ${result}`);
+        } catch (err: any) {
+            // If token is invalid/expired, clear it from DB to avoid future attempts
+            if (
+                err?.code === 'messaging/invalid-registration-token' ||
+                err?.code === 'messaging/registration-token-not-registered'
+            ) {
+                this.logger.warn(`FCM token invalid, clearing from DB for token ending in ...${token.slice(-8)}`);
+                await this.prisma.user.updateMany({
+                    where: { fcmToken: token },
+                    data: { fcmToken: null },
+                });
+            } else {
+                this.logger.error(`FCM send failed: ${err?.message}`);
+            }
+        }
+    }
+
+    /**
+     * Broadcast to all users with a stored FCM token (e.g. app-wide announcements).
+     * Uses FCM multicast in batches of 500 (FCM limit).
+     */
+    async broadcastToAll(title: string, body: string, data?: Record<string, string>): Promise<void> {
+        if (!this.fcmEnabled) return;
+
+        const users = await this.prisma.user.findMany({
+            where: { fcmToken: { not: null }, isActive: true },
+            select: { fcmToken: true },
+        });
+
+        const tokens = users.map((u) => u.fcmToken!).filter(Boolean);
+        if (tokens.length === 0) return;
+
+        // Process in batches of 500 (FCM multicast limit)
+        const batchSize = 500;
+        for (let i = 0; i < tokens.length; i += batchSize) {
+            const batch = tokens.slice(i, i + batchSize);
+            const multicastMessage: admin.messaging.MulticastMessage = {
+                tokens: batch,
+                notification: { title, body },
+                data: data ?? {},
+                android: { priority: 'high' },
+            };
+            try {
+                const result = await admin.messaging().sendEachForMulticast(multicastMessage);
+                this.logger.log(
+                    `Broadcast batch ${i / batchSize + 1}: ${result.successCount} sent, ${result.failureCount} failed`,
+                );
+            } catch (err: any) {
+                this.logger.error(`Broadcast batch failed: ${err?.message}`);
+            }
+        }
+    }
+
+    // ── In-App Notifications (DB) ──────────────────────────────────────────────
+
+    /**
+     * Create an in-app notification record AND send push if user has FCM token.
+     */
+    async createAndNotify(
+        userId: string,
+        title: string,
+        message: string,
+        type: string,
+        pushData?: Record<string, string>,
+    ): Promise<void> {
+        // Store in DB
+        await this.prisma.notification.create({
+            data: { userId, title, message, type },
+        });
+
+        // Also push to device
+        await this.sendPushToUser(userId, title, message, pushData);
+    }
 
     // Get user notifications from DB
     async getUserNotifications(userId: string, limit = 20): Promise<NotificationItem[]> {
-        const notifications = await (this.prisma as any).notification.findMany({
+        const notifications = await this.prisma.notification.findMany({
             where: { userId },
             orderBy: { createdAt: 'desc' },
             take: limit,
-        }) as any[];
+        });
 
-        // Map to interface (though model is very similar)
-        return notifications.map((n: any) => ({
+        return notifications.map((n) => ({
             id: n.id,
             title: n.title,
             message: n.message,
@@ -39,15 +216,15 @@ export class NotificationsService {
     // Mark notification as read
     async markAsRead(userId: string, notificationId: string) {
         if (notificationId === 'all') {
-            await (this.prisma as any).notification.updateMany({
+            await this.prisma.notification.updateMany({
                 where: { userId, isRead: false },
                 data: { isRead: true },
             });
             return { success: true };
         }
 
-        await (this.prisma as any).notification.update({
-            where: { id: notificationId, userId }, // Ensure ownership
+        await this.prisma.notification.update({
+            where: { id: notificationId },
             data: { isRead: true },
         });
         return { success: true };
@@ -55,8 +232,8 @@ export class NotificationsService {
 
     // Delete notification
     async deleteNotification(userId: string, notificationId: string) {
-        await (this.prisma as any).notification.delete({
-            where: { id: notificationId, userId }, // Ensure ownership
+        await this.prisma.notification.delete({
+            where: { id: notificationId },
         });
         return { success: true };
     }

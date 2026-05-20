@@ -122,7 +122,6 @@ class _CompleteProfileScreenState extends ConsumerState<CompleteProfileScreen> {
         'weightKg': weight,
         'age': age,
         'dailyStepGoal': _stepGoal.toInt(),
-        'dailyStepGoal': _stepGoal.toInt(),
         'avatarUrl': _avatars.isNotEmpty ? _avatars[_selectedAvatarIndex]['url'] : 'default',
       };
       

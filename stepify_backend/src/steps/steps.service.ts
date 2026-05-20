@@ -1,11 +1,21 @@
-import { Injectable, NotFoundException } from '@nestjs/common';
+import { Injectable, NotFoundException, BadRequestException, Logger } from '@nestjs/common';
 import { PrismaService } from '../prisma/prisma.service';
 import { ConfigService } from '@nestjs/config';
 import { SyncStepsDto } from './dto/steps.dto';
 import { RewardsService } from '../rewards/rewards.service';
+import { PostHogService } from '../analytics/posthog.service';
+
+// ── Anti-cheat thresholds ────────────────────────────────────────────────────
+// World record daily step count is ~53,491 (documented).
+// Hard cap at 60,000 — any claim above this is physically impossible.
+// Soft flag at 30,000 — legitimate but unusual; logged for review.
+const MAX_STEPS_PER_DAY = 60_000;
+const SUSPICIOUS_STEPS_THRESHOLD = 30_000;
+// ─────────────────────────────────────────────────────────────────────────────
 
 @Injectable()
 export class StepsService {
+    private readonly logger = new Logger(StepsService.name);
     private readonly caloriesPerStep: number;
     private readonly kmPerStep: number;
 
@@ -13,19 +23,39 @@ export class StepsService {
         private prisma: PrismaService,
         private configService: ConfigService,
         private rewardsService: RewardsService,
+        private postHog: PostHogService,
     ) {
         this.caloriesPerStep = parseFloat(this.configService.get('CALORIES_PER_STEP', '0.04'));
         this.kmPerStep = parseFloat(this.configService.get('KM_PER_STEP', '0.000762'));
     }
 
     /**
-     * Sync step data from device
-     * Handles upsert for the given date.
-     * Uses a "highest wins" strategy: if a record already exists for this day,
-     * the step count is only updated if the incoming value is higher.
-     * This prevents overlap between pedometer, Google Fit, and wearable sources.
+     * Sync step data from device.
+     * Uses "highest wins" strategy to prevent double-counting across sources.
+     * Server-side validation rejects physically impossible step counts.
      */
     async syncSteps(userId: string, dto: SyncStepsDto) {
+        // ── Server-Side Anti-Cheat Validation ───────────────────────────────
+        if (dto.stepCount < 0) {
+            throw new BadRequestException('Step count cannot be negative.');
+        }
+
+        if (dto.stepCount > MAX_STEPS_PER_DAY) {
+            this.logger.warn(
+                `🚨 ANTI-CHEAT: User ${userId} claimed ${dto.stepCount} steps — exceeds physical maximum of ${MAX_STEPS_PER_DAY}. Rejecting.`,
+            );
+            throw new BadRequestException(
+                `Step count ${dto.stepCount} exceeds the maximum physically achievable value of ${MAX_STEPS_PER_DAY} steps per day.`,
+            );
+        }
+
+        if (dto.stepCount > SUSPICIOUS_STEPS_THRESHOLD) {
+            this.logger.warn(
+                `⚠️ SUSPICIOUS: User ${userId} reported ${dto.stepCount} steps — above soft threshold of ${SUSPICIOUS_STEPS_THRESHOLD}. Accepted but flagged.`,
+            );
+        }
+        // ─────────────────────────────────────────────────────────────────────
+
         const date = new Date(dto.date);
         date.setHours(0, 0, 0, 0);
 
@@ -78,8 +108,12 @@ export class StepsService {
         // Update streak and rewards
         await this.rewardsService.processStepRewards(userId, effectiveStepCount, date);
 
+        // Track analytics event (non-blocking)
+        this.postHog.trackStepSync(userId, effectiveStepCount, effectiveSource).catch(() => {});
+
         return step;
     }
+
 
     /**
      * Ensure user has demo data if empty

@@ -26,8 +26,8 @@ class _EditProfileScreenState extends ConsumerState<EditProfileScreen> {
   late TextEditingController _weightController;
   late TextEditingController _heightController;
   
-  bool _isEmailReadOnly = false;
-  bool _isPhoneReadOnly = false;
+  final bool _isEmailReadOnly = false;
+  final bool _isPhoneReadOnly = false;
   
   double _stepGoal = 5000;
   int _selectedAvatarIndex = 0;

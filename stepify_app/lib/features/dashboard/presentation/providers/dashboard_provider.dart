@@ -316,13 +316,17 @@ class DashboardNotifier extends StateNotifier<DashboardState> {
           final steps = entry.value;
           if (steps > 0) {
             syncTasks.add(
-              _apiService.post('/steps/sync', data: {
-                'date': dateStr,
-                'stepCount': steps,
-                'source': 'phone_sensors',
-              }).catchError((err) {
-                print('Failed to sync steps for $dateStr: $err');
-              }),
+              () async {
+                try {
+                  await _apiService.post('/steps/sync', data: {
+                    'date': dateStr,
+                    'stepCount': steps,
+                    'source': 'phone_sensors',
+                  });
+                } catch (err) {
+                  print('Failed to sync steps for $dateStr: $err');
+                }
+              }()
             );
           }
         }

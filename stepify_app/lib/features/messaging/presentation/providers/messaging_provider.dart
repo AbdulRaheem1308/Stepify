@@ -40,7 +40,7 @@ class MessagingNotifier extends StateNotifier<MessagingState> {
     if (_userId == null) return;
     state = state.copyWith(isLoading: true);
     try {
-      final conversations = await _service.getConversations(_userId!);
+      final conversations = await _service.getConversations(_userId);
       // Also pre-load messages for active convs if needed, or lazy load
       // For now just load convs
       state = state.copyWith(isLoading: false, conversations: conversations);
@@ -66,7 +66,7 @@ class MessagingNotifier extends StateNotifier<MessagingState> {
   Future<void> sendMessage(String conversationId, String content) async {
     if (_userId == null) return;
     try {
-      final newMessage = await _service.sendMessage(conversationId, _userId!, content);
+      final newMessage = await _service.sendMessage(conversationId, _userId, content);
       
       final currentMsgs = state.messages[conversationId] ?? [];
       

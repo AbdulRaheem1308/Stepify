@@ -23,6 +23,7 @@ import { TeamsModule } from './teams/teams.module';
 import { CompaniesModule } from './companies/companies.module';
 import { QuestsModule } from './quests/quests.module';
 import { MessagingModule } from './messaging/messaging.module';
+import { AnalyticsModule } from './analytics/analytics.module';
 
 // Controllers
 import { HealthController } from './health.controller';
@@ -61,6 +62,7 @@ import { HealthController } from './health.controller';
         CompaniesModule,
         QuestsModule,
         MessagingModule,
+        AnalyticsModule,
     ],
     controllers: [HealthController],
     providers: [
