@@ -247,7 +247,7 @@ class DashboardNotifier extends StateNotifier<DashboardState> {
       state = state.copyWith(
         healthAuthorized: authorized,
       );
-    });
+      
       // Batch UI updates every 5 seconds to prevent jitter and save resources
       _uiBatchTimer = Timer.periodic(const Duration(seconds: 5), (timer) async {
         int stepsToSync = 0;
