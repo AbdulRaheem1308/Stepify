@@ -24,7 +24,14 @@ class HealthService {
   Future<bool> requestAuthorization() async {
     // Check if permission handler says we have access (useful for Android pre-check)
     if (defaultTargetPlatform == TargetPlatform.android) {
-      final status = await Permission.activityRecognition.request();
+      PermissionStatus status;
+      try {
+        status = await Permission.activityRecognition.request();
+      } catch (e) {
+        // If another permission request is running concurrently, wait and retry
+        await Future.delayed(const Duration(seconds: 1));
+        status = await Permission.activityRecognition.request();
+      }
       if (status != PermissionStatus.granted) {
         return false;
       }

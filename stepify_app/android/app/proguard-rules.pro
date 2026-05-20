@@ -1,3 +1,6 @@
+# App Main Activity
+-keep class com.stepify.app.MainActivity { *; }
+
 # Flutter Wrapper
 -keep class io.flutter.app.** { *; }
 -keep class io.flutter.plugin.**  { *; }

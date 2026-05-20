@@ -40,9 +40,15 @@ class PedometerService {
         final status = await Permission.activityRecognition.request();
         print('Pedometer: Activity Recognition permission status: $status');
       } catch (e) {
-        print('Pedometer: Error requesting permission: $e');
-        if (_onErrorOccurred != null) {
-          _onErrorOccurred!('Permission error: $e');
+        try {
+          await Future.delayed(const Duration(seconds: 1));
+          final status = await Permission.activityRecognition.request();
+          print('Pedometer: Activity Recognition permission status (retry): $status');
+        } catch (retryError) {
+          print('Pedometer: Error requesting permission: $retryError');
+          if (_onErrorOccurred != null) {
+            _onErrorOccurred!('Permission error: $retryError');
+          }
         }
       }
     }

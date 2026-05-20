@@ -72,15 +72,20 @@ void callbackDispatcher() {
 }
 
 class BackgroundService {
+  static bool _initialized = false;
+
   static Future<void> init() async {
+    if (_initialized) return;
     await Workmanager().initialize(
       callbackDispatcher,
       isInDebugMode: kDebugMode, // Logs to console
     );
+    _initialized = true;
     debugPrint("Background Service Initialized");
   }
 
   static Future<void> registerPeriodicTask() async {
+    await init();
     await Workmanager().registerPeriodicTask(
       "stepify_sync_job",
       kBackgroundSyncTask,
@@ -95,6 +100,7 @@ class BackgroundService {
   }
 
   static Future<void> cancelTask() async {
+    await init();
     await Workmanager().cancelAll();
     debugPrint("Background Tasks Cancelled");
   }
