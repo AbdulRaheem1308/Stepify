@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
+import 'package:flutter/services.dart';
 import 'package:google_mobile_ads/google_mobile_ads.dart';
 import 'package:stepify_app/l10n/app_localizations.dart';
 
@@ -37,6 +38,7 @@ class _MainShellState extends ConsumerState<MainShell> {
 
   BannerAd? _bannerAd;
   bool _isAdLoaded = false;
+  DateTime? _currentBackPressTime;
 
   @override
   void initState() {
@@ -77,11 +79,28 @@ class _MainShellState extends ConsumerState<MainShell> {
     final isHome = location == '/home';
 
     return PopScope(
-      canPop: isHome,
+      canPop: false,
       onPopInvokedWithResult: (bool didPop, Object? result) {
         if (didPop) return;
+        
         if (!isHome) {
           context.go('/home');
+        } else {
+          final now = DateTime.now();
+          if (_currentBackPressTime == null || 
+              now.difference(_currentBackPressTime!) > const Duration(seconds: 2)) {
+            _currentBackPressTime = now;
+            ScaffoldMessenger.of(context).showSnackBar(
+              const SnackBar(
+                content: Text('Press back again to exit'),
+                duration: Duration(seconds: 2),
+                behavior: SnackBarBehavior.floating,
+              ),
+            );
+          } else {
+            // Double pressed within 2 seconds
+            SystemNavigator.pop();
+          }
         }
       },
       child: Scaffold(
