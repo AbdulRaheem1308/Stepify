@@ -132,6 +132,26 @@ class TodaySteps {
       goalReached: json['goalReached'] ?? false,
     );
   }
+
+  TodaySteps copyWith({
+    int? stepCount,
+    int? caloriesBurned,
+    double? distanceKm,
+    int? activeMinutes,
+    int? goal,
+    int? progress,
+    bool? goalReached,
+  }) {
+    return TodaySteps(
+      stepCount: stepCount ?? this.stepCount,
+      caloriesBurned: caloriesBurned ?? this.caloriesBurned,
+      distanceKm: distanceKm ?? this.distanceKm,
+      activeMinutes: activeMinutes ?? this.activeMinutes,
+      goal: goal ?? this.goal,
+      progress: progress ?? this.progress,
+      goalReached: goalReached ?? this.goalReached,
+    );
+  }
 }
 
 class StreakInfo {
@@ -227,10 +247,23 @@ class DashboardNotifier extends StateNotifier<DashboardState> {
           syncSteps(stepsToday + _pedometerOffset);
         }
 
+        final expectedTotal = _pedometerOffsetInitialized ? stepsToday + _pedometerOffset : stepsToday;
+        
+        TodaySteps? updatedTodaySteps = state.todaySteps;
+        if (updatedTodaySteps != null && expectedTotal > updatedTodaySteps.stepCount) {
+          updatedTodaySteps = updatedTodaySteps.copyWith(
+            stepCount: expectedTotal,
+            // Calculate progress instantly
+            progress: ((expectedTotal / updatedTodaySteps.goal) * 100).toInt(),
+            goalReached: expectedTotal >= updatedTodaySteps.goal,
+          );
+        }
+
         state = state.copyWith(
           sensorStepsToday: stepsToday,
           sensorOffset: _pedometerOffset,
           isSensorListening: _pedometerService.isListening,
+          todaySteps: updatedTodaySteps,
         );
       },
       onErrorOccurred: (err) {
@@ -247,46 +280,44 @@ class DashboardNotifier extends StateNotifier<DashboardState> {
       state = state.copyWith(
         healthAuthorized: authorized,
       );
-      
-      // Batch UI updates every 5 seconds to prevent jitter and save resources
-      _uiBatchTimer = Timer.periodic(const Duration(seconds: 5), (timer) async {
-        int stepsToSync = 0;
-        final isAuth = await _healthService.requestAuthorization();
-        
-        if (_currentPedometerSteps > 0) {
-          // Use real-time physical sensor steps
-          stepsToSync = _pedometerOffsetInitialized 
-              ? _currentPedometerSteps + _pedometerOffset 
-              : _currentPedometerSteps;
-        } else {
-          // Fallback: Query Google Fit / Health Connect / HealthKit
-          try {
-            if (isAuth) {
-              final healthSteps = await _healthService.getTodaySteps();
-              if (healthSteps > 0) {
-                stepsToSync = healthSteps;
-                debugPrint('Pedometer: Falling back to Health Service steps: $healthSteps');
-              }
-            }
-          } catch (e) {
-            debugPrint('Pedometer: Fallback Health Service query failed: $e');
-          }
-        }
+    });
 
-        state = state.copyWith(
-          healthAuthorized: isAuth,
-          sensorStepsToday: _currentPedometerSteps,
-          sensorOffset: _pedometerOffset,
-          isSensorListening: _pedometerService.isListening,
-        );
-        
-        if (stepsToSync > 0) {
-          // Only trigger if steps actually changed
-          if (state.todaySteps == null || stepsToSync > state.todaySteps!.stepCount) {
-             syncSteps(stepsToSync);
+    // 3. Batch UI updates every 5 seconds to prevent jitter and save resources
+    _uiBatchTimer = Timer.periodic(const Duration(seconds: 5), (timer) async {
+      int stepsToSync = 0;
+      
+      if (_currentPedometerSteps > 0) {
+        // Use real-time physical sensor steps
+        stepsToSync = _pedometerOffsetInitialized 
+            ? _currentPedometerSteps + _pedometerOffset 
+            : _currentPedometerSteps;
+      } else {
+        // Fallback: Query Google Fit / Health Connect / HealthKit
+        try {
+          if (state.healthAuthorized) {
+            final healthSteps = await _healthService.getTodaySteps();
+            if (healthSteps > 0) {
+              stepsToSync = healthSteps;
+              debugPrint('Pedometer: Falling back to Health Service steps: $healthSteps');
+            }
           }
+        } catch (e) {
+          debugPrint('Pedometer: Fallback Health Service query failed: $e');
         }
-      });
+      }
+
+      state = state.copyWith(
+        sensorStepsToday: _currentPedometerSteps,
+        sensorOffset: _pedometerOffset,
+        isSensorListening: _pedometerService.isListening,
+      );
+      
+      if (stepsToSync > 0) {
+        // Only trigger if steps actually changed
+        if (state.todaySteps == null || stepsToSync > state.todaySteps!.stepCount) {
+           syncSteps(stepsToSync);
+        }
+      }
     });
   }
 
