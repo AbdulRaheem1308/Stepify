@@ -34,7 +34,7 @@ class ActivityNotifier extends StateNotifier<ActivityState> {
     try {
       final response = await _api.get('/activities');
       final list = (response.data as List)
-          .map((e) => Activity.fromJson(e))
+          .map<Activity>((e) => Activity.fromJson(e as Map<String, dynamic>))
           .toList();
       state = state.copyWith(recentActivities: list, isLoading: false);
     } catch (_) {

@@ -1,6 +1,6 @@
 import 'package:flutter_riverpod/flutter_riverpod.dart';
-import 'package:socket_io_client/socket_io_client.dart' as IO;
-import '../../../../core/constants/api_constants.dart';
+import 'package:socket_io_client/socket_io_client.dart' as io;
+import '../../../../core/constants/app_constants.dart';
 
 class LeaderboardUser {
   final int rank;
@@ -35,18 +35,18 @@ class LeaderboardUser {
 }
 
 class LeaderboardNotifier extends StateNotifier<List<LeaderboardUser>> {
-  IO.Socket? _socket;
+  io.Socket? _socket;
 
   LeaderboardNotifier() : super([]) {
     _initSocket();
   }
 
   void _initSocket() {
-    // Assuming ApiConstants.baseUrl has the host, e.g., 'http://10.0.2.2:3000'
-    final uri = Uri.parse(ApiConstants.baseUrl);
+    // Assuming AppConstants.apiBaseUrl has the host, e.g., 'http://10.0.2.2:3000/api/v1'
+    final uri = Uri.parse(AppConstants.apiBaseUrl);
     final socketUrl = '${uri.scheme}://${uri.host}:${uri.port}/leaderboard';
 
-    _socket = IO.io(socketUrl, IO.OptionBuilder()
+    _socket = io.io(socketUrl, io.OptionBuilder()
         .setTransports(['websocket'])
         .disableAutoConnect()
         .build());
@@ -78,3 +78,4 @@ class LeaderboardNotifier extends StateNotifier<List<LeaderboardUser>> {
 final leaderboardProvider = StateNotifierProvider<LeaderboardNotifier, List<LeaderboardUser>>((ref) {
   return LeaderboardNotifier();
 });
+

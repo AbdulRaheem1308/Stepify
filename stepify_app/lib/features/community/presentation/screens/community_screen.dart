@@ -7,7 +7,7 @@ import 'package:stepify_app/l10n/app_localizations.dart';
 import '../../../../core/theme/app_theme.dart';
 import '../providers/community_provider.dart';
 
-import '../../ads/presentation/widgets/native_ad_container.dart';
+import 'package:stepify_app/features/ads/presentation/widgets/native_ad_container.dart';
 
 /// Screen 19: Community Feed
 class CommunityScreen extends ConsumerWidget {

@@ -27,6 +27,40 @@ class Activity {
     required this.pointsEarned,
   });
 
+  factory Activity.fromJson(Map<String, dynamic> json) {
+    double parseDouble(dynamic value) {
+      if (value == null) return 0.0;
+      if (value is num) return value.toDouble();
+      if (value is String) return double.tryParse(value) ?? 0.0;
+      return 0.0;
+    }
+
+    ActivityType parseType(String typeStr) {
+      switch (typeStr.toLowerCase()) {
+        case 'walking': return ActivityType.walking;
+        case 'running': return ActivityType.running;
+        case 'cycling': return ActivityType.cycling;
+        case 'yoga': return ActivityType.yoga;
+        case 'swimming': return ActivityType.swimming;
+        case 'gym': return ActivityType.gym;
+        case 'hiking': return ActivityType.hiking;
+        default: return ActivityType.walking;
+      }
+    }
+
+    return Activity(
+      id: json['id'] as String? ?? '',
+      type: parseType(json['type'] as String? ?? 'walking'),
+      startTime: json['startTime'] != null 
+          ? DateTime.tryParse(json['startTime'] as String) ?? DateTime.now() 
+          : DateTime.now(),
+      duration: Duration(minutes: json['durationMinutes'] as int? ?? 0),
+      caloriesBurned: parseDouble(json['caloriesBurned']),
+      distanceKm: parseDouble(json['distanceKm']),
+      pointsEarned: json['pointsEarned'] as int? ?? 0,
+    );
+  }
+
   String get name {
     switch (type) {
       case ActivityType.walking: return 'Walking';
@@ -52,3 +86,4 @@ class Activity {
     }
   }
 }
+

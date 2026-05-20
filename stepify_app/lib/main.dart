@@ -20,6 +20,7 @@ import 'core/services/consent_service.dart';
 import 'package:firebase_core/firebase_core.dart';
 import 'package:firebase_crashlytics/firebase_crashlytics.dart';
 import 'package:safe_device/safe_device.dart';
+import 'package:flutter/foundation.dart';
 import 'package:posthog_flutter/posthog_flutter.dart';
 
 void main() {
@@ -39,7 +40,8 @@ void main() {
 
         // Initialize PostHog
         try {
-          await Posthog().setup('phc_stepify_placeholder'); // Replace with actual key
+          final config = PostHogConfig('phc_stepify_placeholder');
+          await Posthog().setup(config);
           await Posthog().capture(eventName: 'app_opened');
         } catch (e) {
           debugPrint('Failed to initialize PostHog: $e');
