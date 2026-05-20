@@ -28,6 +28,11 @@ class PedometerForegroundService : Service(), SensorEventListener {
         const val KEY_BASELINE = "pedometer_baseline_steps"
         const val KEY_LAST_DATE = "pedometer_last_sync_date"
         const val KEY_TODAY_STEPS = "pedometer_today_steps"
+
+        fun getTodaySteps(context: Context): Int {
+            val sp = context.getSharedPreferences(PREFS_NAME, Context.MODE_PRIVATE)
+            return sp.getInt(KEY_TODAY_STEPS, 0)
+        }
     }
 
     private lateinit var sensorManager: SensorManager
@@ -70,7 +75,7 @@ class PedometerForegroundService : Service(), SensorEventListener {
         return NotificationCompat.Builder(this, CHANNEL_ID)
             .setContentTitle("Stepify is tracking your steps")
             .setContentText("Your activity is being recorded in the background.")
-            .setSmallIcon(R.drawable.ic_launcher_foreground)
+            .setSmallIcon(android.R.drawable.ic_dialog_info)
             .setContentIntent(pendingIntent)
             .setOngoing(true)
             .build()
@@ -111,10 +116,5 @@ class PedometerForegroundService : Service(), SensorEventListener {
     }
 
     // Static helper to retrieve current steps from SharedPreferences
-    companion object {
-        fun getTodaySteps(context: Context): Int {
-            val sp = context.getSharedPreferences(PREFS_NAME, Context.MODE_PRIVATE)
-            return sp.getInt(KEY_TODAY_STEPS, 0)
-        }
-    }
+
 }

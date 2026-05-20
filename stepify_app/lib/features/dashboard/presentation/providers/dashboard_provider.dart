@@ -35,6 +35,9 @@ class DashboardState {
   final bool isSensorListening;
   final bool healthAuthorized;
   final String? sensorErrorMessage;
+  // New timestamps for step tracking
+  final DateTime? firstTrackingTime;
+  final DateTime? lastTrackingTime;
 
   DashboardState({
     this.isLoading = false,
@@ -55,6 +58,8 @@ class DashboardState {
     this.isSensorListening = false,
     this.healthAuthorized = false,
     this.sensorErrorMessage,
+    this.firstTrackingTime,
+    this.lastTrackingTime,
   });
 
   DashboardState copyWith({
@@ -76,6 +81,8 @@ class DashboardState {
     bool? isSensorListening,
     bool? healthAuthorized,
     String? sensorErrorMessage,
+    DateTime? firstTrackingTime,
+    DateTime? lastTrackingTime,
   }) {
     return DashboardState(
       isLoading: isLoading ?? this.isLoading,
@@ -96,6 +103,8 @@ class DashboardState {
       isSensorListening: isSensorListening ?? this.isSensorListening,
       healthAuthorized: healthAuthorized ?? this.healthAuthorized,
       sensorErrorMessage: sensorErrorMessage ?? this.sensorErrorMessage,
+      firstTrackingTime: firstTrackingTime ?? this.firstTrackingTime,
+      lastTrackingTime: lastTrackingTime ?? this.lastTrackingTime,
     );
   }
 }
@@ -259,11 +268,16 @@ class DashboardNotifier extends StateNotifier<DashboardState> {
           );
         }
 
+        final now = DateTime.now();
+        final newFirst = state.firstTrackingTime ?? now;
+        final newLast = now;
         state = state.copyWith(
           sensorStepsToday: stepsToday,
           sensorOffset: _pedometerOffset,
           isSensorListening: _pedometerService.isListening,
           todaySteps: updatedTodaySteps,
+          firstTrackingTime: newFirst,
+          lastTrackingTime: newLast,
         );
       },
       onErrorOccurred: (err) {
@@ -480,9 +494,9 @@ class DashboardNotifier extends StateNotifier<DashboardState> {
       if (stepCount > currentSteps || currentSteps == 0) {
         final goal = state.todaySteps!.goal > 0 ? state.todaySteps!.goal : 10000;
         // Estimate active minutes: assume 30 steps ≈ 1 active minute
-        final stepDiff = stepCount - currentSteps;
-        final addedMinutes = (stepDiff / 30).floor();
-        final newActiveMinutes = (state.todaySteps!.activeMinutes ?? 0) + addedMinutes;
+        final newActiveMinutes = (state.firstTrackingTime != null && state.lastTrackingTime != null)
+            ? state.lastTrackingTime!.difference(state.firstTrackingTime!).inMinutes
+            : (state.todaySteps?.activeMinutes ?? 0);
         state = state.copyWith(
           todaySteps: TodaySteps(
             stepCount: stepCount,
