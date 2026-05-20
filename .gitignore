@@ -30,6 +30,7 @@ coverage/
 hs_err_pid*.log
 replay_pid*.log
 flutter_*.log
+*.tsbuildinfo
 
 # ── Backup / old files ──────────────────────────────────────────────────────
 **(old).plist
