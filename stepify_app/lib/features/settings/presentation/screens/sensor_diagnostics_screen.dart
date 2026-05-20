@@ -30,7 +30,6 @@ class _SensorDiagnosticsScreenState extends ConsumerState<SensorDiagnosticsScree
 
   // Permission statuses
   PermissionStatus _activityPermission = PermissionStatus.denied;
-  PermissionStatus _sensorsPermission = PermissionStatus.denied;
 
   // Background sync info
   String _bgLastRun = 'Never';
@@ -68,7 +67,6 @@ class _SensorDiagnosticsScreenState extends ConsumerState<SensorDiagnosticsScree
     
     // 1. Check permissions
     final activityStatus = await Permission.activityRecognition.status;
-    final sensorsStatus = await Permission.sensors.status;
 
     // 2. Read background sync stats from SharedPreferences
     final prefs = await SharedPreferences.getInstance();
@@ -86,7 +84,6 @@ class _SensorDiagnosticsScreenState extends ConsumerState<SensorDiagnosticsScree
 
     setState(() {
       _activityPermission = activityStatus;
-      _sensorsPermission = sensorsStatus;
       _bgLastRun = bgLastRunVal;
       _bgLastStatus = bgLastStatusVal;
       _isRealDevice = realDevice;
@@ -128,12 +125,6 @@ class _SensorDiagnosticsScreenState extends ConsumerState<SensorDiagnosticsScree
   Future<void> _requestActivityPermission() async {
     final status = await Permission.activityRecognition.request();
     setState(() => _activityPermission = status);
-    _loadDiagnostics();
-  }
-
-  Future<void> _requestSensorsPermission() async {
-    final status = await Permission.sensors.request();
-    setState(() => _sensorsPermission = status);
     _loadDiagnostics();
   }
 
@@ -222,7 +213,6 @@ class _SensorDiagnosticsScreenState extends ConsumerState<SensorDiagnosticsScree
                   icon: Icons.vpn_key_outlined,
                   children: [
                     _buildPermissionRow('Activity Recognition', _activityPermission, _requestActivityPermission),
-                    _buildPermissionRow('Physical Sensors', _sensorsPermission, _requestSensorsPermission),
                   ],
                 ),
                 const SizedBox(height: 16),
