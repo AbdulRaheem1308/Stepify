@@ -120,9 +120,7 @@ class _HomeScreenState extends ConsumerState<HomeScreen> with SingleTickerProvid
     }
 
     if (!dashboard.isLoading && dashboard.todaySteps != null) {
-      if (_progressAnimController.value == 0 && !_progressAnimController.isAnimating) {
-        _progressAnimController.forward();
-      }
+
       
       // Check for goal completion
       final steps = dashboard.todaySteps?.stepCount ?? 0;
@@ -169,10 +167,11 @@ class _HomeScreenState extends ConsumerState<HomeScreen> with SingleTickerProvid
                     const SizedBox(height: 16),
                     
                     // 2. Hero Progress Card (Animated)
-                    AnimatedBuilder(
-                      animation: _progressAnimation,
-                      builder: (context, child) {
-                        final animatedSteps = (steps * _progressAnimation.value).toInt();
+                    TweenAnimationBuilder<int>(
+                      duration: const Duration(milliseconds: 600),
+                      curve: Curves.easeOutCubic,
+                      tween: IntTween(begin: 0, end: steps),
+                      builder: (context, animatedSteps, child) {
                         return HeroProgressCard(
                           steps: animatedSteps,
                           goal: goal,

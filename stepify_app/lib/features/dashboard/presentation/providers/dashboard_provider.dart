@@ -416,7 +416,9 @@ class DashboardNotifier extends StateNotifier<DashboardState> {
 
       state = state.copyWith(
         isLoading: false,
-        todaySteps: TodaySteps.fromJson(backendStepsData),
+        todaySteps: (state.todaySteps != null && TodaySteps.fromJson(backendStepsData).stepCount < state.todaySteps!.stepCount)
+            ? state.todaySteps!
+            : TodaySteps.fromJson(backendStepsData),
         streak: StreakInfo.fromJson(results[1].data),
         wallet: walletData,
         xpLevel: xpInfo['level'],
