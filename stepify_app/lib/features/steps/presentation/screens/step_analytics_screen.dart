@@ -71,7 +71,6 @@ class _StepAnalyticsScreenState extends ConsumerState<StepAnalyticsScreen>
         });
       }
     }
-    }
   }
 
   Map<String, dynamic> _getEmptyWeeklyData() {
