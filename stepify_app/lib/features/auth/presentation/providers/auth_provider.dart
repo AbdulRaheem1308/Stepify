@@ -134,9 +134,17 @@ class AuthNotifier extends StateNotifier<AuthState> {
     state = state.copyWith(isLoading: true, error: null);
 
     try {
+      debugPrint('🟢 [loginWithSocial] Starting API call to backend...');
+      debugPrint('🟢 [loginWithSocial] Endpoint: /auth/social-login');
+      final stopwatch = Stopwatch()..start();
+      
       final response = await _apiService.post('/auth/social-login', data: {
         'idToken': idToken,
       });
+
+      stopwatch.stop();
+      debugPrint('🟢 [loginWithSocial] API call completed in ${stopwatch.elapsedMilliseconds}ms');
+      debugPrint('🟢 [loginWithSocial] Response status: ${response.statusCode}');
 
       final data = response.data;
       
@@ -157,6 +165,7 @@ class AuthNotifier extends StateNotifier<AuthState> {
       
       return data['isNewUser'] == true;
     } catch (e) {
+      debugPrint('🔴 [loginWithSocial] API call failed: $e');
       final error = ApiError.from(e);
       state = state.copyWith(isLoading: false, error: error.message);
       throw error;
