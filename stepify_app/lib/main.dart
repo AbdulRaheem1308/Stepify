@@ -186,8 +186,10 @@ class StepifyApp extends ConsumerWidget {
         GlobalCupertinoLocalizations.delegate,
       ],
       supportedLocales: const [
-        Locale('en'), // English
-        Locale('hi'), // Hindi
+        Locale('en', 'US'), // English (US - Default)
+        Locale('en', 'GB'), // English (UK)
+        Locale('en', 'IN'), // English (India)
+        Locale('hi'),       // Hindi
       ],
     );
   }

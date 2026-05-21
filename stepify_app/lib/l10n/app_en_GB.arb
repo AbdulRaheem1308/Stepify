@@ -1,0 +1,114 @@
+{
+  "@@locale": "en_GB",
+  
+  "appName": "Stepify",
+  "appTagline": "Walk, Track, Earn Rewards",
+  
+  "home": "Home",
+  "analytics": "Analytics",
+  "friends": "Friends",
+  "rewards": "Rewards",
+  "profile": "Profile",
+  
+  "greeting": "Hey, {name}! 👋",
+  "@greeting": {
+    "placeholders": {
+      "name": { "type": "String" }
+    }
+  },
+  "readyToStep": "Ready to step up today?",
+  
+  "steps": "Steps",
+  "stepsToGo": "{count} steps to go",
+  "@stepsToGo": {
+    "placeholders": {
+      "count": { "type": "int" }
+    }
+  },
+  "goalReached": "Goal Reached! 🎉",
+  "adjustGoal": "Adjust Goal",
+  
+  "calories": "Calories",
+  "distance": "Distance",
+  "activeMinutes": "Active Min",
+  "streak": "Streak",
+  "streakDays": "{count} days",
+  "@streakDays": {
+    "placeholders": {
+      "count": { "type": "int" }
+    }
+  },
+  
+  "challenges": "Challenges",
+  "viewActive": "View active",
+  "earnOffers": "Earn & Offers",
+  "watchAdsDeals": "Watch adverts & deals",
+  "community": "Community",
+  "feedMilestones": "Feed & Milestones",
+  
+  "settings": "Settings",
+  "notifications": "Notifications",
+  "leaderboard": "Leaderboard",
+  "badges": "Badges",
+  "wallet": "Wallet",
+  
+  "loading": "Loading...",
+  "error": "Something went wrong",
+  "retry": "Retry",
+  "cancel": "Cancel",
+  "save": "Save",
+  "done": "Done",
+  "next": "Next",
+  "back": "Back",
+  "continue_": "Continue",
+  
+  "noData": "No data available",
+  "pullToRefresh": "Pull to refresh",
+  
+  "today": "Today",
+  "thisWeek": "This Week",
+  "thisMonth": "This Month",
+  "allTime": "All Time",
+  
+  "global": "Global",
+  "referral": "Referral",
+  
+  "level": "Level {level}",
+  "@level": {
+    "placeholders": {
+      "level": { "type": "int" }
+    }
+  },
+  "xpPoints": "{count} XP",
+  "@xpPoints": {
+    "placeholders": {
+      "count": { "type": "int" }
+    }
+  },
+  "coins": "{count} coins",
+  "@coins": {
+    "placeholders": {
+      "count": { "type": "int" }
+    }
+  },
+  
+  "dailyGoal": "Daily Goal",
+  "weeklyGoal": "Weekly Goal",
+  
+  "viewAll": "View All",
+  "seeMore": "See More",
+  
+  "signIn": "Sign In",
+  "signOut": "Sign Out",
+  "editProfile": "Edit Profile",
+  
+  "keepItUp": "Keep it up! 💪",
+  "almostThere": "Almost there!",
+  "greatProgress": "Great progress!",
+  
+  "backgroundSync": "Background Sync",
+  "backgroundSyncSubtitle": "Sync steps when app is closed",
+  "syncOverCellular": "Sync Over Mobile Data",
+  "syncOverCellularSubtitle": "Use mobile data for syncing",
+  "connectedDevices": "Connected Devices"
+}

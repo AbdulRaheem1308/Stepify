@@ -4,6 +4,8 @@ import { ThrottlerModule, ThrottlerGuard } from "@nestjs/throttler";
 import { APP_GUARD } from "@nestjs/core";
 import { BullModule } from "@nestjs/bullmq";
 import { ScheduleModule } from "@nestjs/schedule";
+import { I18nModule, AcceptLanguageResolver } from "nestjs-i18n";
+import * as path from "path";
 
 // Core modules
 import { PrismaModule } from "./prisma/prisma.module";
@@ -40,6 +42,16 @@ import { HealthController } from "./health.controller";
       envFilePath: ".env",
     }),
     ScheduleModule.forRoot(),
+
+    // Internationalization (i18n)
+    I18nModule.forRoot({
+      fallbackLanguage: "en",
+      loaderOptions: {
+        path: path.join(__dirname, "/i18n/"),
+        watch: true,
+      },
+      resolvers: [AcceptLanguageResolver],
+    }),
 
     // Rate limiting
     ThrottlerModule.forRoot([
