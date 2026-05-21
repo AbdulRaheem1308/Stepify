@@ -16,7 +16,7 @@ export class RedisService implements OnModuleDestroy {
             host: this.configService.get('REDIS_HOST', 'localhost'),
             port: this.configService.get('REDIS_PORT', 6379),
             password: this.configService.get('REDIS_PASSWORD') || undefined,
-            retryStrategy: (times) => {
+            retryStrategy: (times: number) => {
                 if (times > 3) {
                     const msg = '⚠️ Redis connection failed, running without cache';
                     if (this.isProduction) console.error('CRITICAL: Redis connection failing in PRODUCTION! Services degraded.');
