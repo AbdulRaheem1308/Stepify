@@ -33,8 +33,10 @@ export class SocialAuthService implements OnModuleInit {
 
     async verifyIdToken(idToken: string): Promise<admin.auth.DecodedIdToken> {
         try {
+            this.logger.log('🔵 [SocialAuth] Calling admin.auth().verifyIdToken()...');
             // This verifies the signature, expiration, and audience (project match)
             const decodedToken = await admin.auth().verifyIdToken(idToken);
+            this.logger.log('🔵 [SocialAuth] admin.auth().verifyIdToken() SUCCESS!');
             return decodedToken;
         } catch (error) {
             this.logger.error(`Token Verification Failed: ${error.message}`);
