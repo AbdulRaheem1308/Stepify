@@ -7,7 +7,7 @@ class AppConstants {
   // API
   static const String apiBaseUrl = String.fromEnvironment(
     'API_BASE_URL',
-    defaultValue: 'http://192.168.1.3:3000/api/v1',
+    defaultValue: 'https://stepify-backend-vd4d.onrender.com/api/v1',
   );
 
   // Storage Keys
