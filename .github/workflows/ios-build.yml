@@ -20,9 +20,11 @@ jobs:
     - name: Disable Swift Package Manager globally
       run: flutter config --no-enable-swift-package-manager
 
-    - name: Flutter pub get
+    - name: Clean and get dependencies
       working-directory: ${{ env.PROJECT_DIR }}
-      run: flutter pub get
+      run: |
+        flutter clean
+        flutter pub get
 
     - name: Pre-populate podhelper.rb from Flutter SDK
       run: |

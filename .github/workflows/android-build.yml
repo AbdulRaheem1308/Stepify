@@ -47,9 +47,11 @@ jobs:
           echo "No keystore provided; build will use debug signing."
         fi
 
-    - name: Flutter pub get
+    - name: Clean and get dependencies
       working-directory: ${{ env.PROJECT_DIR }}
-      run: flutter pub get
+      run: |
+        flutter clean
+        flutter pub get
 
     - name: Build release artifacts
       working-directory: ${{ env.PROJECT_DIR }}
