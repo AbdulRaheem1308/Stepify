@@ -67,6 +67,11 @@ model User {
   // Push Notifications
   fcmToken      String?   // Firebase Cloud Messaging token (updated per device session)
 
+  // i18n / Region
+  locale        String    @default("en-IN")  // e.g. en-US, en-GB, en-IN, hi-IN
+  timezone      String    @default("Asia/Kolkata") // IANA timezone string
+  countryCode   String    @default("IN")     // ISO 3166-1 alpha-2 country code
+
   isActive      Boolean   @default(true)
   createdAt     DateTime  @default(now())
   updatedAt     DateTime  @updatedAt
@@ -110,7 +115,10 @@ model UserSettings {
   userId                String   @unique
   user                  User     @relation(fields: [userId], references: [id], onDelete: Cascade)
   themeMode             String   @default("system") // light, dark, system
-  language              String   @default("en")
+  language              String   @default("en")      // BCP 47 language tag: en, hi, te, ta
+  locale                String   @default("en-IN")   // Full locale: en-IN, en-US, hi-IN
+  timezone              String   @default("Asia/Kolkata") // IANA timezone
+  countryCode           String   @default("IN")      // ISO 3166-1 alpha-2
   pushNotifications     Boolean  @default(true)
   dailyReminders        Boolean  @default(true)
   soundEnabled          Boolean  @default(true)
