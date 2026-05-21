@@ -51,13 +51,32 @@ import { HealthController } from './health.controller';
         BullModule.forRootAsync({
             imports: [ConfigModule],
             inject: [ConfigService],
-            useFactory: (configService: ConfigService) => ({
-                connection: {
-                    host: configService.get('REDIS_HOST', 'localhost'),
-                    port: configService.get('REDIS_PORT', 6379),
-                    password: configService.get('REDIS_PASSWORD') || undefined,
-                },
-            }),
+            useFactory: (configService: ConfigService) => {
+                const redisUrl = configService.get('REDIS_URL');
+                if (redisUrl) {
+                    try {
+                        const url = new URL(redisUrl);
+                        return {
+                            connection: {
+                                host: url.hostname,
+                                port: parseInt(url.port, 10) || 6379,
+                                password: url.password || undefined,
+                                tls: redisUrl.startsWith('rediss://') ? {} : undefined,
+                            }
+                        };
+                    } catch (e) {
+                        console.warn('Failed to parse REDIS_URL for BullMQ, falling back to HOST/PORT');
+                    }
+                }
+                
+                return {
+                    connection: {
+                        host: configService.get('REDIS_HOST', 'localhost'),
+                        port: configService.get('REDIS_PORT', 6379),
+                        password: configService.get('REDIS_PASSWORD') || undefined,
+                    },
+                };
+            },
         }),
 
         // Core

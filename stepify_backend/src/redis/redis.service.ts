@@ -11,7 +11,8 @@ export class RedisService implements OnModuleDestroy {
     constructor(private configService: ConfigService) {
         this.isProduction = this.configService.get('NODE_ENV') === 'production';
 
-        this.client = new Redis({
+        const redisUrl = this.configService.get('REDIS_URL');
+        const redisOptions = {
             host: this.configService.get('REDIS_HOST', 'localhost'),
             port: this.configService.get('REDIS_PORT', 6379),
             password: this.configService.get('REDIS_PASSWORD') || undefined,
@@ -24,7 +25,9 @@ export class RedisService implements OnModuleDestroy {
                 }
                 return Math.min(times * 100, 3000);
             },
-        });
+        };
+
+        this.client = redisUrl ? new Redis(redisUrl, redisOptions) : new Redis(redisOptions);
 
         this.client.on('connect', () => {
             console.log('🔴 Redis connected');
