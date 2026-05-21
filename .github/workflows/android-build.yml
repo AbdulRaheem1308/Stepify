@@ -57,11 +57,11 @@ jobs:
       working-directory: ${{ env.PROJECT_DIR }}
       run: flutter test --coverage
 
-    - name: SonarCloud Scan
-      uses: SonarSource/sonarcloud-github-action@master
+    - name: SonarQube Scan
+      uses: SonarSource/sonarqube-scan-action@master
       env:
-        GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         SONAR_TOKEN: ${{ secrets.SONAR_TOKEN }}
+        SONAR_HOST_URL: ${{ secrets.SONAR_HOST_URL }}
 
     - name: Build release artifacts
       working-directory: ${{ env.PROJECT_DIR }}
