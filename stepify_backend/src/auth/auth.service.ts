@@ -2,6 +2,7 @@ import {
   Injectable,
   UnauthorizedException,
   BadRequestException,
+  Logger,
 } from "@nestjs/common";
 import { JwtService } from "@nestjs/jwt";
 import { ConfigService } from "@nestjs/config";
@@ -30,6 +31,8 @@ export interface AuthTokens {
 
 @Injectable()
 export class AuthService {
+  private readonly logger = new Logger(AuthService.name);
+
   constructor(
     private jwtService: JwtService,
     private configService: ConfigService,
@@ -142,59 +145,64 @@ export class AuthService {
   async loginWithSocial(
     dto: SocialLoginDto,
   ): Promise<{ tokens: AuthTokens; user: any; isNewUser: boolean }> {
-    console.log("🔴 [loginWithSocial] Starting social login process...");
-    console.log(
+    this.logger.log("🔴 [loginWithSocial] Starting social login process...");
+    this.logger.log(
       `🔴 [loginWithSocial] ID Token provided (length): ${dto.idToken?.length}`,
     );
 
     // 1. Verify Token with Firebase Admin
-    console.log(
+    this.logger.log(
       "🔴 [loginWithSocial] Step 1: Verifying token with Firebase Admin...",
     );
     const decodedToken = await this.socialAuth.verifyIdToken(dto.idToken);
-    console.log(
-      "🔴 [loginWithSocial] Firebase verification successful. Decoded token:",
-      Object.keys(decodedToken),
+    this.logger.log(
+      `🔴 [loginWithSocial] Firebase verification successful. Decoded keys: ${Object.keys(decodedToken).join(", ")}`,
     );
 
-    const { email, picture, name, uid } = decodedToken;
+    const { email, name } = decodedToken;
 
     if (!email) {
-      console.log("🔴 [loginWithSocial] Error: No email in token");
+      this.logger.log("🔴 [loginWithSocial] Error: No email in token");
       throw new BadRequestException(
         "Social account must have an email address",
       );
     }
 
     // 2. Find or Create User
-    console.log(
+    this.logger.log(
       `🔴 [loginWithSocial] Step 2: Looking up user by email (${email})...`,
     );
     let user = await this.usersService.findByIdentifier(email);
     let isNewUser = false;
 
     if (!user) {
-      console.log("🔴 [loginWithSocial] User not found. Creating new user...");
+      this.logger.log(
+        "🔴 [loginWithSocial] User not found. Creating new user...",
+      );
       user = await this.usersService.create({
         email: email,
         name: name || undefined,
         referredBy: dto.referralCode,
       });
       isNewUser = true;
-      console.log(`🔴 [loginWithSocial] New user created with ID: ${user.id}`);
+      this.logger.log(
+        `🔴 [loginWithSocial] New user created with ID: ${user.id}`,
+      );
 
       if (dto.referralCode) {
-        console.log("🔴 [loginWithSocial] Processing referral code...");
+        this.logger.log("🔴 [loginWithSocial] Processing referral code...");
         await this.attributeReferralRewards(user.id, dto.referralCode);
       }
     } else {
-      console.log(`🔴 [loginWithSocial] Existing user found (ID: ${user.id}).`);
+      this.logger.log(
+        `🔴 [loginWithSocial] Existing user found (ID: ${user.id}).`,
+      );
     }
 
     // 3. Generate Tokens
-    console.log("🔴 [loginWithSocial] Step 3: Generating JWT tokens...");
+    this.logger.log("🔴 [loginWithSocial] Step 3: Generating JWT tokens...");
     const tokens = await this.generateTokens(user);
-    console.log("🔴 [loginWithSocial] Tokens generated successfully.");
+    this.logger.log("🔴 [loginWithSocial] Tokens generated successfully.");
 
     return {
       tokens,
@@ -209,7 +217,7 @@ export class AuthService {
   async refreshToken(dto: RefreshTokenDto): Promise<AuthTokens> {
     try {
       // Verify refresh token
-      const payload = this.jwtService.verify(dto.refreshToken, {
+      this.jwtService.verify(dto.refreshToken, {
         secret: this.configService.get("JWT_REFRESH_SECRET"),
       });
 

@@ -58,16 +58,16 @@ export class OtpService {
 
   async sendEmailOtp(email: string, otp: string): Promise<void> {
     this.logger.log(`Email OTP for ${email}: ${otp}`);
-    console.log("\n========================================");
-    console.log(`EMAIL OTP for ${email}`);
-    console.log(`Code: ${otp}`);
-    console.log("========================================\n");
+    this.logger.log("\n========================================");
+    this.logger.log(`EMAIL OTP for ${email}`);
+    this.logger.log(`Code: ${otp}`);
+    this.logger.log("========================================\n");
   }
 
   private logOtpForDevelopment(identifier: string, otp: string): void {
-    console.log("\n========================================");
-    console.log(`DEV MODE - OTP for ${identifier}`);
-    console.log(`Code: ${otp}`);
-    console.log("========================================\n");
+    this.logger.log("\n========================================");
+    this.logger.log(`DEV MODE - OTP for ${identifier}`);
+    this.logger.log(`Code: ${otp}`);
+    this.logger.log("========================================\n");
   }
 }

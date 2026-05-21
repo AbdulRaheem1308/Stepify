@@ -21,7 +21,17 @@ module.exports = {
     '@typescript-eslint/explicit-function-return-type': 'off',
     '@typescript-eslint/explicit-module-boundary-types': 'off',
     '@typescript-eslint/no-explicit-any': 'off',
-    '@typescript-eslint/no-unused-vars': 'off',
-    'no-console': 'off',
+    '@typescript-eslint/no-unused-vars': ['warn', { argsIgnorePattern: '^_' }],
+    'no-console': 'warn',
   },
+  // Override for test/spec files — they live outside tsconfig.json's rootDir
+  overrides: [
+    {
+      files: ['**/*.spec.ts', '**/*.e2e-spec.ts', 'test/**/*.ts'],
+      parserOptions: {
+        project: 'tsconfig.spec.json',
+        tsconfigRootDir: __dirname,
+      },
+    },
+  ],
 };

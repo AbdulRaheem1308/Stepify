@@ -1,4 +1,4 @@
-import { Module } from "@nestjs/common";
+import { Module, Logger } from "@nestjs/common";
 import { ConfigModule, ConfigService } from "@nestjs/config";
 import { ThrottlerModule, ThrottlerGuard } from "@nestjs/throttler";
 import { APP_GUARD } from "@nestjs/core";
@@ -79,7 +79,7 @@ import { HealthController } from "./health.controller";
               },
             };
           } catch (e) {
-            console.warn(
+            Logger.warn(
               "Failed to parse REDIS_URL for BullMQ, falling back to HOST/PORT",
             );
           }
