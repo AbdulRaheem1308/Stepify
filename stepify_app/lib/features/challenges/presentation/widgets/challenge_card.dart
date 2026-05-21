@@ -109,7 +109,7 @@ class ChallengeCard extends StatelessWidget {
                         // Stats Row: Steps + Coins + Days
                         Row(
                           children: [
-                            _buildStatChip(Icons.directions_walk, '${_formatNumber(challenge.stepTarget)}', 'steps', AppTheme.secondaryBlue),
+                            _buildStatChip(Icons.directions_walk, _formatNumber(challenge.stepTarget), 'steps', AppTheme.secondaryBlue),
                             const SizedBox(width: 10),
                             _buildStatChip(Icons.stars_rounded, '${challenge.rewardCoins}', 'coins', const Color(0xFFD4A017)),
                             const SizedBox(width: 10),

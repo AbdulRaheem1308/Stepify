@@ -1,9 +1,7 @@
 import 'package:flutter_riverpod/flutter_riverpod.dart';
-import 'package:dio/dio.dart';
 import 'dart:math';
 
 import '../../../../services/api_service.dart';
-import '../../../../services/storage_service.dart';
 
 /// Referral Stats Model
 class ReferralStats {

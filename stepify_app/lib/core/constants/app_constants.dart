@@ -1,4 +1,5 @@
 /// App-wide constants
+library;
 import 'package:flutter/foundation.dart';
 
 class AppConstants {

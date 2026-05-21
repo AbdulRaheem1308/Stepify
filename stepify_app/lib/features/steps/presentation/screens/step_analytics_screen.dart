@@ -1,9 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
-import 'package:fl_chart/fl_chart.dart';
 import 'package:flutter_animate/flutter_animate.dart';
 import 'package:go_router/go_router.dart';
-import 'package:stepify_app/l10n/app_localizations.dart';
 import 'package:posthog_flutter/posthog_flutter.dart';
 
 import '../../../../core/theme/app_theme.dart';
@@ -185,7 +183,7 @@ class _StepAnalyticsScreenState extends ConsumerState<StepAnalyticsScreen>
               unselectedLabelColor: Theme.of(context).textTheme.bodyMedium?.color,
               labelStyle: const TextStyle(fontWeight: FontWeight.w600, fontSize: 13),
               dividerColor: Colors.transparent,
-              overlayColor: const MaterialStatePropertyAll(Colors.transparent),
+              overlayColor: const WidgetStatePropertyAll(Colors.transparent),
               tabs: const [
                 Tab(text: 'Weekly'),
                 Tab(text: 'Monthly'),

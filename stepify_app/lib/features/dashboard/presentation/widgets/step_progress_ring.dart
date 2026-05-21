@@ -1,7 +1,6 @@
 import 'dart:math' as math;
 import 'package:flutter/material.dart';
 
-import '../../../../core/theme/app_theme.dart';
 
 /// Animated circular progress ring for steps
 class StepProgressRing extends StatelessWidget {

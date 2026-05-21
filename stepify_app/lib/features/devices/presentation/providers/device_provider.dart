@@ -137,8 +137,8 @@ class DeviceNotifier extends StateNotifier<DeviceState> {
     try {
       final authorized = await _healthService.requestAuthorization();
       if (authorized) {
-        String type = defaultTargetPlatform == TargetPlatform.iOS ? 'WATCH_APPLE' : 'WATCH_ANDROID';
-        String name = defaultTargetPlatform == TargetPlatform.iOS ? 'Apple Health' : 'Google Fit';
+        final String type = defaultTargetPlatform == TargetPlatform.iOS ? 'WATCH_APPLE' : 'WATCH_ANDROID';
+        final String name = defaultTargetPlatform == TargetPlatform.iOS ? 'Apple Health' : 'Google Fit';
         
         // Add to backend
         await addDevice(name, type);

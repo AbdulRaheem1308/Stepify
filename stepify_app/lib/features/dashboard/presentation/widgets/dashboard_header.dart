@@ -1,8 +1,6 @@
 import 'package:flutter/material.dart';
-import 'package:flutter_animate/flutter_animate.dart';
 import 'package:stepify_app/l10n/app_localizations.dart';
 import '../../../../core/theme/app_theme.dart';
-import '../../../messaging/presentation/screens/conversations_screen.dart';
 
 class DashboardHeader extends StatelessWidget {
   final Map<String, dynamic>? user;

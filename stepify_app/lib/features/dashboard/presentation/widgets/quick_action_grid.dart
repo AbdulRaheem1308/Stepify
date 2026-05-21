@@ -1,6 +1,5 @@
 import 'package:flutter/material.dart';
 import 'package:stepify_app/l10n/app_localizations.dart';
-import '../../../../core/theme/app_theme.dart';
 
 class QuickActionGrid extends StatelessWidget {
   final VoidCallback onChallengesTap;

@@ -39,7 +39,7 @@ class HealthService {
 
     try {
       // Request access to HealthKit/Google Fit
-      bool authorized = await _health.requestAuthorization(
+      final bool authorized = await _health.requestAuthorization(
         _types,
         permissions: _permissions,
       );

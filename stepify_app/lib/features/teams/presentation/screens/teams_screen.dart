@@ -287,7 +287,7 @@ class _TeamsScreenState extends ConsumerState<TeamsScreen>
                   title: const Text('Public Team'),
                   subtitle: const Text('Anyone can find and join'),
                   value: isPublic,
-                  activeColor: AppTheme.primaryGreen,
+                  activeThumbColor: AppTheme.primaryGreen,
                   onChanged: (val) => setModalState(() => isPublic = val),
                 ),
                 const SizedBox(height: 24),

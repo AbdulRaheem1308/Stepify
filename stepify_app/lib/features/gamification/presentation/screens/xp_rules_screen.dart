@@ -1,7 +1,5 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_animate/flutter_animate.dart';
-import 'package:go_router/go_router.dart';
-import 'package:stepify_app/l10n/app_localizations.dart';
 import '../../../../core/theme/app_theme.dart';
 
 class XpRulesScreen extends StatelessWidget {
@@ -227,6 +225,6 @@ class XpRulesScreen extends StatelessWidget {
     if (level == 5) return ['Bronze Badge', '5% Coin Boost'];
     if (level == 10) return ['Silver Badge', 'Avatar Frame'];
     if (level == 20) return ['Gold Badge', '10% Coin Boost'];
-    return ['Coin Multiplier +${level}%'];
+    return ['Coin Multiplier +$level%'];
   }
 }

@@ -70,7 +70,7 @@ class StreakNotifier extends StateNotifier<StreakState> {
       final historyResponse = results[1].data;
 
       // Parse active dates from step history
-      List<DateTime> activeDates = [];
+      final List<DateTime> activeDates = [];
       
       debugPrint('History response type: ${historyResponse.runtimeType}');
       

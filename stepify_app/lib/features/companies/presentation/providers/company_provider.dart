@@ -2,7 +2,6 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../../../../services/company_service.dart';
 import '../../../../services/api_service.dart';
 import '../../domain/models/company_model.dart';
-import '../../../../features/auth/presentation/providers/auth_provider.dart';
 
 // State
 class CompanyState {

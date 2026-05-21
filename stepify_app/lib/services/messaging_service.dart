@@ -1,4 +1,3 @@
-import 'package:dio/dio.dart';
 import '../features/messaging/domain/models/messaging_models.dart';
 import 'api_service.dart';
 

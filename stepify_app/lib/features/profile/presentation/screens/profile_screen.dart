@@ -1038,14 +1038,14 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen>
           onChanged: notifier.togglePublicProfile,
           title: const Text('Public Profile'),
           subtitle: const Text('Allow others to view your profile'),
-          activeColor: AppTheme.primaryGreen,
+          activeThumbColor: AppTheme.primaryGreen,
         ),
         SwitchListTile(
           value: settings.showOnLeaderboard,
           onChanged: notifier.toggleShowOnLeaderboard,
           title: const Text('Show on Leaderboards'),
           subtitle: const Text('Compete with community and friends'),
-          activeColor: AppTheme.primaryGreen,
+          activeThumbColor: AppTheme.primaryGreen,
         ),
         SwitchListTile(
           value: settings.showMilestones,
@@ -1053,7 +1053,7 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen>
           title: const Text('Share Milestones'),
           subtitle:
               const Text('Auto-post achievements to community feed'),
-          activeColor: AppTheme.primaryGreen,
+          activeThumbColor: AppTheme.primaryGreen,
         ),
         const Divider(height: 32),
 

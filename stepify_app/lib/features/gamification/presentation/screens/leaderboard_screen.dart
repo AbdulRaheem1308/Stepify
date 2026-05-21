@@ -162,8 +162,9 @@ class _LeaderboardScreenState extends ConsumerState<LeaderboardScreen> with Sing
   Widget _buildLeaderboardItem(BuildContext context, LeaderboardEntry entry, int index) {
     final isTop3 = index < 3;
     Color? rankColor;
-    if (index == 0) rankColor = const Color(0xFFFFD700); // Gold
-    else if (index == 1) rankColor = const Color(0xFFC0C0C0); // Silver
+    if (index == 0) {
+      rankColor = const Color(0xFFFFD700); // Gold
+    } else if (index == 1) rankColor = const Color(0xFFC0C0C0); // Silver
     else if (index == 2) rankColor = const Color(0xFFCD7F32); // Bronze
     else rankColor = AppTheme.neutral500;
 
