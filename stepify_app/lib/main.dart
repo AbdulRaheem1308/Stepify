@@ -27,6 +27,11 @@ void main() {
     try {
       WidgetsFlutterBinding.ensureInitialized();
       
+      // Strip debugPrint logs in production for security and performance
+      if (kReleaseMode) {
+        debugPrint = (String? message, {int? wrapWidth}) {};
+      }
+      
       // Check production configuration
       AppConstants.checkProductionConfig();
 

@@ -50,7 +50,7 @@ jobs:
     - name: Build iOS IPA (Unsigned)
       working-directory: ${{ env.PROJECT_DIR }}
       run: |
-        flutter build ipa --no-codesign --release
+        flutter build ipa --no-codesign --release --obfuscate --split-debug-info=build/ios/symbols
 
     - name: Compress iOS Build Output
       working-directory: ${{ env.PROJECT_DIR }}/build/ios/archive

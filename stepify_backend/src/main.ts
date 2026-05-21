@@ -19,6 +19,13 @@ Sentry.init({
 });
 
 async function bootstrap() {
+  // Strip console logs in production for security and performance
+  if (process.env.NODE_ENV === "production") {
+    console.log = function () {};
+    console.debug = function () {};
+    console.info = function () {};
+  }
+
   // Configure Winston structured and colorized logging
   const winstonLogger = WinstonModule.createLogger({
     transports: [
