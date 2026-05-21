@@ -22,6 +22,8 @@ class QuickActionCard extends StatelessWidget {
     return Semantics(
       button: true,
       label: '$title. $subtitle',
+      excludeSemantics: true,
+      onTap: onTap,
       child: GestureDetector(
         onTap: onTap,
       child: Container(
