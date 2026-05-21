@@ -258,27 +258,33 @@ class ApiError implements Exception {
         } else if (data is String) {
           message = data;
         }
-        // Append raw response for debugging
-        message += '\n\n[Debug] HTTP ${error.response?.statusCode}: ${error.response?.statusMessage}';
+        // Append raw response for debugging only in debug mode
+        if (kDebugMode) {
+          message += '\n\n[Debug] HTTP ${error.response?.statusCode}: ${error.response?.statusMessage}';
+        }
       } else {
         final urlStr = error.requestOptions.uri.toString();
         switch (error.type) {
           case DioExceptionType.connectionTimeout:
           case DioExceptionType.sendTimeout:
           case DioExceptionType.receiveTimeout:
-            message = 'Timeout hitting $urlStr\n\n[Debug] ${error.message}';
+            message = 'Connection timed out. Please check your internet connection.';
+            if (kDebugMode) message += '\n\n[Debug] Timeout hitting $urlStr';
             break;
           case DioExceptionType.connectionError:
-            message = 'Connection Error to $urlStr\n\n[Debug] ${error.message}\nError: ${error.error}';
+            message = 'Connection Error. Please check your internet connection.';
+            if (kDebugMode) message += '\n\n[Debug] Error connecting to $urlStr\nError: ${error.error}';
             break;
           case DioExceptionType.badCertificate:
-            message = 'SSL Cert Error connecting to $urlStr\n\n[Debug] ${error.message}';
+            message = 'Security Error. Connection could not be verified.';
+            if (kDebugMode) message += '\n\n[Debug] SSL Cert Error connecting to $urlStr';
             break;
           case DioExceptionType.cancel:
             message = 'Request cancelled.';
             break;
           default:
-            message = 'Network error: $urlStr\n\n[Debug] ${error.message}\nError: ${error.error}';
+            message = 'Network error. Please try again later.';
+            if (kDebugMode) message += '\n\n[Debug] Network error: $urlStr\nError: ${error.error}';
         }
       }
       

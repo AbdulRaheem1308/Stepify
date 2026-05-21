@@ -4,6 +4,8 @@ import 'package:flutter/foundation.dart';
 import '../../services/health_service.dart';
 import '../../services/api_service.dart';
 import '../../services/storage_service.dart';
+import 'package:uuid/uuid.dart';
+import 'package:safe_device/safe_device.dart';
 
 const String kBackgroundSyncTask = "stepify.backgroundSync";
 
@@ -43,11 +45,22 @@ void callbackDispatcher() {
            debugPrint("Background Sync: Syncing $steps steps");
            // 4. Send to Backend
            try {
+             final isJailBroken = await SafeDevice.isJailBroken;
+             final isRealDevice = await SafeDevice.isRealDevice;
+             final isMockLocation = await SafeDevice.isMockLocation;
+             
              await apiService.post('/steps/sync', data: {
                'deviceIdentifier': deviceUUID,
                'stepCount': steps,
                'date': DateTime.now().toIso8601String().split('T')[0],
-               'source': 'BACKGROUND_WEARABLE'
+               'source': 'BACKGROUND_WEARABLE',
+               'nonce': const Uuid().v4(),
+               'timestamp': DateTime.now().millisecondsSinceEpoch,
+               'integrity': {
+                 'isJailBroken': isJailBroken,
+                 'isRealDevice': isRealDevice,
+                 'isMockLocation': isMockLocation,
+               }
              });
              debugPrint("Background Sync: Success");
              await prefs.setString('bg_sync_status', 'Success: Synced $steps steps');

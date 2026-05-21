@@ -186,11 +186,14 @@ class HeroProgressCard extends StatelessWidget {
                           ),
                           
                           // Compact Adjust Button
-                          Material(
-                            color: Colors.white.withOpacity(0.15),
-                            borderRadius: BorderRadius.circular(12),
-                            child: InkWell(
-                              onTap: onAdjustGoal,
+                          Semantics(
+                            label: 'Adjust Daily Goal',
+                            button: true,
+                            child: Material(
+                              color: Colors.white.withOpacity(0.15),
+                              borderRadius: BorderRadius.circular(12),
+                              child: InkWell(
+                                onTap: onAdjustGoal,
                               borderRadius: BorderRadius.circular(12),
                               child: Container(
                                 padding: const EdgeInsets.all(10),

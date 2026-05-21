@@ -29,13 +29,17 @@ class DashboardHeader extends StatelessWidget {
     return Row(
       children: [
         // Avatar
-        GestureDetector(
-          onTap: onProfileTap,
-          child: CircleAvatar(
-            radius: 24,
-            backgroundColor: AppTheme.neutral200,
-            backgroundImage: avatarUrl != null ? NetworkImage(avatarUrl) : null,
-            child: avatarUrl == null ? const Icon(Icons.person, color: AppTheme.neutral600) : null,
+        Semantics(
+          label: 'View Profile',
+          button: true,
+          child: GestureDetector(
+            onTap: onProfileTap,
+            child: CircleAvatar(
+              radius: 24,
+              backgroundColor: AppTheme.neutral200,
+              backgroundImage: avatarUrl != null ? NetworkImage(avatarUrl) : null,
+              child: avatarUrl == null ? const Icon(Icons.person, color: AppTheme.neutral600) : null,
+            ),
           ),
         ),
         const SizedBox(width: 12),
@@ -63,6 +67,7 @@ class DashboardHeader extends StatelessWidget {
           icon: Icons.notifications_none_rounded,
           onTap: onNotificationTap,
           badgeCount: unreadCount,
+          semanticLabel: 'Notifications',
         ),
         // const SizedBox(width: 8),
         // _buildActionButton(
@@ -83,38 +88,45 @@ class DashboardHeader extends StatelessWidget {
           context,
           icon: Icons.settings_outlined,
           onTap: onSettingsTap,
+          semanticLabel: 'Settings',
         ),
       ],
     );
   }
 
-  Widget _buildActionButton(BuildContext context, {required IconData icon, required VoidCallback onTap, int badgeCount = 0}) {
-    return GestureDetector(
-      onTap: onTap,
-      child: Stack(
-        children: [
-          Container(
-            width: 40, height: 40,
-            decoration: BoxDecoration(
-              color: Colors.white,
-              shape: BoxShape.circle,
-              border: Border.all(color: AppTheme.neutral200),
+  Widget _buildActionButton(BuildContext context, {required IconData icon, required VoidCallback onTap, int badgeCount = 0, required String semanticLabel}) {
+    final isDark = Theme.of(context).brightness == Brightness.dark;
+    
+    return Semantics(
+      label: semanticLabel,
+      button: true,
+      child: GestureDetector(
+        onTap: onTap,
+        child: Stack(
+          children: [
+            Container(
+              width: 40, height: 40,
+              decoration: BoxDecoration(
+                color: isDark ? AppTheme.neutral800 : Colors.white,
+                shape: BoxShape.circle,
+                border: Border.all(color: isDark ? AppTheme.neutral700 : AppTheme.neutral200),
+              ),
+              child: Icon(icon, color: isDark ? AppTheme.neutral300 : AppTheme.neutral600, size: 20),
             ),
-            child: Icon(icon, color: AppTheme.neutral600, size: 20),
-          ),
-          if (badgeCount > 0)
-            Positioned(
-              top: 0, right: 0,
-              child: Container(
-                width: 12, height: 12,
-                decoration: const BoxDecoration(
-                  color: AppTheme.error,
-                  shape: BoxShape.circle,
-                  border: Border.fromBorderSide(BorderSide(color: Colors.white, width: 2)),
+            if (badgeCount > 0)
+              Positioned(
+                top: 0, right: 0,
+                child: Container(
+                  width: 12, height: 12,
+                  decoration: BoxDecoration(
+                    color: AppTheme.error,
+                    shape: BoxShape.circle,
+                    border: Border.fromBorderSide(BorderSide(color: isDark ? AppTheme.neutral800 : Colors.white, width: 2)),
+                  ),
                 ),
               ),
-            ),
-        ],
+          ],
+        ),
       ),
     );
   }

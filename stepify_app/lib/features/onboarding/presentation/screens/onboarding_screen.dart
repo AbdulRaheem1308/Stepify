@@ -99,11 +99,13 @@ class _OnboardingScreenState extends State<OnboardingScreen> {
             ),
             
             // Indicators
-            Row(
-              mainAxisAlignment: MainAxisAlignment.center,
-              children: List.generate(
-                _pages.length,
-                (index) => _buildIndicator(index),
+            ExcludeSemantics(
+              child: Row(
+                mainAxisAlignment: MainAxisAlignment.center,
+                children: List.generate(
+                  _pages.length,
+                  (index) => _buildIndicator(index),
+                ),
               ),
             ),
             
@@ -137,40 +139,44 @@ class _OnboardingScreenState extends State<OnboardingScreen> {
         mainAxisAlignment: MainAxisAlignment.center,
         children: [
           // Icon
-          Container(
-            width: 150,
-            height: 150,
-            decoration: BoxDecoration(
-              color: page.color.withOpacity(0.1),
-              shape: BoxShape.circle,
-            ),
-            child: Icon(
-              page.icon,
-              size: 80,
-              color: page.color,
-            ),
-          )
-              .animate()
-              .scale(
-                duration: 500.ms,
-                curve: Curves.elasticOut,
-              )
-              .fadeIn(),
+          ExcludeSemantics(
+            child: Container(
+              width: 150,
+              height: 150,
+              decoration: BoxDecoration(
+                color: page.color.withOpacity(0.1),
+                shape: BoxShape.circle,
+              ),
+              child: Icon(
+                page.icon,
+                size: 80,
+                color: page.color,
+              ),
+            )
+                .animate()
+                .scale(
+                  duration: 500.ms,
+                  curve: Curves.elasticOut,
+                )
+                .fadeIn(),
+          ),
           
           const SizedBox(height: 48),
           
           // Title
-          Text(
-            page.title,
-            textAlign: TextAlign.center,
-            style: Theme.of(context).textTheme.headlineMedium?.copyWith(
-              fontWeight: FontWeight.bold,
-              color: AppTheme.neutral900,
-            ),
-          )
-              .animate(delay: 200.ms)
-              .fadeIn()
-              .slideY(begin: 0.2, end: 0),
+          Semantics(
+            header: true,
+            child: Text(
+              page.title,
+              textAlign: TextAlign.center,
+              style: Theme.of(context).textTheme.headlineMedium?.copyWith(
+                fontWeight: FontWeight.bold,
+              ),
+            )
+                .animate(delay: 200.ms)
+                .fadeIn()
+                .slideY(begin: 0.2, end: 0),
+          ),
           
           const SizedBox(height: 16),
           
@@ -179,7 +185,6 @@ class _OnboardingScreenState extends State<OnboardingScreen> {
             page.description,
             textAlign: TextAlign.center,
             style: Theme.of(context).textTheme.bodyLarge?.copyWith(
-              color: AppTheme.neutral600,
               height: 1.5,
             ),
           )

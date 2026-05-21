@@ -72,37 +72,42 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
                 
                 // Logo
                 Center(
-                  child: Container(
-                    padding: const EdgeInsets.all(20),
-                    decoration: BoxDecoration(
-                      color: Colors.white,
-                      borderRadius: BorderRadius.circular(24),
-                      boxShadow: [
-                        BoxShadow(
-                          color: Colors.black.withOpacity(0.1),
-                          blurRadius: 20,
-                          offset: const Offset(0, 10),
-                        ),
-                      ],
-                    ),
-                    child: const Icon(
-                      Icons.directions_walk_rounded,
-                      size: 60,
-                      color: AppTheme.primaryGreen,
+                  child: ExcludeSemantics(
+                    child: Container(
+                      padding: const EdgeInsets.all(20),
+                      decoration: BoxDecoration(
+                        color: Colors.white,
+                        borderRadius: BorderRadius.circular(24),
+                        boxShadow: [
+                          BoxShadow(
+                            color: Colors.black.withOpacity(0.1),
+                            blurRadius: 20,
+                            offset: const Offset(0, 10),
+                          ),
+                        ],
+                      ),
+                      child: const Icon(
+                        Icons.directions_walk_rounded,
+                        size: 60,
+                        color: AppTheme.primaryGreen,
+                      ),
                     ),
                   ),
                 ),
                 
                 const SizedBox(height: 32),
                 
-                const Text(
-                  'Stepify',
-                  textAlign: TextAlign.center,
-                  style: TextStyle(
-                    color: Colors.white,
-                    fontSize: 36,
-                    fontWeight: FontWeight.bold,
-                    letterSpacing: 1.5,
+                Semantics(
+                  header: true,
+                  child: const Text(
+                    'Stepify',
+                    textAlign: TextAlign.center,
+                    style: TextStyle(
+                      color: Colors.white,
+                      fontSize: 36,
+                      fontWeight: FontWeight.bold,
+                      letterSpacing: 1.5,
+                    ),
                   ),
                 ),
                 
@@ -195,7 +200,7 @@ class _SocialButton extends StatelessWidget {
       child: Row(
         mainAxisAlignment: MainAxisAlignment.center,
         children: [
-          Icon(icon, size: 20),
+          ExcludeSemantics(child: Icon(icon, size: 20)),
           const SizedBox(width: 12),
           Text(
             label,

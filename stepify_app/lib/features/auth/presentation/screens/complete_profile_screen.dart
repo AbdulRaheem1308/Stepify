@@ -152,11 +152,9 @@ class _CompleteProfileScreenState extends ConsumerState<CompleteProfileScreen> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      backgroundColor: Colors.white,
       appBar: AppBar(
         title: const Text('Complete Profile', style: TextStyle(fontWeight: FontWeight.bold)),
         centerTitle: true,
-        backgroundColor: Colors.white,
         elevation: 0,
       ),
       body: SafeArea(
@@ -325,27 +323,32 @@ class _CompleteProfileScreenState extends ConsumerState<CompleteProfileScreen> {
                             final isSelected = _selectedAvatarIndex == index;
                             final avatarUrl = _avatars[index]['url'];
                             
-                            return GestureDetector(
-                              onTap: () => setState(() => _selectedAvatarIndex = index),
-                              child: AnimatedContainer(
-                                duration: const Duration(milliseconds: 300),
-                                curve: Curves.elasticOut,
-                                width: isSelected ? 70 : 50,
-                                height: isSelected ? 70 : 50,
-                                decoration: BoxDecoration(
-                                  shape: BoxShape.circle,
-                                  border: Border.all(
-                                    color: isSelected ? AppTheme.primaryGreen : Colors.transparent,
-                                    width: 3,
+                            return Semantics(
+                              label: 'Avatar Option ${index + 1}',
+                              selected: isSelected,
+                              onTapHint: 'Select this avatar',
+                              child: GestureDetector(
+                                onTap: () => setState(() => _selectedAvatarIndex = index),
+                                child: AnimatedContainer(
+                                  duration: const Duration(milliseconds: 300),
+                                  curve: Curves.elasticOut,
+                                  width: isSelected ? 70 : 50,
+                                  height: isSelected ? 70 : 50,
+                                  decoration: BoxDecoration(
+                                    shape: BoxShape.circle,
+                                    border: Border.all(
+                                      color: isSelected ? AppTheme.primaryGreen : Colors.transparent,
+                                      width: 3,
+                                    ),
+                                    color: Colors.white,
+                                    boxShadow: isSelected ? [BoxShadow(color: AppTheme.primaryGreen.withOpacity(0.4), blurRadius: 8)] : null,
                                   ),
-                                  color: Colors.white,
-                                  boxShadow: isSelected ? [BoxShadow(color: AppTheme.primaryGreen.withOpacity(0.4), blurRadius: 8)] : null,
-                                ),
-                                child: ClipOval(
-                                  child: Image.network(
-                                    avatarUrl,
-                                    fit: BoxFit.cover,
-                                    errorBuilder: (_, __, ___) => const Icon(Icons.person),
+                                  child: ClipOval(
+                                    child: Image.network(
+                                      avatarUrl,
+                                      fit: BoxFit.cover,
+                                      errorBuilder: (_, __, ___) => const Icon(Icons.person),
+                                    ),
                                   ),
                                 ),
                               ),
@@ -425,29 +428,23 @@ class _CompleteProfileScreenState extends ConsumerState<CompleteProfileScreen> {
   Widget _buildLabel(String text) {
     return Padding(
       padding: const EdgeInsets.only(bottom: 8),
-      child: Text(text, style: const TextStyle(fontWeight: FontWeight.w600, color: AppTheme.neutral700)),
+      child: Text(
+        text, 
+        style: Theme.of(context).textTheme.labelLarge?.copyWith(fontWeight: FontWeight.w600),
+      ),
     );
   }
 
   InputDecoration _buildInputDecoration(String hint, IconData? icon, {bool isReadOnly = false}) {
+    final isDark = Theme.of(context).brightness == Brightness.dark;
     return InputDecoration(
       hintText: hint,
       prefixIcon: icon != null ? Icon(icon, size: 20) : null,
       contentPadding: const EdgeInsets.symmetric(vertical: 14, horizontal: 16),
-      border: OutlineInputBorder(
-        borderRadius: BorderRadius.circular(12),
-        borderSide: const BorderSide(color: AppTheme.neutral200),
-      ),
-      enabledBorder: OutlineInputBorder(
-        borderRadius: BorderRadius.circular(12),
-        borderSide: const BorderSide(color: AppTheme.neutral200),
-      ),
-      focusedBorder: OutlineInputBorder(
-        borderRadius: BorderRadius.circular(12),
-        borderSide: const BorderSide(color: AppTheme.primaryGreen, width: 2),
-      ),
       filled: true,
-      fillColor: isReadOnly ? AppTheme.neutral100 : AppTheme.neutral50,
+      fillColor: isReadOnly 
+          ? (isDark ? AppTheme.neutral900 : AppTheme.neutral100)
+          : (isDark ? AppTheme.neutral800 : AppTheme.neutral50),
     );
   }
 }
