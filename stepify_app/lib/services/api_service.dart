@@ -258,21 +258,27 @@ class ApiError implements Exception {
         } else if (data is String) {
           message = data;
         }
+        // Append raw response for debugging
+        message += '\n\n[Debug] HTTP ${error.response?.statusCode}: ${error.response?.statusMessage}';
       } else {
+        final urlStr = error.requestOptions.uri.toString();
         switch (error.type) {
           case DioExceptionType.connectionTimeout:
           case DioExceptionType.sendTimeout:
           case DioExceptionType.receiveTimeout:
-            message = 'Connection timed out. Please check your internet.';
+            message = 'Timeout hitting $urlStr\n\n[Debug] ${error.message}';
             break;
           case DioExceptionType.connectionError:
-            message = 'No internet connection. Please retry.';
+            message = 'Connection Error to $urlStr\n\n[Debug] ${error.message}\nError: ${error.error}';
+            break;
+          case DioExceptionType.badCertificate:
+            message = 'SSL Cert Error connecting to $urlStr\n\n[Debug] ${error.message}';
             break;
           case DioExceptionType.cancel:
             message = 'Request cancelled.';
             break;
           default:
-            message = 'Network error occurred.';
+            message = 'Network error: $urlStr\n\n[Debug] ${error.message}\nError: ${error.error}';
         }
       }
       
