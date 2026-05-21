@@ -19,8 +19,11 @@ class QuickActionCard extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return GestureDetector(
-      onTap: onTap,
+    return Semantics(
+      button: true,
+      label: '$title. $subtitle',
+      child: GestureDetector(
+        onTap: onTap,
       child: Container(
         padding: const EdgeInsets.all(16),
         decoration: BoxDecoration(
@@ -61,6 +64,7 @@ class QuickActionCard extends StatelessWidget {
             ),
           ],
         ),
+      ),
       ),
     );
   }

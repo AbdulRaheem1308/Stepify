@@ -8,16 +8,16 @@ class AppTheme {
   // COLOR PALETTE - Fresh Fitness Green & Sky Blue
   // ============================================
   
-  // Primary Green - Energy & Growth
-  static const Color primaryGreen = Color(0xFF10B981);
-  static const Color primaryGreenLight = Color(0xFF34D399);
-  static const Color primaryGreenDark = Color(0xFF059669);
+  // Primary Green - Energy & Growth (WCAG AA Compliant for White Text)
+  static const Color primaryGreen = Color(0xFF047857); // Darkened for 4.5:1 contrast
+  static const Color primaryGreenLight = Color(0xFF10B981);
+  static const Color primaryGreenDark = Color(0xFF064E3B);
   static const Color primaryDark = Color(0xFF111827); // Added for text (neutral900)
   
-  // Secondary Sky Blue - Calm & Trust
-  static const Color secondaryBlue = Color(0xFF0EA5E9);
-  static const Color secondaryBlueLight = Color(0xFF38BDF8);
-  static const Color secondaryBlueDark = Color(0xFF0284C7);
+  // Secondary Sky Blue - Calm & Trust (WCAG AA Compliant for White Text)
+  static const Color secondaryBlue = Color(0xFF0369A1); // Darkened for 4.5:1 contrast
+  static const Color secondaryBlueLight = Color(0xFF0EA5E9);
+  static const Color secondaryBlueDark = Color(0xFF0C4A6E);
   
   // Accent Colors
   static const Color accentYellow = Color(0xFFFBBF24);
