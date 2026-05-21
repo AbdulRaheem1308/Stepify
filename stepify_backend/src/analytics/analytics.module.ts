@@ -1,5 +1,5 @@
-import { Module, Global } from '@nestjs/common';
-import { PostHogService } from './posthog.service';
+import { Module, Global } from "@nestjs/common";
+import { PostHogService } from "./posthog.service";
 
 /**
  * Global analytics module — PostHogService is available for injection
@@ -7,7 +7,7 @@ import { PostHogService } from './posthog.service';
  */
 @Global()
 @Module({
-    providers: [PostHogService],
-    exports: [PostHogService],
+  providers: [PostHogService],
+  exports: [PostHogService],
 })
 export class AnalyticsModule {}

@@ -1,20 +1,27 @@
-import { Controller, Get, Post, Body, Header, Injectable } from '@nestjs/common';
-import { PrismaService } from '../prisma/prisma.service';
-import { RedisService } from '../redis/redis.service';
-import { StepsService } from '../steps/steps.service';
+import {
+  Controller,
+  Get,
+  Post,
+  Body,
+  Header,
+  Injectable,
+} from "@nestjs/common";
+import { PrismaService } from "../prisma/prisma.service";
+import { RedisService } from "../redis/redis.service";
+import { StepsService } from "../steps/steps.service";
 
-@Controller('admin')
+@Controller("admin")
 export class AdminController {
-    constructor(
-        private prisma: PrismaService,
-        private redisService: RedisService,
-        private stepsService: StepsService,
-    ) { }
+  constructor(
+    private prisma: PrismaService,
+    private redisService: RedisService,
+    private stepsService: StepsService,
+  ) {}
 
-    @Get()
-    @Header('Content-Type', 'text/html')
-    async getDashboardHtml() {
-        return `
+  @Get()
+  @Header("Content-Type", "text/html")
+  async getDashboardHtml() {
+    return `
 <!DOCTYPE html>
 <html lang="en">
 <head>
@@ -809,127 +816,131 @@ export class AdminController {
 </body>
 </html>
         `;
+  }
+
+  @Get("api/metrics")
+  async getMetrics() {
+    const usersCount = await this.prisma.user.count();
+
+    const totalSteps = await this.prisma.step.aggregate({
+      _sum: { stepCount: true },
+    });
+
+    const totalCoins = await this.prisma.wallet.aggregate({
+      _sum: { balance: true },
+    });
+
+    const users = await this.prisma.user.findMany({
+      take: 15,
+      orderBy: { createdAt: "desc" },
+      select: { id: true, name: true, phone: true, email: true },
+    });
+
+    const recentTransactions = await this.prisma.transaction.findMany({
+      where: { type: "STEPS" },
+      take: 6,
+      orderBy: { createdAt: "desc" },
+      include: {
+        user: {
+          select: { name: true, phone: true, email: true },
+        },
+      },
+    });
+
+    // 30-Day aggregate steps for activity chart
+    const thirtyDaysAgo = new Date();
+    thirtyDaysAgo.setDate(thirtyDaysAgo.getDate() - 30);
+
+    const stepsData = await this.prisma.step.groupBy({
+      by: ["date"],
+      where: {
+        date: { gte: thirtyDaysAgo },
+      },
+      _sum: { stepCount: true },
+      orderBy: { date: "asc" },
+    });
+
+    const chartData = stepsData.map((d) => {
+      const dateStr = d.date.toISOString().split("T")[0];
+      return {
+        date: dateStr,
+        steps: d._sum.stepCount || 0,
+      };
+    });
+
+    return {
+      usersCount,
+      stepsSum: totalSteps._sum.stepCount || 0,
+      coinsSum: totalCoins._sum.balance || 0,
+      users,
+      recentTransactions,
+      chartData,
+    };
+  }
+
+  @Post("api/mock/steps")
+  async mockSyncSteps(
+    @Body() body: { userId: string; stepCount: number; source: string },
+  ) {
+    // Build cryptographic sync payload mimicking the hardened Flutter SyncStepsDto contract
+    const nonce = `mock-nonce-${Math.random().toString(36).substring(2, 11)}-${Date.now()}`;
+    const timestamp = Date.now();
+    const dateStr = new Date().toISOString().split("T")[0];
+
+    // Ensure the admin mock simulation device is registered and active in DB for this user
+    const mockDeviceIdentifier = "admin-attested-device-uuid";
+    const existingDevice = await this.prisma.device.findFirst({
+      where: {
+        userId: body.userId,
+        identifier: mockDeviceIdentifier,
+        isActive: true,
+      },
+    });
+
+    if (!existingDevice) {
+      await this.prisma.device.create({
+        data: {
+          userId: body.userId,
+          name: "Admin Attestation Simulator",
+          type: "PHONE",
+          identifier: mockDeviceIdentifier,
+          isActive: true,
+        },
+      });
     }
 
-    @Get('api/metrics')
-    async getMetrics() {
-        const usersCount = await this.prisma.user.count();
+    // Call the service under syncSteps to pass through ALL anti-cheat validations,
+    // thereby showing the anti-cheat shield working actively in real-time!
+    return this.stepsService.syncSteps(body.userId, {
+      deviceIdentifier: mockDeviceIdentifier,
+      date: dateStr,
+      stepCount: body.stepCount,
+      source: body.source,
+      nonce: nonce,
+      timestamp: timestamp,
+      integrity: {
+        isJailBroken: false,
+        isRealDevice: true,
+        isMockLocation: false,
+      },
+    });
+  }
 
-        const totalSteps = await this.prisma.step.aggregate({
-            _sum: { stepCount: true },
-        });
-
-        const totalCoins = await this.prisma.wallet.aggregate({
-            _sum: { balance: true },
-        });
-
-        const users = await this.prisma.user.findMany({
-            take: 15,
-            orderBy: { createdAt: 'desc' },
-            select: { id: true, name: true, phone: true, email: true },
-        });
-
-        const recentTransactions = await this.prisma.transaction.findMany({
-            where: { type: 'STEPS' },
-            take: 6,
-            orderBy: { createdAt: 'desc' },
-            include: {
-                user: {
-                    select: { name: true, phone: true, email: true },
-                },
-            },
-        });
-
-        // 30-Day aggregate steps for activity chart
-        const thirtyDaysAgo = new Date();
-        thirtyDaysAgo.setDate(thirtyDaysAgo.getDate() - 30);
-        
-        const stepsData = await this.prisma.step.groupBy({
-            by: ['date'],
-            where: {
-                date: { gte: thirtyDaysAgo },
-            },
-            _sum: { stepCount: true },
-            orderBy: { date: 'asc' },
-        });
-
-        const chartData = stepsData.map(d => {
-            const dateStr = d.date.toISOString().split('T')[0];
-            return {
-                date: dateStr,
-                steps: d._sum.stepCount || 0,
-            };
-        });
-
-        return {
-            usersCount,
-            stepsSum: totalSteps._sum.stepCount || 0,
-            coinsSum: totalCoins._sum.balance || 0,
-            users,
-            recentTransactions,
-            chartData,
-        };
+  @Post("api/mock/reset-nonces")
+  async resetNonces() {
+    // Flush all keys matching nonce:* to ease testing
+    const client = this.redisService.getClient();
+    if (client.status === "ready") {
+      const keys = await client.keys("nonce:*");
+      if (keys.length > 0) {
+        await client.del(...keys);
+      }
+      return { status: "success", flushedCount: keys.length };
     }
-
-    @Post('api/mock/steps')
-    async mockSyncSteps(
-        @Body() body: { userId: string; stepCount: number; source: string },
-    ) {
-        // Build cryptographic sync payload mimicking the hardened Flutter SyncStepsDto contract
-        const nonce = `mock-nonce-${Math.random().toString(36).substring(2, 11)}-${Date.now()}`;
-        const timestamp = Date.now();
-        const dateStr = new Date().toISOString().split('T')[0];
-
-        // Ensure the admin mock simulation device is registered and active in DB for this user
-        const mockDeviceIdentifier = 'admin-attested-device-uuid';
-        const existingDevice = await this.prisma.device.findFirst({
-            where: {
-                userId: body.userId,
-                identifier: mockDeviceIdentifier,
-                isActive: true,
-            },
-        });
-
-        if (!existingDevice) {
-            await this.prisma.device.create({
-                data: {
-                    userId: body.userId,
-                    name: 'Admin Attestation Simulator',
-                    type: 'PHONE',
-                    identifier: mockDeviceIdentifier,
-                    isActive: true,
-                },
-            });
-        }
-
-        // Call the service under syncSteps to pass through ALL anti-cheat validations,
-        // thereby showing the anti-cheat shield working actively in real-time!
-        return this.stepsService.syncSteps(body.userId, {
-            deviceIdentifier: mockDeviceIdentifier,
-            date: dateStr,
-            stepCount: body.stepCount,
-            source: body.source,
-            nonce: nonce,
-            timestamp: timestamp,
-            integrity: {
-                isJailBroken: false,
-                isRealDevice: true,
-                isMockLocation: false,
-            },
-        });
-    }
-
-    @Post('api/mock/reset-nonces')
-    async resetNonces() {
-        // Flush all keys matching nonce:* to ease testing
-        const client = this.redisService.getClient();
-        if (client.status === 'ready') {
-            const keys = await client.keys('nonce:*');
-            if (keys.length > 0) {
-                await client.del(...keys);
-            }
-            return { status: 'success', flushedCount: keys.length };
-        }
-        return { status: 'mock_in_memory_reset', message: 'No Redis connected. Local memory nonces automatically recycled.' };
-    }
+    return {
+      status: "mock_in_memory_reset",
+      message:
+        "No Redis connected. Local memory nonces automatically recycled.",
+    };
+  }
 }

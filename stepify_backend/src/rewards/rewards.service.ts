@@ -1,856 +1,908 @@
-import { Injectable, Logger } from '@nestjs/common';
-import { PrismaService } from '../prisma/prisma.service';
-import { ConfigService } from '@nestjs/config';
-import { TransactionType } from '@prisma/client';
-import { QuestsService } from '../quests/quests.service';
-import { Cron, CronExpression } from '@nestjs/schedule';
+import { Injectable, Logger } from "@nestjs/common";
+import { PrismaService } from "../prisma/prisma.service";
+import { ConfigService } from "@nestjs/config";
+import { TransactionType } from "@prisma/client";
+import { QuestsService } from "../quests/quests.service";
+import { Cron, CronExpression } from "@nestjs/schedule";
 
 @Injectable()
 export class RewardsService {
-    private readonly logger = new Logger(RewardsService.name);
-    private readonly pointsPerStep: number;
+  private readonly logger = new Logger(RewardsService.name);
+  private readonly pointsPerStep: number;
 
-    constructor(
-        private prisma: PrismaService,
-        private configService: ConfigService,
-        private questsService: QuestsService,
+  constructor(
+    private prisma: PrismaService,
+    private configService: ConfigService,
+    private questsService: QuestsService,
+  ) {
+    this.pointsPerStep = parseFloat(
+      this.configService.get("POINTS_PER_STEP", "0.1"),
+    );
+  }
+
+  /**
+   * CRON: Wallet Expiry
+   * Runs daily at midnight to expire coins for users inactive for > 180 days.
+   */
+  @Cron(CronExpression.EVERY_DAY_AT_MIDNIGHT)
+  async processWalletExpiry() {
+    this.logger.log("Running CRON: processWalletExpiry");
+
+    const sixMonthsAgo = new Date();
+    sixMonthsAgo.setDate(sixMonthsAgo.getDate() - 180);
+
+    // Find users with balance > 0 who haven't logged steps or transactions in 180 days
+    const inactiveUsers = await this.prisma.user.findMany({
+      where: {
+        wallet: { balance: { gt: 0 } },
+        updatedAt: { lt: sixMonthsAgo },
+      },
+      include: { wallet: true },
+    });
+
+    if (inactiveUsers.length === 0) {
+      this.logger.log("No inactive wallets to expire.");
+      return;
+    }
+
+    for (const user of inactiveUsers) {
+      if (!user.wallet) continue;
+
+      // 1. Drain balance
+      await this.prisma.wallet.update({
+        where: { userId: user.id },
+        data: { balance: 0 },
+      });
+
+      // 2. Log expiration transaction
+      await this.prisma.transaction.create({
+        data: {
+          userId: user.id,
+          type: "REDEMPTION", // Align with schema TransactionType
+          points: -user.wallet.balance,
+          description: "Coins expired due to 180 days of inactivity.",
+        },
+      });
+
+      this.logger.log(
+        `Expired ${user.wallet.balance} coins for inactive user ${user.id}`,
+      );
+    }
+
+    this.logger.log(
+      `Wallet expiry complete. Expired ${inactiveUsers.length} wallets.`,
+    );
+  }
+
+  /**
+   * Get user wallet
+   */
+  async getWallet(userId: string) {
+    try {
+      let wallet = await this.prisma.wallet.findUnique({
+        where: { userId },
+      });
+
+      if (!wallet) {
+        wallet = await this.prisma.wallet.create({
+          data: {
+            userId,
+            balance: 0,
+            lifetimePoints: 0,
+            monthlyXp: 0,
+          },
+        });
+      }
+
+      return wallet;
+    } catch (error) {
+      // Concurrency fallback
+      const wallet = await this.prisma.wallet.findUnique({
+        where: { userId },
+      });
+      if (wallet) return wallet;
+      throw error;
+    }
+  }
+
+  /**
+   * Get transaction history
+   */
+  async getTransactions(userId: string, page: number = 1, limit: number = 20) {
+    // Ensure page and limit are valid integers
+    const pageNum = Math.max(1, parseInt(String(page)) || 1);
+    const limitNum = Math.max(1, Math.min(100, parseInt(String(limit)) || 20));
+    const skip = (pageNum - 1) * limitNum;
+
+    const [transactions, total] = await Promise.all([
+      this.prisma.transaction.findMany({
+        where: { userId },
+        orderBy: { createdAt: "desc" },
+        take: limitNum,
+        skip,
+      }),
+      this.prisma.transaction.count({ where: { userId } }),
+    ]);
+
+    return {
+      data: transactions,
+      pagination: {
+        page: pageNum,
+        limit: limitNum,
+        total,
+        totalPages: Math.ceil(total / limitNum),
+      },
+    };
+  }
+
+  /**
+   * Process rewards for step sync
+   * Called automatically when steps are synced
+   */
+  async processStepRewards(userId: string, stepCount: number, date: Date) {
+    // Get user's goal
+    const user = await this.prisma.user.findUnique({
+      where: { id: userId },
+      select: { dailyStepGoal: true },
+    });
+
+    const goal = user?.dailyStepGoal || 10000;
+
+    // Award points for steps
+    const pointsEarned = Math.floor(stepCount * this.pointsPerStep);
+
+    if (pointsEarned > 0) {
+      await this.addPoints(
+        userId,
+        pointsEarned,
+        TransactionType.STEPS,
+        `Earned ${pointsEarned} points for ${stepCount.toLocaleString()} steps`,
+      );
+    }
+
+    // Update streak if goal reached
+    if (stepCount >= goal) {
+      await this.updateStreak(userId, date);
+    }
+
+    // Check for new achievements
+    await this.checkAchievements(userId);
+
+    // Process live quest progression
+    await this.questsService.processQuestProgress(userId, stepCount);
+
+    // Check for monthly reset
+    await this.checkMonthlyReset(userId);
+
+    return { pointsEarned };
+  }
+
+  /**
+   * Add points to user wallet
+   */
+  async addPoints(
+    userId: string,
+    points: number,
+    type: TransactionType,
+    description?: string,
+    metadata?: any,
+  ) {
+    // Create transaction
+    const transaction = await this.prisma.transaction.create({
+      data: {
+        userId,
+        type,
+        points,
+        description,
+        metadata,
+      },
+    });
+
+    // Update wallet
+    await this.prisma.wallet.upsert({
+      where: { userId },
+      update: {
+        balance: { increment: points },
+        lifetimePoints: { increment: points },
+        monthlyXp: { increment: points },
+      },
+      create: {
+        userId,
+        balance: points,
+        lifetimePoints: points,
+        monthlyXp: points,
+      },
+    });
+
+    return transaction;
+  }
+
+  /**
+   * Check and process monthly reset
+   */
+  async checkMonthlyReset(userId: string) {
+    const wallet = await this.prisma.wallet.findUnique({ where: { userId } });
+    if (!wallet) return;
+
+    const lastReset = new Date(wallet.lastResetDate);
+    const now = new Date();
+
+    // Check if we occur in a new month compared to last reset
+    if (
+      now.getMonth() !== lastReset.getMonth() ||
+      now.getFullYear() !== lastReset.getFullYear()
     ) {
-        this.pointsPerStep = parseFloat(this.configService.get('POINTS_PER_STEP', '0.1'));
+      // It's a new month! Reset time.
+      this.logger.log(`Performing monthly reset for user ${userId}`);
+
+      // 1. Reset Monthly XP and Update Date
+      await this.prisma.wallet.update({
+        where: { userId },
+        data: {
+          monthlyXp: 0,
+          lastResetDate: now,
+        },
+      });
+
+      // 2. Reset Badges (Lock all achievements)
+      await this.prisma.userAchievement.updateMany({
+        where: { userId },
+        data: {
+          unlocked: false,
+          progress: 0,
+          currentValue: 0,
+          unlockedAt: null,
+        },
+      });
+
+      // 3. Reset Level? Level is calculated from XP.
+      // If we use monthlyXp for level, it auto-resets when monthlyXp becomes 0.
+    }
+  }
+
+  /**
+   * Update user streak
+   */
+  async updateStreak(userId: string, date: Date) {
+    const dateOnly = new Date(date);
+    dateOnly.setHours(0, 0, 0, 0);
+
+    let streak = await this.prisma.streak.findUnique({
+      where: { userId },
+    });
+
+    if (!streak) {
+      streak = await this.prisma.streak.create({
+        data: {
+          userId,
+          currentStreak: 1,
+          longestStreak: 1,
+          lastActiveDate: dateOnly,
+        },
+      });
+      return streak;
     }
 
-    /**
-     * CRON: Wallet Expiry
-     * Runs daily at midnight to expire coins for users inactive for > 180 days.
-     */
-    @Cron(CronExpression.EVERY_DAY_AT_MIDNIGHT)
-    async processWalletExpiry() {
-        this.logger.log('Running CRON: processWalletExpiry');
-        
-        const sixMonthsAgo = new Date();
-        sixMonthsAgo.setDate(sixMonthsAgo.getDate() - 180);
+    const yesterday = new Date(dateOnly);
+    yesterday.setDate(yesterday.getDate() - 1);
 
-        // Find users with balance > 0 who haven't logged steps or transactions in 180 days
-        const inactiveUsers = await this.prisma.user.findMany({
-            where: {
-                wallet: { balance: { gt: 0 } },
-                updatedAt: { lt: sixMonthsAgo }
-            },
-            include: { wallet: true }
-        });
+    const lastActive = streak.lastActiveDate
+      ? new Date(streak.lastActiveDate)
+      : null;
 
-        if (inactiveUsers.length === 0) {
-            this.logger.log('No inactive wallets to expire.');
-            return;
-        }
+    let newStreak = streak.currentStreak;
 
-        for (const user of inactiveUsers) {
-            if (!user.wallet) continue;
-            
-            // 1. Drain balance
-            await this.prisma.wallet.update({
-                where: { userId: user.id },
-                data: { balance: 0 }
-            });
+    if (!lastActive) {
+      // First activity
+      newStreak = 1;
+    } else if (lastActive.getTime() === yesterday.getTime()) {
+      // Consecutive day - increment streak
+      newStreak = streak.currentStreak + 1;
 
-            // 2. Log expiration transaction
-            await this.prisma.transaction.create({
-                data: {
-                    userId: user.id,
-                    type: 'REDEMPTION', // Align with schema TransactionType
-                    points: -user.wallet.balance,
-                    description: 'Coins expired due to 180 days of inactivity.'
-                }
-            });
-            
-            this.logger.log(`Expired ${user.wallet.balance} coins for inactive user ${user.id}`);
-        }
-        
-        this.logger.log(`Wallet expiry complete. Expired ${inactiveUsers.length} wallets.`);
+      // Award streak bonuses at milestones
+      await this.checkStreakMilestones(userId, newStreak);
+    } else if (lastActive.getTime() < yesterday.getTime()) {
+      // Streak broken - reset
+      newStreak = 1;
     }
+    // If same day, keep streak the same
 
-    /**
-     * Get user wallet
-     */
-    async getWallet(userId: string) {
-        try {
-            let wallet = await this.prisma.wallet.findUnique({
-                where: { userId },
-            });
+    // Update streak
+    streak = await this.prisma.streak.update({
+      where: { userId },
+      data: {
+        currentStreak: newStreak,
+        longestStreak: Math.max(streak.longestStreak, newStreak),
+        lastActiveDate: dateOnly,
+      },
+    });
 
-            if (!wallet) {
-                wallet = await this.prisma.wallet.create({
-                    data: {
-                        userId,
-                        balance: 0,
-                        lifetimePoints: 0,
-                        monthlyXp: 0,
-                    },
-                });
+    return streak;
+  }
+
+  /**
+   * Check and award streak milestone bonuses
+   */
+  private async checkStreakMilestones(userId: string, streak: number) {
+    const milestones: { [key: number]: number } = {
+      7: 50, // Week streak
+      30: 200, // Month streak
+      100: 500, // 100 days
+      365: 2000, // Year streak
+    };
+
+    if (milestones[streak]) {
+      await this.addPoints(
+        userId,
+        milestones[streak],
+        TransactionType.STREAK_BONUS,
+        `🔥 ${streak}-day streak bonus!`,
+      );
+      this.logger.log(`User ${userId} earned ${streak}-day streak bonus`);
+    }
+  }
+
+  /**
+   * Recalculate streak values from step history (Self-Healing & Timezone-Resilient)
+   */
+  async recalculateStreakFromSteps(userId: string) {
+    const allSteps = await this.prisma.step.findMany({
+      where: {
+        userId,
+        stepCount: { gt: 0 },
+      },
+      orderBy: { date: "asc" },
+      select: { date: true },
+    });
+
+    let calculatedCurrentStreak = 0;
+    let calculatedLongestStreak = 0;
+    let lastActiveDate: Date | null = null;
+
+    if (allSteps.length > 0) {
+      const uniqueDates = Array.from(
+        new Set(
+          allSteps.map((s) => {
+            const d = s.date;
+            const year = d.getUTCFullYear();
+            const month = String(d.getUTCMonth() + 1).padStart(2, "0");
+            const day = String(d.getUTCDate()).padStart(2, "0");
+            return `${year}-${month}-${day}`;
+          }),
+        ),
+      ).sort();
+
+      if (uniqueDates.length > 0) {
+        let tempStreak = 1;
+        calculatedLongestStreak = 1;
+
+        for (let i = 1; i < uniqueDates.length; i++) {
+          const prevDate = new Date(uniqueDates[i - 1]);
+          const currDate = new Date(uniqueDates[i]);
+          const diffTime = Math.abs(currDate.getTime() - prevDate.getTime());
+          const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24));
+
+          if (diffDays === 1) {
+            tempStreak++;
+            if (tempStreak > calculatedLongestStreak) {
+              calculatedLongestStreak = tempStreak;
             }
-
-            return wallet;
-        } catch (error) {
-            // Concurrency fallback
-            const wallet = await this.prisma.wallet.findUnique({
-                where: { userId },
-            });
-            if (wallet) return wallet;
-            throw error;
-        }
-    }
-
-    /**
-     * Get transaction history
-     */
-    async getTransactions(userId: string, page: number = 1, limit: number = 20) {
-        // Ensure page and limit are valid integers
-        const pageNum = Math.max(1, parseInt(String(page)) || 1);
-        const limitNum = Math.max(1, Math.min(100, parseInt(String(limit)) || 20));
-        const skip = (pageNum - 1) * limitNum;
-
-        const [transactions, total] = await Promise.all([
-            this.prisma.transaction.findMany({
-                where: { userId },
-                orderBy: { createdAt: 'desc' },
-                take: limitNum,
-                skip,
-            }),
-            this.prisma.transaction.count({ where: { userId } }),
-        ]);
-
-        return {
-            data: transactions,
-            pagination: {
-                page: pageNum,
-                limit: limitNum,
-                total,
-                totalPages: Math.ceil(total / limitNum),
-            },
-        };
-    }
-
-    /**
-     * Process rewards for step sync
-     * Called automatically when steps are synced
-     */
-    async processStepRewards(userId: string, stepCount: number, date: Date) {
-        // Get user's goal
-        const user = await this.prisma.user.findUnique({
-            where: { id: userId },
-            select: { dailyStepGoal: true },
-        });
-
-        const goal = user?.dailyStepGoal || 10000;
-
-        // Award points for steps
-        const pointsEarned = Math.floor(stepCount * this.pointsPerStep);
-
-        if (pointsEarned > 0) {
-            await this.addPoints(userId, pointsEarned, TransactionType.STEPS,
-                `Earned ${pointsEarned} points for ${stepCount.toLocaleString()} steps`);
+          } else if (diffDays > 1) {
+            tempStreak = 1;
+          }
         }
 
-        // Update streak if goal reached
-        if (stepCount >= goal) {
-            await this.updateStreak(userId, date);
-        }
-
-        // Check for new achievements
-        await this.checkAchievements(userId);
-
-        // Process live quest progression
-        await this.questsService.processQuestProgress(userId, stepCount);
-
-        // Check for monthly reset
-        await this.checkMonthlyReset(userId);
-
-        return { pointsEarned };
-    }
-
-    /**
-     * Add points to user wallet
-     */
-    async addPoints(userId: string, points: number, type: TransactionType, description?: string, metadata?: any) {
-        // Create transaction
-        const transaction = await this.prisma.transaction.create({
-            data: {
-                userId,
-                type,
-                points,
-                description,
-                metadata,
-            },
-        });
-
-        // Update wallet
-        await this.prisma.wallet.upsert({
-            where: { userId },
-            update: {
-                balance: { increment: points },
-                lifetimePoints: { increment: points },
-                monthlyXp: { increment: points },
-            },
-            create: {
-                userId,
-                balance: points,
-                lifetimePoints: points,
-                monthlyXp: points,
-            },
-        });
-
-        return transaction;
-    }
-
-    /**
-     * Check and process monthly reset
-     */
-    async checkMonthlyReset(userId: string) {
-        const wallet = await this.prisma.wallet.findUnique({ where: { userId } });
-        if (!wallet) return;
-
-        const lastReset = new Date(wallet.lastResetDate);
+        // Check if current streak is still active today or yesterday (Server Local & UTC safe matching)
         const now = new Date();
+        const todayLocalStr = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, "0")}-${String(now.getDate()).padStart(2, "0")}`;
+        const todayUtcStr = now.toISOString().split("T")[0];
 
-        // Check if we occur in a new month compared to last reset
-        if (now.getMonth() !== lastReset.getMonth() || now.getFullYear() !== lastReset.getFullYear()) {
-            // It's a new month! Reset time.
-            this.logger.log(`Performing monthly reset for user ${userId}`);
+        const yesterday = new Date();
+        yesterday.setDate(now.getDate() - 1);
+        const yesterdayLocalStr = `${yesterday.getFullYear()}-${String(yesterday.getMonth() + 1).padStart(2, "0")}-${String(yesterday.getDate()).padStart(2, "0")}`;
 
-            // 1. Reset Monthly XP and Update Date
-            await this.prisma.wallet.update({
-                where: { userId },
-                data: {
-                    monthlyXp: 0,
-                    lastResetDate: now,
-                }
-            });
+        const yesterdayUtc = new Date(Date.now() - 86400000);
+        const yesterdayUtcStr = yesterdayUtc.toISOString().split("T")[0];
 
-            // 2. Reset Badges (Lock all achievements)
-            await this.prisma.userAchievement.updateMany({
-                where: { userId },
-                data: {
-                    unlocked: false,
-                    progress: 0,
-                    currentValue: 0,
-                    unlockedAt: null,
-                }
-            });
+        const lastActiveDateStr = uniqueDates[uniqueDates.length - 1];
+        lastActiveDate = new Date(lastActiveDateStr + "T00:00:00.000Z");
 
-            // 3. Reset Level? Level is calculated from XP.
-            // If we use monthlyXp for level, it auto-resets when monthlyXp becomes 0.
-        }
-    }
+        const matchesToday =
+          lastActiveDateStr === todayLocalStr ||
+          lastActiveDateStr === todayUtcStr;
+        const matchesYesterday =
+          lastActiveDateStr === yesterdayLocalStr ||
+          lastActiveDateStr === yesterdayUtcStr;
 
-    /**
-     * Update user streak
-     */
-    async updateStreak(userId: string, date: Date) {
-        const dateOnly = new Date(date);
-        dateOnly.setHours(0, 0, 0, 0);
-
-        let streak = await this.prisma.streak.findUnique({
-            where: { userId },
-        });
-
-        if (!streak) {
-            streak = await this.prisma.streak.create({
-                data: {
-                    userId,
-                    currentStreak: 1,
-                    longestStreak: 1,
-                    lastActiveDate: dateOnly,
-                },
-            });
-            return streak;
-        }
-
-        const yesterday = new Date(dateOnly);
-        yesterday.setDate(yesterday.getDate() - 1);
-
-        const lastActive = streak.lastActiveDate ? new Date(streak.lastActiveDate) : null;
-
-        let newStreak = streak.currentStreak;
-
-        if (!lastActive) {
-            // First activity
-            newStreak = 1;
-        } else if (lastActive.getTime() === yesterday.getTime()) {
-            // Consecutive day - increment streak
-            newStreak = streak.currentStreak + 1;
-
-            // Award streak bonuses at milestones
-            await this.checkStreakMilestones(userId, newStreak);
-        } else if (lastActive.getTime() < yesterday.getTime()) {
-            // Streak broken - reset
-            newStreak = 1;
-        }
-        // If same day, keep streak the same
-
-        // Update streak
-        streak = await this.prisma.streak.update({
-            where: { userId },
-            data: {
-                currentStreak: newStreak,
-                longestStreak: Math.max(streak.longestStreak, newStreak),
-                lastActiveDate: dateOnly,
-            },
-        });
-
-        return streak;
-    }
-
-    /**
-     * Check and award streak milestone bonuses
-     */
-    private async checkStreakMilestones(userId: string, streak: number) {
-        const milestones: { [key: number]: number } = {
-            7: 50,    // Week streak
-            30: 200,  // Month streak
-            100: 500, // 100 days
-            365: 2000, // Year streak
-        };
-
-        if (milestones[streak]) {
-            await this.addPoints(
-                userId,
-                milestones[streak],
-                TransactionType.STREAK_BONUS,
-                `🔥 ${streak}-day streak bonus!`
-            );
-            this.logger.log(`User ${userId} earned ${streak}-day streak bonus`);
-        }
-    }
-
-    /**
-     * Recalculate streak values from step history (Self-Healing & Timezone-Resilient)
-     */
-    async recalculateStreakFromSteps(userId: string) {
-        const allSteps = await this.prisma.step.findMany({
-            where: {
-                userId,
-                stepCount: { gt: 0 }
-            },
-            orderBy: { date: 'asc' },
-            select: { date: true }
-        });
-
-        let calculatedCurrentStreak = 0;
-        let calculatedLongestStreak = 0;
-        let lastActiveDate: Date | null = null;
-
-        if (allSteps.length > 0) {
-            const uniqueDates = Array.from(new Set(
-                allSteps.map(s => {
-                    const d = s.date;
-                    const year = d.getUTCFullYear();
-                    const month = String(d.getUTCMonth() + 1).padStart(2, '0');
-                    const day = String(d.getUTCDate()).padStart(2, '0');
-                    return `${year}-${month}-${day}`;
-                })
-            )).sort();
-
-            if (uniqueDates.length > 0) {
-                let tempStreak = 1;
-                calculatedLongestStreak = 1;
-
-                for (let i = 1; i < uniqueDates.length; i++) {
-                    const prevDate = new Date(uniqueDates[i - 1]);
-                    const currDate = new Date(uniqueDates[i]);
-                    const diffTime = Math.abs(currDate.getTime() - prevDate.getTime());
-                    const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24));
-                    
-                    if (diffDays === 1) {
-                        tempStreak++;
-                        if (tempStreak > calculatedLongestStreak) {
-                            calculatedLongestStreak = tempStreak;
-                        }
-                    } else if (diffDays > 1) {
-                        tempStreak = 1;
-                    }
-                }
-
-                // Check if current streak is still active today or yesterday (Server Local & UTC safe matching)
-                const now = new Date();
-                const todayLocalStr = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}-${String(now.getDate()).padStart(2, '0')}`;
-                const todayUtcStr = now.toISOString().split('T')[0];
-                
-                const yesterday = new Date();
-                yesterday.setDate(now.getDate() - 1);
-                const yesterdayLocalStr = `${yesterday.getFullYear()}-${String(yesterday.getMonth() + 1).padStart(2, '0')}-${String(yesterday.getDate()).padStart(2, '0')}`;
-                
-                const yesterdayUtc = new Date(Date.now() - 86400000);
-                const yesterdayUtcStr = yesterdayUtc.toISOString().split('T')[0];
-                
-                const lastActiveDateStr = uniqueDates[uniqueDates.length - 1];
-                lastActiveDate = new Date(lastActiveDateStr + 'T00:00:00.000Z');
-
-                const matchesToday = lastActiveDateStr === todayLocalStr || lastActiveDateStr === todayUtcStr;
-                const matchesYesterday = lastActiveDateStr === yesterdayLocalStr || lastActiveDateStr === yesterdayUtcStr;
-
-                if (matchesToday || matchesYesterday) {
-                    calculatedCurrentStreak = tempStreak;
-                } else {
-                    calculatedCurrentStreak = 0;
-                }
-            }
-        }
-
-        const streak = await this.prisma.streak.findUnique({ where: { userId } });
-        if (streak) {
-            // Keep longestStreak at the max of existing longestStreak and newly calculated longestStreak
-            const finalLongest = Math.max(streak.longestStreak, calculatedLongestStreak);
-            return this.prisma.streak.update({
-                where: { userId },
-                data: {
-                    currentStreak: calculatedCurrentStreak,
-                    longestStreak: finalLongest,
-                    lastActiveDate: lastActiveDate || streak.lastActiveDate,
-                }
-            });
+        if (matchesToday || matchesYesterday) {
+          calculatedCurrentStreak = tempStreak;
         } else {
-            return this.prisma.streak.create({
-                data: {
-                    userId,
-                    currentStreak: calculatedCurrentStreak,
-                    longestStreak: calculatedLongestStreak,
-                    lastActiveDate,
-                }
-            });
+          calculatedCurrentStreak = 0;
         }
+      }
     }
 
-    /**
-     * Get user streak info
-     */
-    async getStreak(userId: string) {
-        try {
-            const streak = await this.recalculateStreakFromSteps(userId);
-
-            // Calculate next milestone
-            const milestones = [7, 30, 100, 365];
-            const nextMilestone = milestones.find(m => m > streak.currentStreak) || null;
-            const daysToMilestone = nextMilestone ? nextMilestone - streak.currentStreak : null;
-
-            return {
-                currentStreak: streak.currentStreak,
-                longestStreak: streak.longestStreak,
-                lastActiveDate: streak.lastActiveDate,
-                nextMilestone,
-                daysToMilestone,
-            };
-        } catch (error) {
-            // Concurrency fallback
-            const streak = await this.prisma.streak.findUnique({
-                where: { userId },
-            });
-            if (streak) {
-                const milestones = [7, 30, 100, 365];
-                const nextMilestone = milestones.find(m => m > streak.currentStreak) || null;
-                const daysToMilestone = nextMilestone ? nextMilestone - streak.currentStreak : null;
-                return {
-                    currentStreak: streak.currentStreak,
-                    longestStreak: streak.longestStreak,
-                    lastActiveDate: streak.lastActiveDate,
-                    nextMilestone,
-                    daysToMilestone,
-                };
-            }
-            throw error;
-        }
+    const streak = await this.prisma.streak.findUnique({ where: { userId } });
+    if (streak) {
+      // Keep longestStreak at the max of existing longestStreak and newly calculated longestStreak
+      const finalLongest = Math.max(
+        streak.longestStreak,
+        calculatedLongestStreak,
+      );
+      return this.prisma.streak.update({
+        where: { userId },
+        data: {
+          currentStreak: calculatedCurrentStreak,
+          longestStreak: finalLongest,
+          lastActiveDate: lastActiveDate || streak.lastActiveDate,
+        },
+      });
+    } else {
+      return this.prisma.streak.create({
+        data: {
+          userId,
+          currentStreak: calculatedCurrentStreak,
+          longestStreak: calculatedLongestStreak,
+          lastActiveDate,
+        },
+      });
     }
+  }
 
-    /**
-     * Get all levels
-     */
-    async getLevels() {
-        const levels = await this.prisma.level.findMany({
-            orderBy: { levelNumber: 'asc' },
-        });
-        return levels;
+  /**
+   * Get user streak info
+   */
+  async getStreak(userId: string) {
+    try {
+      const streak = await this.recalculateStreakFromSteps(userId);
+
+      // Calculate next milestone
+      const milestones = [7, 30, 100, 365];
+      const nextMilestone =
+        milestones.find((m) => m > streak.currentStreak) || null;
+      const daysToMilestone = nextMilestone
+        ? nextMilestone - streak.currentStreak
+        : null;
+
+      return {
+        currentStreak: streak.currentStreak,
+        longestStreak: streak.longestStreak,
+        lastActiveDate: streak.lastActiveDate,
+        nextMilestone,
+        daysToMilestone,
+      };
+    } catch (error) {
+      // Concurrency fallback
+      const streak = await this.prisma.streak.findUnique({
+        where: { userId },
+      });
+      if (streak) {
+        const milestones = [7, 30, 100, 365];
+        const nextMilestone =
+          milestones.find((m) => m > streak.currentStreak) || null;
+        const daysToMilestone = nextMilestone
+          ? nextMilestone - streak.currentStreak
+          : null;
+        return {
+          currentStreak: streak.currentStreak,
+          longestStreak: streak.longestStreak,
+          lastActiveDate: streak.lastActiveDate,
+          nextMilestone,
+          daysToMilestone,
+        };
+      }
+      throw error;
     }
+  }
 
-    /**
-     * Get all achievements with user progress
-     */
-    async getAchievements(userId: string) {
-        // First, update all achievement progress based on current user stats
-        await this.checkAchievements(userId);
+  /**
+   * Get all levels
+   */
+  async getLevels() {
+    const levels = await this.prisma.level.findMany({
+      orderBy: { levelNumber: "asc" },
+    });
+    return levels;
+  }
 
-        // Get all achievements
-        const achievements = await this.prisma.achievement.findMany({
-            where: { isActive: true },
-            orderBy: [
-                { category: 'asc' },
-                { stepsRequired: 'asc' },
-                { streakRequired: 'asc' },
-            ],
-        });
+  /**
+   * Get all achievements with user progress
+   */
+  async getAchievements(userId: string) {
+    // First, update all achievement progress based on current user stats
+    await this.checkAchievements(userId);
 
-        // Get user's achievement records (now includes progress)
-        const userAchievements = await this.prisma.userAchievement.findMany({
-            where: { userId },
-            select: {
-                achievementId: true,
-                unlocked: true,
-                unlockedAt: true,
-                progress: true,
-                currentValue: true,
-            },
-        });
+    // Get all achievements
+    const achievements = await this.prisma.achievement.findMany({
+      where: { isActive: true },
+      orderBy: [
+        { category: "asc" },
+        { stepsRequired: "asc" },
+        { streakRequired: "asc" },
+      ],
+    });
 
-        const userAchievementMap = new Map(
-            userAchievements.map(ua => [ua.achievementId, ua])
+    // Get user's achievement records (now includes progress)
+    const userAchievements = await this.prisma.userAchievement.findMany({
+      where: { userId },
+      select: {
+        achievementId: true,
+        unlocked: true,
+        unlockedAt: true,
+        progress: true,
+        currentValue: true,
+      },
+    });
+
+    const userAchievementMap = new Map(
+      userAchievements.map((ua) => [ua.achievementId, ua]),
+    );
+
+    // Enrich achievements with user progress
+    return achievements.map((achievement) => {
+      const userAchievement = userAchievementMap.get(achievement.id);
+      const unlocked = userAchievement?.unlocked || false;
+      const progress = userAchievement?.progress || 0;
+
+      return {
+        ...achievement,
+        unlocked,
+        unlockedAt: userAchievement?.unlockedAt,
+        progress: unlocked ? 100 : progress,
+        currentValue: userAchievement?.currentValue || 0,
+      };
+    });
+  }
+
+  /**
+   * Check and unlock new achievements
+   */
+  async checkAchievements(userId: string) {
+    // Self-heal streak from step history to ensure perfect consistency with the calendar
+    const streak = await this.recalculateStreakFromSteps(userId);
+
+    // Get user stats
+    const [stepsTotal, wallet, challengesCompleted, friendships] =
+      await Promise.all([
+        this.prisma.step.aggregate({
+          where: { userId },
+          _sum: { stepCount: true },
+        }),
+        this.prisma.wallet.findUnique({ where: { userId } }),
+        this.prisma.userChallenge.count({
+          where: { userId, status: "COMPLETED" },
+        }),
+        this.prisma.friendship.count({
+          where: { userId, status: "ACCEPTED" },
+        }),
+      ]);
+
+    const lifetimeSteps = stepsTotal._sum.stepCount || 0;
+    const currentStreak = streak.currentStreak;
+    const longestStreak = streak.longestStreak;
+    const lifetimeCoins = wallet?.lifetimePoints || 0;
+
+    // Get all active achievements
+    const achievements = await this.prisma.achievement.findMany({
+      where: { isActive: true },
+    });
+
+    let unlockedCount = 0;
+
+    for (const achievement of achievements) {
+      // Calculate progress and check if unlocked
+      let progress = 0;
+      let currentValue = 0;
+      let unlocked = false;
+
+      if (achievement.stepsRequired) {
+        currentValue = lifetimeSteps;
+        progress = Math.min(
+          100,
+          Math.floor((lifetimeSteps / achievement.stepsRequired) * 100),
         );
+        unlocked = lifetimeSteps >= achievement.stepsRequired;
+      } else if (achievement.streakRequired) {
+        currentValue = Math.max(currentStreak, longestStreak);
+        progress = Math.min(
+          100,
+          Math.floor((currentValue / achievement.streakRequired) * 100),
+        );
+        unlocked = currentValue >= achievement.streakRequired;
+      } else if (achievement.targetValue) {
+        // Handle different categories with targetValue
+        const category = achievement.category;
+        if (category === "SOCIAL") {
+          currentValue = friendships;
+        } else if (category === "CHALLENGE") {
+          currentValue = challengesCompleted;
+        } else if (category === "COINS") {
+          currentValue = lifetimeCoins;
+        }
+        progress = Math.min(
+          100,
+          Math.floor((currentValue / achievement.targetValue) * 100),
+        );
+        unlocked = currentValue >= achievement.targetValue;
+      }
 
-        // Enrich achievements with user progress
-        return achievements.map(achievement => {
-            const userAchievement = userAchievementMap.get(achievement.id);
-            const unlocked = userAchievement?.unlocked || false;
-            const progress = userAchievement?.progress || 0;
+      // Get existing record
+      const existing = await this.prisma.userAchievement.findUnique({
+        where: {
+          userId_achievementId: {
+            userId,
+            achievementId: achievement.id,
+          },
+        },
+      });
 
-            return {
-                ...achievement,
-                unlocked,
-                unlockedAt: userAchievement?.unlockedAt,
-                progress: unlocked ? 100 : progress,
-                currentValue: userAchievement?.currentValue || 0,
-            };
-        });
+      const wasUnlocked = existing?.unlocked || false;
+
+      // Upsert the achievement progress
+      await this.prisma.userAchievement.upsert({
+        where: {
+          userId_achievementId: {
+            userId,
+            achievementId: achievement.id,
+          },
+        },
+        create: {
+          userId,
+          achievementId: achievement.id,
+          unlocked,
+          progress,
+          currentValue,
+          unlockedAt: unlocked ? new Date() : null,
+        },
+        update: {
+          progress,
+          currentValue,
+          unlocked,
+          unlockedAt:
+            unlocked && !wasUnlocked ? new Date() : existing?.unlockedAt,
+        },
+      });
+
+      // Award points if newly unlocked
+      if (unlocked && !wasUnlocked && achievement.pointsReward > 0) {
+        await this.addPoints(
+          userId,
+          achievement.pointsReward,
+          TransactionType.MILESTONE,
+          `🏆 Achievement unlocked: ${achievement.name}`,
+        );
+        unlockedCount++;
+
+        this.logger.log(
+          `User ${userId} unlocked achievement: ${achievement.name}`,
+        );
+      }
     }
 
-    /**
-     * Check and unlock new achievements
-     */
-    async checkAchievements(userId: string) {
-        // Self-heal streak from step history to ensure perfect consistency with the calendar
-        const streak = await this.recalculateStreakFromSteps(userId);
+    return unlockedCount;
+  }
 
-        // Get user stats
-        const [stepsTotal, wallet, challengesCompleted, friendships] = await Promise.all([
-            this.prisma.step.aggregate({
-                where: { userId },
-                _sum: { stepCount: true },
-            }),
-            this.prisma.wallet.findUnique({ where: { userId } }),
-            this.prisma.userChallenge.count({
-                where: { userId, status: 'COMPLETED' },
-            }),
-            this.prisma.friendship.count({
-                where: { userId, status: 'ACCEPTED' },
-            }),
-        ]);
+  // ==========================================
+  // REWARDS CATALOG & REDEMPTION
+  // ==========================================
 
-        const lifetimeSteps = stepsTotal._sum.stepCount || 0;
-        const currentStreak = streak.currentStreak;
-        const longestStreak = streak.longestStreak;
-        const lifetimeCoins = wallet?.lifetimePoints || 0;
+  /**
+   * Get rewards catalog with eligibility check
+   */
+  async getRewardsCatalog(userId: string, category?: string) {
+    const wallet = await this.getWallet(userId);
 
-        // Get all active achievements
-        const achievements = await this.prisma.achievement.findMany({
-            where: { isActive: true },
-        });
-
-        let unlockedCount = 0;
-
-        for (const achievement of achievements) {
-            // Calculate progress and check if unlocked
-            let progress = 0;
-            let currentValue = 0;
-            let unlocked = false;
-
-            if (achievement.stepsRequired) {
-                currentValue = lifetimeSteps;
-                progress = Math.min(100, Math.floor((lifetimeSteps / achievement.stepsRequired) * 100));
-                unlocked = lifetimeSteps >= achievement.stepsRequired;
-            } else if (achievement.streakRequired) {
-                currentValue = Math.max(currentStreak, longestStreak);
-                progress = Math.min(100, Math.floor((currentValue / achievement.streakRequired) * 100));
-                unlocked = currentValue >= achievement.streakRequired;
-            } else if (achievement.targetValue) {
-                // Handle different categories with targetValue
-                const category = achievement.category;
-                if (category === 'SOCIAL') {
-                    currentValue = friendships;
-                } else if (category === 'CHALLENGE') {
-                    currentValue = challengesCompleted;
-                } else if (category === 'COINS') {
-                    currentValue = lifetimeCoins;
-                }
-                progress = Math.min(100, Math.floor((currentValue / achievement.targetValue) * 100));
-                unlocked = currentValue >= achievement.targetValue;
-            }
-
-            // Get existing record
-            const existing = await this.prisma.userAchievement.findUnique({
-                where: {
-                    userId_achievementId: {
-                        userId,
-                        achievementId: achievement.id,
-                    },
-                },
-            });
-
-            const wasUnlocked = existing?.unlocked || false;
-
-            // Upsert the achievement progress
-            await this.prisma.userAchievement.upsert({
-                where: {
-                    userId_achievementId: {
-                        userId,
-                        achievementId: achievement.id,
-                    },
-                },
-                create: {
-                    userId,
-                    achievementId: achievement.id,
-                    unlocked,
-                    progress,
-                    currentValue,
-                    unlockedAt: unlocked ? new Date() : null,
-                },
-                update: {
-                    progress,
-                    currentValue,
-                    unlocked,
-                    unlockedAt: unlocked && !wasUnlocked ? new Date() : existing?.unlockedAt,
-                },
-            });
-
-            // Award points if newly unlocked
-            if (unlocked && !wasUnlocked && achievement.pointsReward > 0) {
-                await this.addPoints(
-                    userId,
-                    achievement.pointsReward,
-                    TransactionType.MILESTONE,
-                    `🏆 Achievement unlocked: ${achievement.name}`
-                );
-                unlockedCount++;
-
-                this.logger.log(`User ${userId} unlocked achievement: ${achievement.name}`);
-            }
-        }
-
-        return unlockedCount;
+    const where: any = { isActive: true };
+    if (category) {
+      where.category = category.toUpperCase();
     }
 
-    // ==========================================
-    // REWARDS CATALOG & REDEMPTION
-    // ==========================================
+    const rewards = await this.prisma.reward.findMany({
+      where,
+      orderBy: [{ coinCost: "asc" }],
+    });
 
-    /**
-     * Get rewards catalog with eligibility check
-     */
-    async getRewardsCatalog(userId: string, category?: string) {
-        const wallet = await this.getWallet(userId);
+    return rewards.map(
+      (reward: { coinCost: number; availableStock: number }) => ({
+        ...reward,
+        canAfford: wallet.balance >= reward.coinCost,
+        inStock: reward.availableStock === -1 || reward.availableStock > 0,
+      }),
+    );
+  }
 
-        const where: any = { isActive: true };
-        if (category) {
-            where.category = category.toUpperCase();
-        }
+  /**
+   * Get single reward details
+   */
+  async getRewardDetails(rewardId: string, userId: string) {
+    const wallet = await this.getWallet(userId);
 
-        const rewards = await this.prisma.reward.findMany({
-            where,
-            orderBy: [{ coinCost: 'asc' }],
-        });
+    const reward = await this.prisma.reward.findUnique({
+      where: { id: rewardId },
+    });
 
-        return rewards.map((reward: { coinCost: number; availableStock: number }) => ({
-            ...reward,
-            canAfford: wallet.balance >= reward.coinCost,
-            inStock: reward.availableStock === -1 || reward.availableStock > 0,
-        }));
+    if (!reward) {
+      throw new Error("Reward not found");
     }
 
-    /**
-     * Get single reward details
-     */
-    async getRewardDetails(rewardId: string, userId: string) {
-        const wallet = await this.getWallet(userId);
+    return {
+      ...reward,
+      canAfford: wallet.balance >= reward.coinCost,
+      inStock: reward.availableStock === -1 || reward.availableStock > 0,
+    };
+  }
 
-        const reward = await this.prisma.reward.findUnique({
-            where: { id: rewardId },
-        });
+  /**
+   * Redeem a reward
+   */
+  async redeemReward(userId: string, rewardId: string) {
+    const wallet = await this.getWallet(userId);
 
-        if (!reward) {
-            throw new Error('Reward not found');
-        }
+    const reward = await this.prisma.reward.findUnique({
+      where: { id: rewardId },
+    });
 
-        return {
-            ...reward,
-            canAfford: wallet.balance >= reward.coinCost,
-            inStock: reward.availableStock === -1 || reward.availableStock > 0,
-        };
+    if (!reward) {
+      throw new Error("Reward not found");
     }
 
-    /**
-     * Redeem a reward
-     */
-    async redeemReward(userId: string, rewardId: string) {
-        const wallet = await this.getWallet(userId);
-
-        const reward = await this.prisma.reward.findUnique({
-            where: { id: rewardId },
-        });
-
-        if (!reward) {
-            throw new Error('Reward not found');
-        }
-
-        if (!reward.isActive) {
-            throw new Error('Reward is no longer available');
-        }
-
-        if (wallet.balance < reward.coinCost) {
-            throw new Error('Insufficient coins');
-        }
-
-        if (reward.availableStock !== -1 && reward.availableStock <= 0) {
-            throw new Error('Reward is out of stock');
-        }
-
-        // Generate voucher code
-        const voucherCode = this.generateVoucherCode();
-
-        // Calculate expiry (30 days from now by default, or reward expiry)
-        const expiresAt = reward.expiryDate || new Date(Date.now() + 30 * 24 * 60 * 60 * 1000);
-
-        // Create redemption record
-        const redemption = await this.prisma.userRedemption.create({
-            data: {
-                userId,
-                rewardId,
-                coinCost: reward.coinCost,
-                voucherCode,
-                expiresAt,
-            },
-            include: { reward: true },
-        });
-
-        // Deduct coins
-        await this.prisma.wallet.update({
-            where: { userId },
-            data: { balance: { decrement: reward.coinCost } },
-        });
-
-        // Create transaction record
-        await this.prisma.transaction.create({
-            data: {
-                userId,
-                type: 'REDEMPTION',
-                points: -reward.coinCost,
-                description: `Redeemed: ${reward.title}`,
-            },
-        });
-
-        // Decrement stock if not unlimited
-        if (reward.availableStock !== -1) {
-            await this.prisma.reward.update({
-                where: { id: rewardId },
-                data: { availableStock: { decrement: 1 } },
-            });
-        }
-
-        return {
-            success: true,
-            redemption,
-            newBalance: wallet.balance - reward.coinCost,
-            voucherCode,
-        };
+    if (!reward.isActive) {
+      throw new Error("Reward is no longer available");
     }
 
-    /**
-     * Get user's redeemed rewards (My Offers)
-     */
-    async getMyOffers(userId: string, status?: string) {
-        const where: any = { userId };
-        if (status) {
-            where.status = status.toUpperCase();
-        }
-
-        return this.prisma.userRedemption.findMany({
-            where,
-            include: { reward: true },
-            orderBy: { redeemedAt: 'desc' },
-        });
+    if (wallet.balance < reward.coinCost) {
+      throw new Error("Insufficient coins");
     }
 
-    /**
-     * Generate voucher code
-     */
-    private generateVoucherCode(): string {
-        const chars = 'ABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789';
-        let code = 'STEP-';
-        for (let i = 0; i < 8; i++) {
-            code += chars.charAt(Math.floor(Math.random() * chars.length));
-        }
-        return code;
+    if (reward.availableStock !== -1 && reward.availableStock <= 0) {
+      throw new Error("Reward is out of stock");
     }
 
-    /**
-     * Seed demo rewards
-     */
-    async seedDemoRewards() {
-        const rewards = [
-            {
-                title: '10% Off Nike Store',
-                description: 'Get 10% discount on your next Nike purchase',
-                coinCost: 500,
-                category: 'FITNESS' as any,
-                partnerName: 'Nike',
-                availableStock: 100,
-                totalStock: 100,
-            },
-            {
-                title: 'Free Starbucks Coffee',
-                description: 'Enjoy a free tall drink of your choice',
-                coinCost: 300,
-                category: 'FOOD' as any,
-                partnerName: 'Starbucks',
-                availableStock: 50,
-                totalStock: 50,
-            },
-            {
-                title: '1 Month Spotify Premium',
-                description: 'Stream millions of songs ad-free',
-                coinCost: 1000,
-                category: 'ENTERTAINMENT' as any,
-                partnerName: 'Spotify',
-                availableStock: -1,
-                totalStock: -1,
-            },
-            {
-                title: '$5 Amazon Gift Card',
-                description: 'Use on any Amazon purchase',
-                coinCost: 750,
-                category: 'SHOPPING' as any,
-                partnerName: 'Amazon',
-                availableStock: 200,
-                totalStock: 200,
-            },
-            {
-                title: 'Yoga Mat (Limited Edition)',
-                description: 'Premium eco-friendly yoga mat',
-                coinCost: 2500,
-                category: 'FITNESS' as any,
-                partnerName: 'Stepify Store',
-                availableStock: 10,
-                totalStock: 10,
-                isLimitedEdition: true,
-            },
-            {
-                title: 'Smoothie King BOGO',
-                description: 'Buy one get one free smoothie',
-                coinCost: 400,
-                category: 'FOOD' as any,
-                partnerName: 'Smoothie King',
-                availableStock: 75,
-                totalStock: 75,
-            },
-        ];
+    // Generate voucher code
+    const voucherCode = this.generateVoucherCode();
 
-        for (const reward of rewards) {
-            await this.prisma.reward.create({ data: reward });
-        }
+    // Calculate expiry (30 days from now by default, or reward expiry)
+    const expiresAt =
+      reward.expiryDate || new Date(Date.now() + 30 * 24 * 60 * 60 * 1000);
 
-        return { message: 'Demo rewards seeded', count: rewards.length };
+    // Create redemption record
+    const redemption = await this.prisma.userRedemption.create({
+      data: {
+        userId,
+        rewardId,
+        coinCost: reward.coinCost,
+        voucherCode,
+        expiresAt,
+      },
+      include: { reward: true },
+    });
+
+    // Deduct coins
+    await this.prisma.wallet.update({
+      where: { userId },
+      data: { balance: { decrement: reward.coinCost } },
+    });
+
+    // Create transaction record
+    await this.prisma.transaction.create({
+      data: {
+        userId,
+        type: "REDEMPTION",
+        points: -reward.coinCost,
+        description: `Redeemed: ${reward.title}`,
+      },
+    });
+
+    // Decrement stock if not unlimited
+    if (reward.availableStock !== -1) {
+      await this.prisma.reward.update({
+        where: { id: rewardId },
+        data: { availableStock: { decrement: 1 } },
+      });
     }
+
+    return {
+      success: true,
+      redemption,
+      newBalance: wallet.balance - reward.coinCost,
+      voucherCode,
+    };
+  }
+
+  /**
+   * Get user's redeemed rewards (My Offers)
+   */
+  async getMyOffers(userId: string, status?: string) {
+    const where: any = { userId };
+    if (status) {
+      where.status = status.toUpperCase();
+    }
+
+    return this.prisma.userRedemption.findMany({
+      where,
+      include: { reward: true },
+      orderBy: { redeemedAt: "desc" },
+    });
+  }
+
+  /**
+   * Generate voucher code
+   */
+  private generateVoucherCode(): string {
+    const chars = "ABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789";
+    let code = "STEP-";
+    for (let i = 0; i < 8; i++) {
+      code += chars.charAt(Math.floor(Math.random() * chars.length));
+    }
+    return code;
+  }
+
+  /**
+   * Seed demo rewards
+   */
+  async seedDemoRewards() {
+    const rewards = [
+      {
+        title: "10% Off Nike Store",
+        description: "Get 10% discount on your next Nike purchase",
+        coinCost: 500,
+        category: "FITNESS" as any,
+        partnerName: "Nike",
+        availableStock: 100,
+        totalStock: 100,
+      },
+      {
+        title: "Free Starbucks Coffee",
+        description: "Enjoy a free tall drink of your choice",
+        coinCost: 300,
+        category: "FOOD" as any,
+        partnerName: "Starbucks",
+        availableStock: 50,
+        totalStock: 50,
+      },
+      {
+        title: "1 Month Spotify Premium",
+        description: "Stream millions of songs ad-free",
+        coinCost: 1000,
+        category: "ENTERTAINMENT" as any,
+        partnerName: "Spotify",
+        availableStock: -1,
+        totalStock: -1,
+      },
+      {
+        title: "$5 Amazon Gift Card",
+        description: "Use on any Amazon purchase",
+        coinCost: 750,
+        category: "SHOPPING" as any,
+        partnerName: "Amazon",
+        availableStock: 200,
+        totalStock: 200,
+      },
+      {
+        title: "Yoga Mat (Limited Edition)",
+        description: "Premium eco-friendly yoga mat",
+        coinCost: 2500,
+        category: "FITNESS" as any,
+        partnerName: "Stepify Store",
+        availableStock: 10,
+        totalStock: 10,
+        isLimitedEdition: true,
+      },
+      {
+        title: "Smoothie King BOGO",
+        description: "Buy one get one free smoothie",
+        coinCost: 400,
+        category: "FOOD" as any,
+        partnerName: "Smoothie King",
+        availableStock: 75,
+        totalStock: 75,
+      },
+    ];
+
+    for (const reward of rewards) {
+      await this.prisma.reward.create({ data: reward });
+    }
+
+    return { message: "Demo rewards seeded", count: rewards.length };
+  }
 }

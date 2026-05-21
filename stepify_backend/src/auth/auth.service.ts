@@ -1,313 +1,350 @@
-import { Injectable, UnauthorizedException, BadRequestException } from '@nestjs/common';
-import { JwtService } from '@nestjs/jwt';
-import { ConfigService } from '@nestjs/config';
-import { PrismaService } from '../prisma/prisma.service';
-import { RedisService } from '../redis/redis.service';
-import { OtpService } from './otp.service';
-import { UsersService } from '../users/users.service';
-import { SendOtpDto, VerifyOtpDto, RefreshTokenDto, SocialLoginDto } from './dto/auth.dto';
-import { SocialAuthService } from './social-auth.service';
+import {
+  Injectable,
+  UnauthorizedException,
+  BadRequestException,
+} from "@nestjs/common";
+import { JwtService } from "@nestjs/jwt";
+import { ConfigService } from "@nestjs/config";
+import { PrismaService } from "../prisma/prisma.service";
+import { RedisService } from "../redis/redis.service";
+import { OtpService } from "./otp.service";
+import { UsersService } from "../users/users.service";
+import {
+  SendOtpDto,
+  VerifyOtpDto,
+  RefreshTokenDto,
+  SocialLoginDto,
+} from "./dto/auth.dto";
+import { SocialAuthService } from "./social-auth.service";
 
 export interface JwtPayload {
-    sub: string;
-    phone?: string;
-    email?: string;
+  sub: string;
+  phone?: string;
+  email?: string;
 }
 
 export interface AuthTokens {
-    accessToken: string;
-    refreshToken: string;
+  accessToken: string;
+  refreshToken: string;
 }
 
 @Injectable()
 export class AuthService {
-    constructor(
-        private jwtService: JwtService,
-        private configService: ConfigService,
-        private prisma: PrismaService,
-        private redis: RedisService,
-        private otpService: OtpService,
-        private socialAuth: SocialAuthService,
-        private usersService: UsersService,
-    ) { }
+  constructor(
+    private jwtService: JwtService,
+    private configService: ConfigService,
+    private prisma: PrismaService,
+    private redis: RedisService,
+    private otpService: OtpService,
+    private socialAuth: SocialAuthService,
+    private usersService: UsersService,
+  ) {}
 
-    /**
-     * Send OTP to phone or email
-     */
-    async sendOtp(dto: SendOtpDto): Promise<{ message: string; expiresIn: number }> {
-        const identifier = dto.phone || dto.email;
-        if (!identifier) {
-            throw new BadRequestException('Phone or email is required');
-        }
-
-        // Check rate limit
-        const canSend = await this.redis.checkOtpRateLimit(identifier);
-        if (!canSend) {
-            throw new BadRequestException('Too many OTP requests. Please try again later.');
-        }
-
-        // Generate and store OTP
-        const otp = this.otpService.generateOtp();
-        const expiryMinutes = this.configService.get<number>('OTP_EXPIRY_MINUTES', 5);
-
-        await this.redis.setOtp(identifier, otp, expiryMinutes);
-
-        // Send OTP via Twilio/Email
-        if (dto.phone) {
-            await this.otpService.sendSmsOtp(dto.phone, otp);
-        } else if (dto.email) {
-            await this.otpService.sendEmailOtp(dto.email, otp);
-        }
-
-        return {
-            message: `OTP sent to ${dto.phone ? 'phone' : 'email'}`,
-            expiresIn: expiryMinutes * 60,
-        };
+  /**
+   * Send OTP to phone or email
+   */
+  async sendOtp(
+    dto: SendOtpDto,
+  ): Promise<{ message: string; expiresIn: number }> {
+    const identifier = dto.phone || dto.email;
+    if (!identifier) {
+      throw new BadRequestException("Phone or email is required");
     }
 
-    /**
-     * Verify OTP and return tokens
-     */
-    async verifyOtp(dto: VerifyOtpDto): Promise<{ tokens: AuthTokens; user: any; isNewUser: boolean }> {
-        const identifier = dto.phone || dto.email;
-        if (!identifier) {
-            throw new BadRequestException('Phone or email is required');
-        }
-
-        // Get stored OTP
-        const storedOtp = await this.redis.getOtp(identifier);
-        if (!storedOtp) {
-            throw new UnauthorizedException('OTP expired or not found');
-        }
-
-        // Verify OTP
-        if (storedOtp !== dto.otp) {
-            throw new UnauthorizedException('Invalid OTP');
-        }
-
-        // Delete used OTP
-        await this.redis.deleteOtp(identifier);
-
-        // Find or create user
-        let user = await this.usersService.findByIdentifier(identifier);
-        let isNewUser = false;
-
-        if (!user) {
-            user = await this.usersService.create({
-                phone: dto.phone,
-                email: dto.email,
-                referredBy: dto.referralCode,
-            });
-            isNewUser = true;
-            
-            if (dto.referralCode) {
-                await this.attributeReferralRewards(user.id, dto.referralCode);
-            }
-        } else if (!user.name) {
-            // Treat as new user if profile is incomplete (no name)
-            isNewUser = true;
-        }
-
-        // Generate tokens
-        const tokens = await this.generateTokens(user);
-
-        return {
-            tokens,
-            user: this.usersService.sanitizeUser(user),
-            isNewUser,
-        };
+    // Check rate limit
+    const canSend = await this.redis.checkOtpRateLimit(identifier);
+    if (!canSend) {
+      throw new BadRequestException(
+        "Too many OTP requests. Please try again later.",
+      );
     }
 
+    // Generate and store OTP
+    const otp = this.otpService.generateOtp();
+    const expiryMinutes = this.configService.get<number>(
+      "OTP_EXPIRY_MINUTES",
+      5,
+    );
 
+    await this.redis.setOtp(identifier, otp, expiryMinutes);
 
-
-    /**
-     * Social Login (Google/Apple) via Firebase ID Token
-     */
-    async loginWithSocial(dto: SocialLoginDto): Promise<{ tokens: AuthTokens; user: any; isNewUser: boolean }> {
-        console.log('🔴 [loginWithSocial] Starting social login process...');
-        console.log(`🔴 [loginWithSocial] ID Token provided (length): ${dto.idToken?.length}`);
-        
-        // 1. Verify Token with Firebase Admin
-        console.log('🔴 [loginWithSocial] Step 1: Verifying token with Firebase Admin...');
-        const decodedToken = await this.socialAuth.verifyIdToken(dto.idToken);
-        console.log('🔴 [loginWithSocial] Firebase verification successful. Decoded token:', Object.keys(decodedToken));
-        
-        const { email, picture, name, uid } = decodedToken;
-
-        if (!email) {
-            console.log('🔴 [loginWithSocial] Error: No email in token');
-            throw new BadRequestException('Social account must have an email address');
-        }
-
-        // 2. Find or Create User
-        console.log(`🔴 [loginWithSocial] Step 2: Looking up user by email (${email})...`);
-        let user = await this.usersService.findByIdentifier(email);
-        let isNewUser = false;
-
-        if (!user) {
-            console.log('🔴 [loginWithSocial] User not found. Creating new user...');
-            user = await this.usersService.create({
-                email: email,
-                name: name || undefined,
-                referredBy: dto.referralCode,
-            });
-            isNewUser = true;
-            console.log(`🔴 [loginWithSocial] New user created with ID: ${user.id}`);
-            
-            if (dto.referralCode) {
-                console.log('🔴 [loginWithSocial] Processing referral code...');
-                await this.attributeReferralRewards(user.id, dto.referralCode);
-            }
-        } else {
-            console.log(`🔴 [loginWithSocial] Existing user found (ID: ${user.id}).`);
-        }
-
-        // 3. Generate Tokens
-        console.log('🔴 [loginWithSocial] Step 3: Generating JWT tokens...');
-        const tokens = await this.generateTokens(user);
-        console.log('🔴 [loginWithSocial] Tokens generated successfully.');
-
-        return {
-            tokens,
-            user: this.usersService.sanitizeUser(user),
-            isNewUser,
-        };
+    // Send OTP via Twilio/Email
+    if (dto.phone) {
+      await this.otpService.sendSmsOtp(dto.phone, otp);
+    } else if (dto.email) {
+      await this.otpService.sendEmailOtp(dto.email, otp);
     }
 
-    /**
-     * Refresh access token
-     */
-    async refreshToken(dto: RefreshTokenDto): Promise<AuthTokens> {
-        try {
-            // Verify refresh token
-            const payload = this.jwtService.verify(dto.refreshToken, {
-                secret: this.configService.get('JWT_REFRESH_SECRET'),
-            });
+    return {
+      message: `OTP sent to ${dto.phone ? "phone" : "email"}`,
+      expiresIn: expiryMinutes * 60,
+    };
+  }
 
-            // Check if token exists in database
-            const tokenRecord = await this.prisma.refreshToken.findUnique({
-                where: { token: dto.refreshToken },
-                include: { user: true },
-            });
-
-            if (!tokenRecord || tokenRecord.expiresAt < new Date()) {
-                throw new UnauthorizedException('Invalid refresh token');
-            }
-
-            // Delete old refresh token
-            await this.prisma.refreshToken.delete({
-                where: { id: tokenRecord.id },
-            });
-
-            // Generate new tokens
-            return this.generateTokens(tokenRecord.user);
-        } catch (error) {
-            throw new UnauthorizedException('Invalid refresh token');
-        }
+  /**
+   * Verify OTP and return tokens
+   */
+  async verifyOtp(
+    dto: VerifyOtpDto,
+  ): Promise<{ tokens: AuthTokens; user: any; isNewUser: boolean }> {
+    const identifier = dto.phone || dto.email;
+    if (!identifier) {
+      throw new BadRequestException("Phone or email is required");
     }
 
-    /**
-     * Logout - invalidate refresh token
-     */
-    async logout(refreshToken: string): Promise<void> {
-        await this.prisma.refreshToken.deleteMany({
-            where: { token: refreshToken },
-        });
+    // Get stored OTP
+    const storedOtp = await this.redis.getOtp(identifier);
+    if (!storedOtp) {
+      throw new UnauthorizedException("OTP expired or not found");
     }
 
-    /**
-     * Generate access and refresh tokens
-     */
-    private async generateTokens(user: any): Promise<AuthTokens> {
-        const payload: JwtPayload = {
-            sub: user.id,
-            phone: user.phone,
-            email: user.email,
-        };
-
-        const accessToken = this.jwtService.sign(payload);
-
-        const refreshToken = this.jwtService.sign(payload, {
-            secret: this.configService.get('JWT_REFRESH_SECRET'),
-            expiresIn: this.configService.get('JWT_REFRESH_EXPIRY', '7d'),
-        });
-
-        // Store refresh token in database
-        const expiresAt = new Date();
-        expiresAt.setDate(expiresAt.getDate() + 7); // 7 days
-
-        await this.prisma.refreshToken.create({
-            data: {
-                token: refreshToken,
-                userId: user.id,
-                expiresAt,
-            },
-        });
-
-        return { accessToken, refreshToken };
+    // Verify OTP
+    if (storedOtp !== dto.otp) {
+      throw new UnauthorizedException("Invalid OTP");
     }
 
-    /**
-     * Validate user from JWT payload
-     */
-    async validateUser(payload: JwtPayload): Promise<any> {
-        const user = await this.usersService.findById(payload.sub);
-        if (!user || !user.isActive) {
-            throw new UnauthorizedException();
-        }
-        return user;
+    // Delete used OTP
+    await this.redis.deleteOtp(identifier);
+
+    // Find or create user
+    let user = await this.usersService.findByIdentifier(identifier);
+    let isNewUser = false;
+
+    if (!user) {
+      user = await this.usersService.create({
+        phone: dto.phone,
+        email: dto.email,
+        referredBy: dto.referralCode,
+      });
+      isNewUser = true;
+
+      if (dto.referralCode) {
+        await this.attributeReferralRewards(user.id, dto.referralCode);
+      }
+    } else if (!user.name) {
+      // Treat as new user if profile is incomplete (no name)
+      isNewUser = true;
     }
 
-    /**
-     * Process Referral Rewards
-     * Attributes 500 coins to the inviter and 200 coins to the invitee.
-     */
-    private async attributeReferralRewards(newUserId: string, referralCode: string) {
-        // Find the inviter
-        const inviter = await this.prisma.user.findUnique({
-            where: { referralCode },
-            select: { id: true }
-        });
+    // Generate tokens
+    const tokens = await this.generateTokens(user);
 
-        if (!inviter) return; // Invalid referral code, fail silently
+    return {
+      tokens,
+      user: this.usersService.sanitizeUser(user),
+      isNewUser,
+    };
+  }
 
-        // 1. Reward Inviter (500 coins)
-        await this.prisma.$transaction([
-            this.prisma.wallet.upsert({
-                where: { userId: inviter.id },
-                update: { balance: { increment: 500 }, lifetimePoints: { increment: 500 } },
-                create: { userId: inviter.id, balance: 500, lifetimePoints: 500 }
-            }),
-            this.prisma.transaction.create({
-                data: {
-                    userId: inviter.id,
-                    type: 'REFERRAL',
-                    points: 500,
-                    description: 'Bonus for referring a new friend!'
-                }
-            }),
-            this.prisma.user.update({
-                where: { id: inviter.id },
-                data: { 
-                    referralCount: { increment: 1 },
-                    referralCoinsEarned: { increment: 500 }
-                }
-            }),
-            // 2. Reward Invitee (200 coins)
-            this.prisma.wallet.upsert({
-                where: { userId: newUserId },
-                update: { balance: { increment: 200 }, lifetimePoints: { increment: 200 } },
-                create: { userId: newUserId, balance: 200, lifetimePoints: 200 }
-            }),
-            this.prisma.transaction.create({
-                data: {
-                    userId: newUserId,
-                    type: 'REFERRAL',
-                    points: 200,
-                    description: 'Bonus for using a referral code!'
-                }
-            })
-        ]);
+  /**
+   * Social Login (Google/Apple) via Firebase ID Token
+   */
+  async loginWithSocial(
+    dto: SocialLoginDto,
+  ): Promise<{ tokens: AuthTokens; user: any; isNewUser: boolean }> {
+    console.log("🔴 [loginWithSocial] Starting social login process...");
+    console.log(
+      `🔴 [loginWithSocial] ID Token provided (length): ${dto.idToken?.length}`,
+    );
+
+    // 1. Verify Token with Firebase Admin
+    console.log(
+      "🔴 [loginWithSocial] Step 1: Verifying token with Firebase Admin...",
+    );
+    const decodedToken = await this.socialAuth.verifyIdToken(dto.idToken);
+    console.log(
+      "🔴 [loginWithSocial] Firebase verification successful. Decoded token:",
+      Object.keys(decodedToken),
+    );
+
+    const { email, picture, name, uid } = decodedToken;
+
+    if (!email) {
+      console.log("🔴 [loginWithSocial] Error: No email in token");
+      throw new BadRequestException(
+        "Social account must have an email address",
+      );
     }
+
+    // 2. Find or Create User
+    console.log(
+      `🔴 [loginWithSocial] Step 2: Looking up user by email (${email})...`,
+    );
+    let user = await this.usersService.findByIdentifier(email);
+    let isNewUser = false;
+
+    if (!user) {
+      console.log("🔴 [loginWithSocial] User not found. Creating new user...");
+      user = await this.usersService.create({
+        email: email,
+        name: name || undefined,
+        referredBy: dto.referralCode,
+      });
+      isNewUser = true;
+      console.log(`🔴 [loginWithSocial] New user created with ID: ${user.id}`);
+
+      if (dto.referralCode) {
+        console.log("🔴 [loginWithSocial] Processing referral code...");
+        await this.attributeReferralRewards(user.id, dto.referralCode);
+      }
+    } else {
+      console.log(`🔴 [loginWithSocial] Existing user found (ID: ${user.id}).`);
+    }
+
+    // 3. Generate Tokens
+    console.log("🔴 [loginWithSocial] Step 3: Generating JWT tokens...");
+    const tokens = await this.generateTokens(user);
+    console.log("🔴 [loginWithSocial] Tokens generated successfully.");
+
+    return {
+      tokens,
+      user: this.usersService.sanitizeUser(user),
+      isNewUser,
+    };
+  }
+
+  /**
+   * Refresh access token
+   */
+  async refreshToken(dto: RefreshTokenDto): Promise<AuthTokens> {
+    try {
+      // Verify refresh token
+      const payload = this.jwtService.verify(dto.refreshToken, {
+        secret: this.configService.get("JWT_REFRESH_SECRET"),
+      });
+
+      // Check if token exists in database
+      const tokenRecord = await this.prisma.refreshToken.findUnique({
+        where: { token: dto.refreshToken },
+        include: { user: true },
+      });
+
+      if (!tokenRecord || tokenRecord.expiresAt < new Date()) {
+        throw new UnauthorizedException("Invalid refresh token");
+      }
+
+      // Delete old refresh token
+      await this.prisma.refreshToken.delete({
+        where: { id: tokenRecord.id },
+      });
+
+      // Generate new tokens
+      return this.generateTokens(tokenRecord.user);
+    } catch (error) {
+      throw new UnauthorizedException("Invalid refresh token");
+    }
+  }
+
+  /**
+   * Logout - invalidate refresh token
+   */
+  async logout(refreshToken: string): Promise<void> {
+    await this.prisma.refreshToken.deleteMany({
+      where: { token: refreshToken },
+    });
+  }
+
+  /**
+   * Generate access and refresh tokens
+   */
+  private async generateTokens(user: any): Promise<AuthTokens> {
+    const payload: JwtPayload = {
+      sub: user.id,
+      phone: user.phone,
+      email: user.email,
+    };
+
+    const accessToken = this.jwtService.sign(payload);
+
+    const refreshToken = this.jwtService.sign(payload, {
+      secret: this.configService.get("JWT_REFRESH_SECRET"),
+      expiresIn: this.configService.get("JWT_REFRESH_EXPIRY", "7d"),
+    });
+
+    // Store refresh token in database
+    const expiresAt = new Date();
+    expiresAt.setDate(expiresAt.getDate() + 7); // 7 days
+
+    await this.prisma.refreshToken.create({
+      data: {
+        token: refreshToken,
+        userId: user.id,
+        expiresAt,
+      },
+    });
+
+    return { accessToken, refreshToken };
+  }
+
+  /**
+   * Validate user from JWT payload
+   */
+  async validateUser(payload: JwtPayload): Promise<any> {
+    const user = await this.usersService.findById(payload.sub);
+    if (!user || !user.isActive) {
+      throw new UnauthorizedException();
+    }
+    return user;
+  }
+
+  /**
+   * Process Referral Rewards
+   * Attributes 500 coins to the inviter and 200 coins to the invitee.
+   */
+  private async attributeReferralRewards(
+    newUserId: string,
+    referralCode: string,
+  ) {
+    // Find the inviter
+    const inviter = await this.prisma.user.findUnique({
+      where: { referralCode },
+      select: { id: true },
+    });
+
+    if (!inviter) return; // Invalid referral code, fail silently
+
+    // 1. Reward Inviter (500 coins)
+    await this.prisma.$transaction([
+      this.prisma.wallet.upsert({
+        where: { userId: inviter.id },
+        update: {
+          balance: { increment: 500 },
+          lifetimePoints: { increment: 500 },
+        },
+        create: { userId: inviter.id, balance: 500, lifetimePoints: 500 },
+      }),
+      this.prisma.transaction.create({
+        data: {
+          userId: inviter.id,
+          type: "REFERRAL",
+          points: 500,
+          description: "Bonus for referring a new friend!",
+        },
+      }),
+      this.prisma.user.update({
+        where: { id: inviter.id },
+        data: {
+          referralCount: { increment: 1 },
+          referralCoinsEarned: { increment: 500 },
+        },
+      }),
+      // 2. Reward Invitee (200 coins)
+      this.prisma.wallet.upsert({
+        where: { userId: newUserId },
+        update: {
+          balance: { increment: 200 },
+          lifetimePoints: { increment: 200 },
+        },
+        create: { userId: newUserId, balance: 200, lifetimePoints: 200 },
+      }),
+      this.prisma.transaction.create({
+        data: {
+          userId: newUserId,
+          type: "REFERRAL",
+          points: 200,
+          description: "Bonus for using a referral code!",
+        },
+      }),
+    ]);
+  }
 }

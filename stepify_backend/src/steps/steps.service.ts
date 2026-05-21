@@ -1,12 +1,17 @@
-import { Injectable, NotFoundException, BadRequestException, Logger } from '@nestjs/common';
-import { PrismaService } from '../prisma/prisma.service';
-import { ConfigService } from '@nestjs/config';
-import { SyncStepsDto } from './dto/steps.dto';
-import { RewardsService } from '../rewards/rewards.service';
-import { PostHogService } from '../analytics/posthog.service';
-import { RedisService } from '../redis/redis.service';
-import { Queue } from 'bullmq';
-import { InjectQueue } from '@nestjs/bullmq';
+import {
+  Injectable,
+  NotFoundException,
+  BadRequestException,
+  Logger,
+} from "@nestjs/common";
+import { PrismaService } from "../prisma/prisma.service";
+import { ConfigService } from "@nestjs/config";
+import { SyncStepsDto } from "./dto/steps.dto";
+import { RewardsService } from "../rewards/rewards.service";
+import { PostHogService } from "../analytics/posthog.service";
+import { RedisService } from "../redis/redis.service";
+import { Queue } from "bullmq";
+import { InjectQueue } from "@nestjs/bullmq";
 
 // ── Anti-cheat thresholds ────────────────────────────────────────────────────
 // World record daily step count is ~53,491 (documented).
@@ -18,439 +23,478 @@ const SUSPICIOUS_STEPS_THRESHOLD = 30_000;
 
 @Injectable()
 export class StepsService {
-    private readonly logger = new Logger(StepsService.name);
-    private readonly caloriesPerStep: number;
-    private readonly kmPerStep: number;
+  private readonly logger = new Logger(StepsService.name);
+  private readonly caloriesPerStep: number;
+  private readonly kmPerStep: number;
 
-    constructor(
-        private prisma: PrismaService,
-        private configService: ConfigService,
-        private rewardsService: RewardsService,
-        private postHog: PostHogService,
-        private redisService: RedisService,
-        @InjectQueue('steps-processing') private stepsQueue: Queue,
-    ) {
-        this.caloriesPerStep = parseFloat(this.configService.get('CALORIES_PER_STEP', '0.04'));
-        this.kmPerStep = parseFloat(this.configService.get('KM_PER_STEP', '0.000762'));
+  constructor(
+    private prisma: PrismaService,
+    private configService: ConfigService,
+    private rewardsService: RewardsService,
+    private postHog: PostHogService,
+    private redisService: RedisService,
+    @InjectQueue("steps-processing") private stepsQueue: Queue,
+  ) {
+    this.caloriesPerStep = parseFloat(
+      this.configService.get("CALORIES_PER_STEP", "0.04"),
+    );
+    this.kmPerStep = parseFloat(
+      this.configService.get("KM_PER_STEP", "0.000762"),
+    );
+  }
+
+  /**
+   * Sync step data from device.
+   * Uses "highest wins" strategy to prevent double-counting across sources.
+   * Server-side validation rejects physically impossible step counts.
+   */
+  async syncSteps(userId: string, dto: SyncStepsDto) {
+    // ── Server-Side Anti-Cheat Validation ───────────────────────────────
+
+    // 0. Physical Device Binding Validation
+    if (!dto.deviceIdentifier) {
+      throw new BadRequestException(
+        "Device identifier is required for step synchronization.",
+      );
     }
 
-    /**
-     * Sync step data from device.
-     * Uses "highest wins" strategy to prevent double-counting across sources.
-     * Server-side validation rejects physically impossible step counts.
-     */
-    async syncSteps(userId: string, dto: SyncStepsDto) {
-        // ── Server-Side Anti-Cheat Validation ───────────────────────────────
-        
-        // 0. Physical Device Binding Validation
-        if (!dto.deviceIdentifier) {
-            throw new BadRequestException('Device identifier is required for step synchronization.');
-        }
+    const boundDevice = await this.prisma.device.findFirst({
+      where: {
+        userId,
+        identifier: dto.deviceIdentifier,
+        isActive: true,
+      },
+    });
 
-        const boundDevice = await this.prisma.device.findFirst({
-            where: {
-                userId,
-                identifier: dto.deviceIdentifier,
-                isActive: true,
-            },
-        });
+    if (!boundDevice) {
+      this.logger.warn(
+        `🚨 SECURITY VIOLATION: User ${userId} attempted step sync from unauthorized device: ${dto.deviceIdentifier}`,
+      );
+      throw new BadRequestException(
+        "Step synchronization is only allowed from a registered, active bound device.",
+      );
+    }
 
-        if (!boundDevice) {
-            this.logger.warn(`🚨 SECURITY VIOLATION: User ${userId} attempted step sync from unauthorized device: ${dto.deviceIdentifier}`);
-            throw new BadRequestException('Step synchronization is only allowed from a registered, active bound device.');
-        }
+    if (dto.stepCount < 0) {
+      throw new BadRequestException("Step count cannot be negative.");
+    }
 
-        if (dto.stepCount < 0) {
-            throw new BadRequestException('Step count cannot be negative.');
-        }
+    // 1. Replay attack validation (if nonce is provided)
+    if (dto.nonce) {
+      const isUnique = await this.redisService.setNonce(dto.nonce, 86400); // 24 hours
+      if (!isUnique) {
+        this.logger.warn(
+          `🚨 REPLAY DETECTED: Nonce ${dto.nonce} already processed. Rejecting.`,
+        );
+        throw new BadRequestException("Request replay detected.");
+      }
+    }
 
-        // 1. Replay attack validation (if nonce is provided)
-        if (dto.nonce) {
-            const isUnique = await this.redisService.setNonce(dto.nonce, 86400); // 24 hours
-            if (!isUnique) {
-                this.logger.warn(`🚨 REPLAY DETECTED: Nonce ${dto.nonce} already processed. Rejecting.`);
-                throw new BadRequestException('Request replay detected.');
-            }
-        }
+    // 2. Timestamp drift validation (if timestamp is provided)
+    if (dto.timestamp) {
+      const serverTime = Date.now();
+      const timeDiff = Math.abs(serverTime - dto.timestamp);
+      if (timeDiff > 5 * 60 * 1000) {
+        // 5 minutes in milliseconds
+        this.logger.warn(
+          `🚨 TIME DRIFT: Request timestamp ${dto.timestamp} differs from server time ${serverTime} by ${timeDiff}ms. Rejecting.`,
+        );
+        throw new BadRequestException("Request expired or timestamp invalid.");
+      }
+    }
 
-        // 2. Timestamp drift validation (if timestamp is provided)
-        if (dto.timestamp) {
-            const serverTime = Date.now();
-            const timeDiff = Math.abs(serverTime - dto.timestamp);
-            if (timeDiff > 5 * 60 * 1000) { // 5 minutes in milliseconds
-                this.logger.warn(
-                    `🚨 TIME DRIFT: Request timestamp ${dto.timestamp} differs from server time ${serverTime} by ${timeDiff}ms. Rejecting.`,
-                );
-                throw new BadRequestException('Request expired or timestamp invalid.');
-            }
-        }
+    // 3. Device integrity and attestation verification
+    if (dto.integrity) {
+      if (dto.integrity.isJailBroken) {
+        this.logger.warn(
+          `🚨 JAILBROKEN DEVICE: Rejected steps from jailbroken user ${userId}`,
+        );
+        throw new BadRequestException(
+          "Jailbroken or rooted devices are blocked.",
+        );
+      }
+      if (dto.integrity.isMockLocation) {
+        this.logger.warn(
+          `🚨 LOCATION SPOOFING: Rejected steps from mock location user ${userId}`,
+        );
+        throw new BadRequestException("Location spoofing is blocked.");
+      }
+    }
 
-        // 3. Device integrity and attestation verification
-        if (dto.integrity) {
-            if (dto.integrity.isJailBroken) {
-                this.logger.warn(`🚨 JAILBROKEN DEVICE: Rejected steps from jailbroken user ${userId}`);
-                throw new BadRequestException('Jailbroken or rooted devices are blocked.');
-            }
-            if (dto.integrity.isMockLocation) {
-                this.logger.warn(`🚨 LOCATION SPOOFING: Rejected steps from mock location user ${userId}`);
-                throw new BadRequestException('Location spoofing is blocked.');
-            }
-        }
+    if (dto.stepCount > MAX_STEPS_PER_DAY) {
+      this.logger.warn(
+        `🚨 ANTI-CHEAT: User ${userId} claimed ${dto.stepCount} steps — exceeds physical maximum of ${MAX_STEPS_PER_DAY}. Rejecting.`,
+      );
+      throw new BadRequestException(
+        `Step count ${dto.stepCount} exceeds the maximum physically achievable value of ${MAX_STEPS_PER_DAY} steps per day.`,
+      );
+    }
 
-        if (dto.stepCount > MAX_STEPS_PER_DAY) {
-            this.logger.warn(
-                `🚨 ANTI-CHEAT: User ${userId} claimed ${dto.stepCount} steps — exceeds physical maximum of ${MAX_STEPS_PER_DAY}. Rejecting.`,
-            );
-            throw new BadRequestException(
-                `Step count ${dto.stepCount} exceeds the maximum physically achievable value of ${MAX_STEPS_PER_DAY} steps per day.`,
-            );
-        }
+    if (dto.stepCount > SUSPICIOUS_STEPS_THRESHOLD) {
+      this.logger.warn(
+        `⚠️ SUSPICIOUS: User ${userId} reported ${dto.stepCount} steps — above soft threshold of ${SUSPICIOUS_STEPS_THRESHOLD}. Accepted but flagged.`,
+      );
+    }
+    // ─────────────────────────────────────────────────────────────────────
 
-        if (dto.stepCount > SUSPICIOUS_STEPS_THRESHOLD) {
-            this.logger.warn(
-                `⚠️ SUSPICIOUS: User ${userId} reported ${dto.stepCount} steps — above soft threshold of ${SUSPICIOUS_STEPS_THRESHOLD}. Accepted but flagged.`,
-            );
-        }
-        // ─────────────────────────────────────────────────────────────────────
+    const date = new Date(dto.date);
+    date.setHours(0, 0, 0, 0);
 
-        const date = new Date(dto.date);
+    // Check if a record already exists for this day
+    const existing = await this.prisma.step.findUnique({
+      where: {
+        userId_date: { userId, date },
+      },
+    });
+
+    // Use the higher step count to avoid overlap between multiple sources
+    const effectiveStepCount = existing
+      ? Math.max(existing.stepCount, dto.stepCount)
+      : dto.stepCount;
+
+    // Calculate derived values from the winning step count
+    const caloriesBurned = Math.round(
+      effectiveStepCount * this.caloriesPerStep,
+    );
+    const distanceKm = parseFloat(
+      (effectiveStepCount * this.kmPerStep).toFixed(2),
+    );
+
+    // Determine which source provided the highest count
+    const effectiveSource =
+      existing && existing.stepCount >= dto.stepCount
+        ? existing.source
+        : dto.source || "manual";
+
+    // Upsert step record with the highest value
+    const step = await this.prisma.step.upsert({
+      where: {
+        userId_date: { userId, date },
+      },
+      update: {
+        stepCount: effectiveStepCount,
+        caloriesBurned,
+        distanceKm,
+        activeMinutes: Math.max(
+          existing?.activeMinutes || 0,
+          dto.activeMinutes || 0,
+        ),
+        source: effectiveSource,
+        synced: true,
+      },
+      create: {
+        userId,
+        date,
+        stepCount: effectiveStepCount,
+        caloriesBurned,
+        distanceKm,
+        activeMinutes: dto.activeMinutes || 0,
+        source: effectiveSource,
+        synced: true,
+      },
+    });
+
+    // Queue background job for streaks, achievements, rewards, corporate leaderboard updates, and analytics
+    await this.stepsQueue.add("process-sync", {
+      userId,
+      effectiveStepCount,
+      date: date.toISOString(),
+      effectiveSource,
+    });
+
+    return step;
+  }
+
+  /**
+   * Ensure user has demo data if empty
+   */
+  private async ensureUserData(userId: string) {
+    try {
+      const count = await this.prisma.step.count({ where: { userId } });
+      if (count > 0) return;
+
+      // Seed 30 days
+      const today = new Date();
+      const stepsData = [];
+
+      for (let i = 0; i < 30; i++) {
+        const date = new Date(today);
+        date.setDate(date.getDate() - i);
         date.setHours(0, 0, 0, 0);
 
-        // Check if a record already exists for this day
-        const existing = await this.prisma.step.findUnique({
-            where: {
-                userId_date: { userId, date },
-            },
+        const steps = Math.floor(Math.random() * 12000) + 2000;
+        const calories = Math.floor(steps * this.caloriesPerStep);
+        const distance = parseFloat((steps * this.kmPerStep).toFixed(2));
+
+        stepsData.push({
+          userId,
+          date,
+          stepCount: steps,
+          caloriesBurned: calories,
+          distanceKm: distance,
+          activeMinutes: Math.floor(steps / 110),
+          synced: true,
+          source: "demo_gen",
         });
+      }
 
-        // Use the higher step count to avoid overlap between multiple sources
-        const effectiveStepCount = existing
-            ? Math.max(existing.stepCount, dto.stepCount)
-            : dto.stepCount;
+      // Use createMany (Postgres supports it)
+      await this.prisma.step.createMany({ data: stepsData });
 
-        // Calculate derived values from the winning step count
-        const caloriesBurned = Math.round(effectiveStepCount * this.caloriesPerStep);
-        const distanceKm = parseFloat((effectiveStepCount * this.kmPerStep).toFixed(2));
+      // Also ensure streak
+      await this.prisma.streak.upsert({
+        where: { userId },
+        create: { userId, currentStreak: 5, longestStreak: 12 },
+        update: {},
+      });
 
-        // Determine which source provided the highest count
-        const effectiveSource = (existing && existing.stepCount >= dto.stepCount)
-            ? existing.source
-            : (dto.source || 'manual');
+      // Ensure wallet
+      await this.prisma.wallet.upsert({
+        where: { userId },
+        create: { userId, balance: 500, lifetimePoints: 1200 },
+        update: {},
+      });
+    } catch (error) {
+      // Ignore constraint errors from other simultaneous parallel requests that created the data first
+      console.warn("⚠️ Concurrency warning in ensureUserData:", error.message);
+    }
+  }
 
-        // Upsert step record with the highest value
-        const step = await this.prisma.step.upsert({
-            where: {
-                userId_date: { userId, date },
-            },
-            update: {
-                stepCount: effectiveStepCount,
-                caloriesBurned,
-                distanceKm,
-                activeMinutes: Math.max(existing?.activeMinutes || 0, dto.activeMinutes || 0),
-                source: effectiveSource,
-                synced: true,
-            },
-            create: {
-                userId,
-                date,
-                stepCount: effectiveStepCount,
-                caloriesBurned,
-                distanceKm,
-                activeMinutes: dto.activeMinutes || 0,
-                source: effectiveSource,
-                synced: true,
-            },
-        });
+  /**
+   * Get today's steps
+   */
+  async getTodaySteps(userId: string) {
+    await this.ensureUserData(userId);
 
-        // Queue background job for streaks, achievements, rewards, corporate leaderboard updates, and analytics
-        await this.stepsQueue.add('process-sync', {
-            userId,
-            effectiveStepCount,
-            date: date.toISOString(),
-            effectiveSource,
-        });
+    const today = new Date();
+    today.setHours(0, 0, 0, 0);
 
-        return step;
+    const step = await this.prisma.step.findUnique({
+      where: {
+        userId_date: {
+          userId,
+          date: today,
+        },
+      },
+    });
+
+    // Get user's goal
+    const user = await this.prisma.user.findUnique({
+      where: { id: userId },
+      select: { dailyStepGoal: true },
+    });
+
+    const stepCount = step?.stepCount || 0;
+    const goal = user?.dailyStepGoal || 10000;
+
+    const year = today.getFullYear();
+    const month = String(today.getMonth() + 1).padStart(2, "0");
+    const day = String(today.getDate()).padStart(2, "0");
+
+    return {
+      date: `${year}-${month}-${day}`,
+      stepCount,
+      caloriesBurned: step?.caloriesBurned || 0,
+      distanceKm: step?.distanceKm ? Number(step.distanceKm) : 0,
+      activeMinutes: step?.activeMinutes || 0,
+      goal,
+      progress: Math.min(Math.round((stepCount / goal) * 100), 100),
+      goalReached: stepCount >= goal,
+    };
+  }
+
+  /**
+   * Get step history with pagination
+   */
+  async getHistory(userId: string, page: number = 1, limit: number = 30) {
+    const skip = (page - 1) * limit;
+
+    const [steps, total] = await Promise.all([
+      this.prisma.step.findMany({
+        where: { userId },
+        orderBy: { date: "desc" },
+        take: limit,
+        skip,
+      }),
+      this.prisma.step.count({ where: { userId } }),
+    ]);
+
+    return {
+      data: steps,
+      pagination: {
+        page,
+        limit,
+        total,
+        totalPages: Math.ceil(total / limit),
+      },
+    };
+  }
+
+  /**
+   * Get weekly summary
+   */
+  async getWeeklySummary(userId: string) {
+    await this.ensureUserData(userId);
+
+    const today = new Date();
+    today.setHours(0, 0, 0, 0);
+
+    // Get start of week (Monday)
+    const startOfWeek = new Date(today);
+    const dayOfWeek = today.getDay();
+    const diff = dayOfWeek === 0 ? 6 : dayOfWeek - 1;
+    startOfWeek.setDate(today.getDate() - diff);
+
+    // To make query timezone-safe, add a 1-day safety buffer on both ends of the query bounds.
+    // This ensures the database returns all possible matching records, and then in-memory
+    // matching by exact local date string filters correctly.
+    const queryStart = new Date(startOfWeek.getTime() - 24 * 60 * 60 * 1000);
+    const queryEnd = new Date(today.getTime() + 24 * 60 * 60 * 1000);
+
+    const steps = await this.prisma.step.findMany({
+      where: {
+        userId,
+        date: {
+          gte: queryStart,
+          lte: queryEnd,
+        },
+      },
+      orderBy: { date: "asc" },
+    });
+
+    // Create daily breakdown
+    const dailyData = [];
+    for (let i = 0; i < 7; i++) {
+      const date = new Date(startOfWeek);
+      date.setDate(startOfWeek.getDate() + i);
+
+      // Use local date string for the target daily breakdown keys
+      const year = date.getFullYear();
+      const month = String(date.getMonth() + 1).padStart(2, "0");
+      const day = String(date.getDate()).padStart(2, "0");
+      const dateStr = `${year}-${month}-${day}`;
+
+      // Match using UTC date format because @db.Date column returned from database
+      // is represented as midnight UTC in the Date object.
+      const dayData = steps.find((s) => {
+        const sDateStr = s.date.toISOString().split("T")[0];
+        return sDateStr === dateStr;
+      });
+
+      dailyData.push({
+        date: dateStr,
+        dayName: date.toLocaleDateString("en-US", { weekday: "short" }),
+        stepCount: dayData?.stepCount || 0,
+        caloriesBurned: dayData?.caloriesBurned || 0,
+      });
     }
 
+    // Calculate totals for ONLY the 7 days of the active week to avoid any buffer spillover
+    const totalSteps = dailyData.reduce((sum, d) => sum + d.stepCount, 0);
+    const totalCalories = dailyData.reduce(
+      (sum, d) => sum + d.caloriesBurned,
+      0,
+    );
+    const totalDistance = dailyData.reduce((sum, d) => {
+      const match = steps.find(
+        (s) => s.date.toISOString().split("T")[0] === d.date,
+      );
+      return sum + (match ? Number(match.distanceKm) : 0);
+    }, 0);
+    const avgSteps = Math.round(totalSteps / 7);
 
-    /**
-     * Ensure user has demo data if empty
-     */
-    private async ensureUserData(userId: string) {
-        try {
-            const count = await this.prisma.step.count({ where: { userId } });
-            if (count > 0) return;
+    return {
+      startDate: startOfWeek.toISOString().split("T")[0],
+      endDate: today.toISOString().split("T")[0],
+      totalSteps,
+      totalCalories,
+      totalDistanceKm: parseFloat(totalDistance.toFixed(2)),
+      averageSteps: avgSteps,
+      activeDays: steps.length,
+      dailyBreakdown: dailyData,
+    };
+  }
 
-            // Seed 30 days
-            const today = new Date();
-            const stepsData = [];
+  /**
+   * Get monthly summary
+   */
+  async getMonthlySummary(userId: string, year?: number, month?: number) {
+    const now = new Date();
+    const targetYear = year || now.getFullYear();
+    const targetMonth = month || now.getMonth() + 1;
 
-            for (let i = 0; i < 30; i++) {
-                const date = new Date(today);
-                date.setDate(date.getDate() - i);
-                date.setHours(0, 0, 0, 0);
+    const startOfMonth = new Date(targetYear, targetMonth - 1, 1);
+    const endOfMonth = new Date(targetYear, targetMonth, 0);
 
-                const steps = Math.floor(Math.random() * 12000) + 2000;
-                const calories = Math.floor(steps * this.caloriesPerStep);
-                const distance = parseFloat((steps * this.kmPerStep).toFixed(2));
+    const steps = await this.prisma.step.findMany({
+      where: {
+        userId,
+        date: {
+          gte: startOfMonth,
+          lte: endOfMonth,
+        },
+      },
+      orderBy: { date: "asc" },
+    });
 
-                stepsData.push({
-                    userId,
-                    date,
-                    stepCount: steps,
-                    caloriesBurned: calories,
-                    distanceKm: distance,
-                    activeMinutes: Math.floor(steps / 110),
-                    synced: true,
-                    source: 'demo_gen',
-                });
-            }
+    const totalSteps = steps.reduce((sum, s) => sum + s.stepCount, 0);
+    const totalCalories = steps.reduce((sum, s) => sum + s.caloriesBurned, 0);
+    const totalDistance = steps.reduce(
+      (sum, s) => sum + Number(s.distanceKm),
+      0,
+    );
+    const avgSteps =
+      steps.length > 0 ? Math.round(totalSteps / steps.length) : 0;
 
-            // Use createMany (Postgres supports it)
-            await this.prisma.step.createMany({ data: stepsData });
+    // Get best day
+    const bestDay = steps.reduce(
+      (max, s) => (s.stepCount > (max?.stepCount || 0) ? s : max),
+      steps[0] || null,
+    );
 
-            // Also ensure streak
-            await this.prisma.streak.upsert({
-                where: { userId },
-                create: { userId, currentStreak: 5, longestStreak: 12 },
-                update: {},
-            });
+    // Weekly breakdown
+    const weeks = [];
+    const currentWeek = { startDate: "", steps: 0, calories: 0 };
+    const weekStart = new Date(startOfMonth);
 
-            // Ensure wallet
-            await this.prisma.wallet.upsert({
-                where: { userId },
-                create: { userId, balance: 500, lifetimePoints: 1200 },
-                update: {},
-            });
-        } catch (error) {
-            // Ignore constraint errors from other simultaneous parallel requests that created the data first
-            console.warn('⚠️ Concurrency warning in ensureUserData:', error.message);
-        }
-    }
+    for (const step of steps) {
+      const stepDate = new Date(step.date);
+      const weekNum = Math.floor((stepDate.getDate() - 1) / 7);
 
-    /**
-     * Get today's steps
-     */
-    async getTodaySteps(userId: string) {
-        await this.ensureUserData(userId);
-
-        const today = new Date();
-        today.setHours(0, 0, 0, 0);
-
-        const step = await this.prisma.step.findUnique({
-            where: {
-                userId_date: {
-                    userId,
-                    date: today,
-                },
-            },
-        });
-
-        // Get user's goal
-        const user = await this.prisma.user.findUnique({
-            where: { id: userId },
-            select: { dailyStepGoal: true },
-        });
-
-        const stepCount = step?.stepCount || 0;
-        const goal = user?.dailyStepGoal || 10000;
-
-        const year = today.getFullYear();
-        const month = String(today.getMonth() + 1).padStart(2, '0');
-        const day = String(today.getDate()).padStart(2, '0');
-
-        return {
-            date: `${year}-${month}-${day}`,
-            stepCount,
-            caloriesBurned: step?.caloriesBurned || 0,
-            distanceKm: step?.distanceKm ? Number(step.distanceKm) : 0,
-            activeMinutes: step?.activeMinutes || 0,
-            goal,
-            progress: Math.min(Math.round((stepCount / goal) * 100), 100),
-            goalReached: stepCount >= goal,
+      if (!weeks[weekNum]) {
+        weeks[weekNum] = {
+          weekNumber: weekNum + 1,
+          steps: 0,
+          calories: 0,
         };
+      }
+      weeks[weekNum].steps += step.stepCount;
+      weeks[weekNum].calories += step.caloriesBurned;
     }
 
-    /**
-     * Get step history with pagination
-     */
-    async getHistory(userId: string, page: number = 1, limit: number = 30) {
-        const skip = (page - 1) * limit;
-
-        const [steps, total] = await Promise.all([
-            this.prisma.step.findMany({
-                where: { userId },
-                orderBy: { date: 'desc' },
-                take: limit,
-                skip,
-            }),
-            this.prisma.step.count({ where: { userId } }),
-        ]);
-
-        return {
-            data: steps,
-            pagination: {
-                page,
-                limit,
-                total,
-                totalPages: Math.ceil(total / limit),
-            },
-        };
-    }
-
-    /**
-     * Get weekly summary
-     */
-    async getWeeklySummary(userId: string) {
-        await this.ensureUserData(userId);
-
-        const today = new Date();
-        today.setHours(0, 0, 0, 0);
-
-        // Get start of week (Monday)
-        const startOfWeek = new Date(today);
-        const dayOfWeek = today.getDay();
-        const diff = dayOfWeek === 0 ? 6 : dayOfWeek - 1;
-        startOfWeek.setDate(today.getDate() - diff);
-
-        // To make query timezone-safe, add a 1-day safety buffer on both ends of the query bounds.
-        // This ensures the database returns all possible matching records, and then in-memory
-        // matching by exact local date string filters correctly.
-        const queryStart = new Date(startOfWeek.getTime() - 24 * 60 * 60 * 1000);
-        const queryEnd = new Date(today.getTime() + 24 * 60 * 60 * 1000);
-
-        const steps = await this.prisma.step.findMany({
-            where: {
-                userId,
-                date: {
-                    gte: queryStart,
-                    lte: queryEnd,
-                },
-            },
-            orderBy: { date: 'asc' },
-        });
-
-        // Create daily breakdown
-        const dailyData = [];
-        for (let i = 0; i < 7; i++) {
-            const date = new Date(startOfWeek);
-            date.setDate(startOfWeek.getDate() + i);
-
-            // Use local date string for the target daily breakdown keys
-            const year = date.getFullYear();
-            const month = String(date.getMonth() + 1).padStart(2, '0');
-            const day = String(date.getDate()).padStart(2, '0');
-            const dateStr = `${year}-${month}-${day}`;
-
-            // Match using UTC date format because @db.Date column returned from database
-            // is represented as midnight UTC in the Date object.
-            const dayData = steps.find(s => {
-                const sDateStr = s.date.toISOString().split('T')[0];
-                return sDateStr === dateStr;
-            });
-
-            dailyData.push({
-                date: dateStr,
-                dayName: date.toLocaleDateString('en-US', { weekday: 'short' }),
-                stepCount: dayData?.stepCount || 0,
-                caloriesBurned: dayData?.caloriesBurned || 0,
-            });
-        }
-
-        // Calculate totals for ONLY the 7 days of the active week to avoid any buffer spillover
-        const totalSteps = dailyData.reduce((sum, d) => sum + d.stepCount, 0);
-        const totalCalories = dailyData.reduce((sum, d) => sum + d.caloriesBurned, 0);
-        const totalDistance = dailyData.reduce((sum, d) => {
-            const match = steps.find(s => s.date.toISOString().split('T')[0] === d.date);
-            return sum + (match ? Number(match.distanceKm) : 0);
-        }, 0);
-        const avgSteps = Math.round(totalSteps / 7);
-
-        return {
-            startDate: startOfWeek.toISOString().split('T')[0],
-            endDate: today.toISOString().split('T')[0],
-            totalSteps,
-            totalCalories,
-            totalDistanceKm: parseFloat(totalDistance.toFixed(2)),
-            averageSteps: avgSteps,
-            activeDays: steps.length,
-            dailyBreakdown: dailyData,
-        };
-    }
-
-    /**
-     * Get monthly summary
-     */
-    async getMonthlySummary(userId: string, year?: number, month?: number) {
-        const now = new Date();
-        const targetYear = year || now.getFullYear();
-        const targetMonth = month || now.getMonth() + 1;
-
-        const startOfMonth = new Date(targetYear, targetMonth - 1, 1);
-        const endOfMonth = new Date(targetYear, targetMonth, 0);
-
-        const steps = await this.prisma.step.findMany({
-            where: {
-                userId,
-                date: {
-                    gte: startOfMonth,
-                    lte: endOfMonth,
-                },
-            },
-            orderBy: { date: 'asc' },
-        });
-
-        const totalSteps = steps.reduce((sum, s) => sum + s.stepCount, 0);
-        const totalCalories = steps.reduce((sum, s) => sum + s.caloriesBurned, 0);
-        const totalDistance = steps.reduce((sum, s) => sum + Number(s.distanceKm), 0);
-        const avgSteps = steps.length > 0 ? Math.round(totalSteps / steps.length) : 0;
-
-        // Get best day
-        const bestDay = steps.reduce((max, s) =>
-            s.stepCount > (max?.stepCount || 0) ? s : max, steps[0] || null);
-
-        // Weekly breakdown
-        const weeks = [];
-        let currentWeek = { startDate: '', steps: 0, calories: 0 };
-        let weekStart = new Date(startOfMonth);
-
-        for (const step of steps) {
-            const stepDate = new Date(step.date);
-            const weekNum = Math.floor((stepDate.getDate() - 1) / 7);
-
-            if (!weeks[weekNum]) {
-                weeks[weekNum] = {
-                    weekNumber: weekNum + 1,
-                    steps: 0,
-                    calories: 0,
-                };
-            }
-            weeks[weekNum].steps += step.stepCount;
-            weeks[weekNum].calories += step.caloriesBurned;
-        }
-
-        return {
-            year: targetYear,
-            month: targetMonth,
-            monthName: startOfMonth.toLocaleDateString('en-US', { month: 'long' }),
-            totalSteps,
-            totalCalories,
-            totalDistanceKm: parseFloat(totalDistance.toFixed(2)),
-            averageSteps: avgSteps,
-            activeDays: steps.length,
-            totalDaysInMonth: endOfMonth.getDate(),
-            bestDay: bestDay ? {
-                date: (() => {
-                    const d = bestDay.date;
-                    const year = d.getFullYear();
-                    const month = String(d.getMonth() + 1).padStart(2, '0');
-                    const day = String(d.getDate()).padStart(2, '0');
-                    return `${year}-${month}-${day}`;
-                })(),
-                stepCount: bestDay.stepCount,
-            } : null,
-            weeklyBreakdown: weeks.filter(Boolean),
-        };
-    }
+    return {
+      year: targetYear,
+      month: targetMonth,
+      monthName: startOfMonth.toLocaleDateString("en-US", { month: "long" }),
+      totalSteps,
+      totalCalories,
+      totalDistanceKm: parseFloat(totalDistance.toFixed(2)),
+      averageSteps: avgSteps,
+      activeDays: steps.length,
+      totalDaysInMonth: endOfMonth.getDate(),
+      bestDay: bestDay
+        ? {
+            date: (() => {
+              const d = bestDay.date;
+              const year = d.getFullYear();
+              const month = String(d.getMonth() + 1).padStart(2, "0");
+              const day = String(d.getDate()).padStart(2, "0");
+              return `${year}-${month}-${day}`;
+            })(),
+            stepCount: bestDay.stepCount,
+          }
+        : null,
+      weeklyBreakdown: weeks.filter(Boolean),
+    };
+  }
 }
