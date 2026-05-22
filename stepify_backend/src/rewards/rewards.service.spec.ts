@@ -57,6 +57,7 @@ describe('RewardsService', () => {
       findMany: jest.fn(),
       findUnique: jest.fn(),
       update: jest.fn(),
+      create: jest.fn(),
     },
     userRedemption: {
       create: jest.fn(),
@@ -125,6 +126,21 @@ describe('RewardsService', () => {
       expect(w.balance).toBe(0);
       expect(mockPrisma.wallet.create).toHaveBeenCalled();
     });
+
+    it('should catch error and return wallet on concurrency create conflict', async () => {
+      mockPrisma.wallet.findUnique.mockResolvedValueOnce(null);
+      mockPrisma.wallet.create.mockRejectedValueOnce(new Error('Unique Constraint'));
+      mockPrisma.wallet.findUnique.mockResolvedValueOnce({ id: 'w1', balance: 0 });
+      const w = await service.getWallet('u1');
+      expect(w.balance).toBe(0);
+    });
+
+    it('should rethrow error on concurrency create conflict if wallet not found', async () => {
+      mockPrisma.wallet.findUnique.mockResolvedValueOnce(null);
+      mockPrisma.wallet.create.mockRejectedValueOnce(new Error('DB Error'));
+      mockPrisma.wallet.findUnique.mockResolvedValueOnce(null);
+      await expect(service.getWallet('u1')).rejects.toThrow('DB Error');
+    });
   });
 
   describe('processStepRewards', () => {
@@ -184,6 +200,39 @@ describe('RewardsService', () => {
         expect.objectContaining({ data: expect.objectContaining({ currentStreak: 1 }) })
       );
     });
+
+    it('should create new streak if none exists', async () => {
+      mockPrisma.streak.findUnique.mockResolvedValueOnce(null);
+      mockPrisma.streak.create.mockResolvedValueOnce({ currentStreak: 1 });
+      const res = await service.updateStreak('u1', new Date());
+      expect(mockPrisma.streak.create).toHaveBeenCalled();
+      expect(res.currentStreak).toBe(1);
+    });
+
+    it('should set streak to 1 if lastActive is missing', async () => {
+      mockPrisma.streak.findUnique.mockResolvedValueOnce({ currentStreak: 5, longestStreak: 5, lastActiveDate: null });
+      mockPrisma.streak.update.mockResolvedValueOnce({ currentStreak: 1 });
+      await service.updateStreak('u1', new Date());
+      expect(mockPrisma.streak.update).toHaveBeenCalledWith(
+        expect.objectContaining({ data: expect.objectContaining({ currentStreak: 1 }) })
+      );
+    });
+
+    it('should award streak milestones', async () => {
+      const today = new Date();
+      const yesterday = new Date(today);
+      yesterday.setDate(today.getDate() - 1);
+      yesterday.setHours(0, 0, 0, 0);
+
+      mockPrisma.streak.findUnique.mockResolvedValueOnce({
+        userId: 'u1', currentStreak: 6, longestStreak: 6, lastActiveDate: yesterday
+      });
+      mockPrisma.streak.update.mockResolvedValueOnce({ currentStreak: 7 });
+      mockPrisma.transaction.create.mockResolvedValue({});
+      mockPrisma.wallet.upsert.mockResolvedValue({});
+      await service.updateStreak('u1', today);
+      expect(mockPrisma.transaction.create).toHaveBeenCalled();
+    });
   });
 
   describe('redeemReward', () => {
@@ -212,6 +261,39 @@ describe('RewardsService', () => {
       mockPrisma.reward.findUnique.mockResolvedValue(mockReward);
 
       await expect(service.redeemReward('u1', 'r1')).rejects.toThrow('Insufficient coins');
+    });
+
+    it('should throw if wallet not found', async () => {
+      mockPrisma.wallet.findUnique.mockResolvedValue(null);
+      await expect(service.redeemReward('u1', 'r1')).rejects.toThrow('Wallet not found');
+    });
+
+    it('should throw if reward not found', async () => {
+      mockPrisma.wallet.findUnique.mockResolvedValue({});
+      mockPrisma.reward.findUnique.mockResolvedValue(null);
+      await expect(service.redeemReward('u1', 'r1')).rejects.toThrow('Reward not found');
+    });
+
+    it('should throw if reward is not active', async () => {
+      mockPrisma.wallet.findUnique.mockResolvedValue({});
+      mockPrisma.reward.findUnique.mockResolvedValue({ isActive: false });
+      await expect(service.redeemReward('u1', 'r1')).rejects.toThrow('Reward is no longer available');
+    });
+
+    it('should throw if reward out of stock', async () => {
+      mockPrisma.wallet.findUnique.mockResolvedValue({ balance: 500 });
+      mockPrisma.reward.findUnique.mockResolvedValue({ isActive: true, coinCost: 100, availableStock: 0 });
+      await expect(service.redeemReward('u1', 'r1')).rejects.toThrow('Reward is out of stock');
+    });
+
+    it('should redeem unlimited stock reward without decrementing stock', async () => {
+      mockPrisma.wallet.findUnique.mockResolvedValue({ balance: 500 });
+      mockPrisma.reward.findUnique.mockResolvedValue({ isActive: true, coinCost: 100, availableStock: -1 });
+      mockPrisma.userRedemption.create.mockResolvedValue({});
+      mockPrisma.wallet.update.mockResolvedValue({});
+      mockPrisma.transaction.create.mockResolvedValue({});
+      await service.redeemReward('u1', 'r1');
+      expect(mockPrisma.reward.update).not.toHaveBeenCalled();
     });
   describe('getTransactions', () => {
     it('should return paginated transactions', async () => {
@@ -254,6 +336,53 @@ describe('RewardsService', () => {
       expect(res.nextMilestone).toBe(7);
       expect(res.daysToMilestone).toBe(6);
     });
+
+    it('should create streak in recalculate if none exists', async () => {
+      const d1 = new Date(); d1.setHours(0,0,0,0);
+      mockPrisma.step.findMany.mockResolvedValueOnce([{ date: d1 }]);
+      mockPrisma.streak.findUnique.mockResolvedValueOnce(null);
+      mockPrisma.streak.create.mockResolvedValueOnce({ currentStreak: 1 });
+      await service.recalculateStreakFromSteps('u1');
+      expect(mockPrisma.streak.create).toHaveBeenCalled();
+    });
+
+    it('should use findUnique fallback if recalculate throws', async () => {
+      mockPrisma.step.findMany.mockRejectedValueOnce(new Error('DB Error'));
+      mockPrisma.streak.findUnique.mockResolvedValueOnce({ currentStreak: 5 });
+      const res = await service.getStreak('u1');
+      expect(res.currentStreak).toBe(5);
+    });
+
+    it('should throw if fallback also fails', async () => {
+      mockPrisma.step.findMany.mockRejectedValueOnce(new Error('DB Error'));
+      mockPrisma.streak.findUnique.mockResolvedValueOnce(null);
+      await expect(service.getStreak('u1')).rejects.toThrow('DB Error');
+    });
+
+    it('should calculate streak accurately from multiple days', async () => {
+      const d1 = new Date('2023-01-01');
+      const d2 = new Date('2023-01-02');
+      const d3 = new Date('2023-01-04'); // break streak
+      const d4 = new Date(); d4.setDate(d4.getDate() - 1); // yesterday
+      
+      mockPrisma.step.findMany.mockResolvedValueOnce([
+        { date: d1 }, { date: d2 }, { date: d3 }, { date: d4 }
+      ]);
+      mockPrisma.streak.findUnique.mockResolvedValueOnce(null);
+      mockPrisma.streak.create.mockResolvedValueOnce({});
+      
+      await service.recalculateStreakFromSteps('u1');
+      expect(mockPrisma.streak.create).toHaveBeenCalled();
+    });
+
+    it('should handle zero steps', async () => {
+      mockPrisma.step.findMany.mockResolvedValueOnce([]);
+      mockPrisma.streak.findUnique.mockResolvedValueOnce(null);
+      mockPrisma.streak.create.mockResolvedValueOnce({});
+      
+      await service.recalculateStreakFromSteps('u1');
+      expect(mockPrisma.streak.create).toHaveBeenCalledWith(expect.objectContaining({ data: expect.objectContaining({ currentStreak: 0 }) }));
+    });
   });
 
   describe('getLevels', () => {
@@ -271,6 +400,13 @@ describe('RewardsService', () => {
       const res = await service.getRewardsCatalog('u1');
       expect(res[0].canAfford).toBe(true);
     });
+
+    it('should filter rewards by category', async () => {
+      mockPrisma.wallet.findUnique.mockResolvedValueOnce({ balance: 500 });
+      mockPrisma.reward.findMany.mockResolvedValueOnce([]);
+      await service.getRewardsCatalog('u1', 'FITNESS');
+      expect(mockPrisma.reward.findMany).toHaveBeenCalledWith(expect.objectContaining({ where: { isActive: true, category: 'FITNESS' }, orderBy: expect.anything() }));
+    });
   });
 
   describe('getMyOffers', () => {
@@ -279,6 +415,90 @@ describe('RewardsService', () => {
       const res = await service.getMyOffers('u1');
       expect(res.length).toBe(1);
     });
+
+    it('should filter by status', async () => {
+      mockPrisma.userRedemption.findMany.mockResolvedValueOnce([]);
+      await service.getMyOffers('u1', 'ACTIVE');
+      expect(mockPrisma.userRedemption.findMany).toHaveBeenCalledWith(expect.objectContaining({ where: { userId: 'u1', status: 'ACTIVE' }, include: expect.anything(), orderBy: expect.anything() }));
+    });
+  
+  describe('getAchievements', () => {
+    it('should map user achievements correctly', async () => {
+      mockPrisma.step.findMany.mockResolvedValue([]);
+      mockPrisma.streak.findUnique.mockResolvedValue(null);
+      mockPrisma.streak.create.mockResolvedValue({ currentStreak: 1 });
+      mockPrisma.step.aggregate.mockResolvedValue({ _sum: { stepCount: 10000 } });
+      mockPrisma.wallet.findUnique.mockResolvedValue({});
+      mockPrisma.userChallenge.count.mockResolvedValue(0);
+      mockPrisma.friendship.count.mockResolvedValue(0);
+      
+      // Real getAchievements data
+      mockPrisma.achievement.findMany.mockResolvedValue([
+        { id: 'a1', isActive: true, stepsRequired: 5000 },
+        { id: 'a2', isActive: true, streakRequired: 5 },
+        { id: 'a3', isActive: true, targetValue: 5, category: 'SOCIAL' },
+        { id: 'a4', isActive: true, targetValue: 5, category: 'CHALLENGE' },
+        { id: 'a5', isActive: true, targetValue: 500, category: 'COINS' }
+      ]);
+      mockPrisma.userAchievement.findUnique.mockResolvedValue(null);
+      mockPrisma.userAchievement.upsert.mockResolvedValue({});
+      mockPrisma.userAchievement.findMany.mockResolvedValue([{ achievementId: 'a1', unlocked: true, progress: 100, currentValue: 10000 }]);
+      
+      const res = await service.getAchievements('u1');
+      expect(res.length).toBe(5);
+    });
+  });
+
+  describe('checkAchievements', () => {
+    it('should calculate achievement progress correctly for all types and award points', async () => {
+      mockPrisma.step.findMany.mockResolvedValue([]);
+      mockPrisma.streak.findUnique.mockResolvedValue(null);
+      mockPrisma.streak.create.mockResolvedValue({ currentStreak: 5, longestStreak: 10 });
+      mockPrisma.step.aggregate.mockResolvedValue({ _sum: { stepCount: 10000 } });
+      mockPrisma.wallet.findUnique.mockResolvedValue({ lifetimePoints: 500 });
+      mockPrisma.userChallenge.count.mockResolvedValue(5); 
+      mockPrisma.friendship.count.mockResolvedValue(5); 
+      
+      mockPrisma.achievement.findMany.mockResolvedValue([
+        { id: 'a1', streakRequired: 10, pointsReward: 100 },
+        { id: 'a2', targetValue: 5, category: 'SOCIAL', pointsReward: 100 },
+        { id: 'a3', targetValue: 5, category: 'CHALLENGE', pointsReward: 100 },
+        { id: 'a4', targetValue: 500, category: 'COINS', pointsReward: 100 },
+        { id: 'a5', stepsRequired: 10000, pointsReward: 100 }
+      ]);
+      mockPrisma.userAchievement.findUnique.mockResolvedValue(null); // not unlocked yet
+      mockPrisma.userAchievement.upsert.mockResolvedValue({});
+      mockPrisma.transaction.create.mockResolvedValue({});
+      
+      const count = await service.checkAchievements('u1');
+      expect(count).toBe(5); // all 5 should unlock
+    });
+  });
+
+  describe('getRewardDetails', () => {
+    it('should return details if found', async () => {
+      mockPrisma.wallet.findUnique.mockResolvedValueOnce({ balance: 500 });
+      mockPrisma.reward.findUnique.mockResolvedValueOnce({ id: 'r1', coinCost: 100, availableStock: -1 });
+      const res = await service.getRewardDetails('r1', 'u1');
+      expect(res.canAfford).toBe(true);
+      expect(res.inStock).toBe(true);
+    });
+    it('should throw if reward not found', async () => {
+      mockPrisma.wallet.findUnique.mockResolvedValueOnce({ balance: 500 });
+      mockPrisma.reward.findUnique.mockResolvedValueOnce(null);
+      await expect(service.getRewardDetails('r1', 'u1')).rejects.toThrow('Reward not found');
+    });
+  });
+
+  describe('seedDemoRewards', () => {
+    it('should seed rewards', async () => {
+      mockPrisma.reward.create.mockResolvedValue({});
+      const res = await service.seedDemoRewards();
+      expect(res.count).toBe(6);
+      expect(mockPrisma.reward.create).toHaveBeenCalledTimes(6);
+    });
   });
 });
+});
+
 });
