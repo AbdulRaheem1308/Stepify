@@ -150,6 +150,15 @@ describe('StepsService', () => {
       }));
     });
 
+    it('should log warning and process if steps > SUSPICIOUS_STEPS_THRESHOLD', async () => {
+      mockPrisma.device.findFirst.mockResolvedValueOnce({ id: 'd1' });
+      mockPrisma.step.findUnique.mockResolvedValueOnce(null);
+      mockPrisma.step.upsert.mockResolvedValueOnce({});
+      const dto = { ...baseDto, stepCount: 35000 };
+      await service.syncSteps(userId, dto);
+      expect(queue.add).toHaveBeenCalled();
+    });
+
     it('should use the higher step count if existing is higher', async () => {
       mockPrisma.device.findFirst.mockResolvedValueOnce({ id: 'd1' });
       mockPrisma.step.findUnique.mockResolvedValueOnce({ stepCount: 8000, source: 'apple_health' });
@@ -197,6 +206,15 @@ describe('StepsService', () => {
       expect(res.progress).toBe(100);
       expect(res.goalReached).toBe(true);
     });
+
+    it('should catch and ignore concurrency errors during ensureUserData', async () => {
+      mockPrisma.step.count.mockRejectedValueOnce(new Error('Unique constraint failed'));
+      mockPrisma.step.findUnique.mockResolvedValueOnce({ stepCount: 2000 });
+      mockPrisma.user.findUnique.mockResolvedValueOnce({ dailyStepGoal: 5000 });
+
+      const res = await service.getTodaySteps(userId);
+      expect(res.stepCount).toBe(2000);
+    });
   });
 
   describe('getHistory', () => {
@@ -241,6 +259,13 @@ describe('StepsService', () => {
         date: '2023-06-15',
         stepCount: 10000
       });
+    });
+
+    it('should handle empty steps for getMonthlySummary', async () => {
+      mockPrisma.step.findMany.mockResolvedValueOnce([]);
+      const res = await service.getMonthlySummary('u1', 2023, 6);
+      expect(res.totalSteps).toBe(0);
+      expect(res.bestDay).toBeNull();
     });
   });
 });

@@ -85,13 +85,65 @@ describe('TeamsService', () => {
       mockPrismaService.team.findUnique.mockResolvedValue({ maxMembers: 1, members: [{ id: 'm1' }] });
       await expect(service.joinTeam('t1', 'u1')).rejects.toThrow('Team is full');
     });
+
+    it('should throw Error if team not found', async () => {
+      mockPrismaService.team.findUnique.mockResolvedValue(null);
+      await expect(service.joinTeam('t1', 'u1')).rejects.toThrow('Team not found');
+    });
+
+    it('should throw Error if already a member', async () => {
+      mockPrismaService.team.findUnique.mockResolvedValue({ maxMembers: 10, members: [{ userId: 'u1' }] });
+      await expect(service.joinTeam('t1', 'u1')).rejects.toThrow('Already a member');
+    });
+
+    it('should throw Error if invalid invite code for private team', async () => {
+      mockPrismaService.team.findUnique.mockResolvedValue({ maxMembers: 10, isPublic: false, inviteCode: 'SEC1', members: [] });
+      await expect(service.joinTeam('t1', 'u1', 'WRONG')).rejects.toThrow('Invalid invite code');
+    });
+
+    it('should join team successfully', async () => {
+      mockPrismaService.team.findUnique.mockResolvedValue({ id: 't1', maxMembers: 10, isPublic: true, members: [] });
+      mockPrismaService.teamMember.create.mockResolvedValue({});
+      const res = await service.joinTeam('t1', 'u1');
+      expect(res.success).toBe(true);
+    });
   });
 
   describe('leaveTeam', () => {
+    it('should throw Error if team not found', async () => {
+      mockPrismaService.team.findUnique.mockResolvedValue(null);
+      await expect(service.leaveTeam('t1', 'u1')).rejects.toThrow('Team not found');
+    });
+
     it('should handle standard member leaving', async () => {
       mockPrismaService.team.findUnique.mockResolvedValue({ id: 't1', captainId: 'u2', members: [{ userId: 'u1' }] });
       const res = await service.leaveTeam('t1', 'u1');
       expect(res.success).toBe(true);
+    });
+
+    it('should handle captain leaving and promoting next member', async () => {
+      mockPrismaService.team.findUnique.mockResolvedValue({ id: 't1', captainId: 'u1', members: [{ userId: 'u1' }, { userId: 'u2' }] });
+      mockPrismaService.teamMember.findMany.mockResolvedValue([{ id: 'm2', userId: 'u2' }]);
+      mockPrismaService.$transaction.mockResolvedValue([{}, {}, {}]);
+      const res = await service.leaveTeam('t1', 'u1');
+      expect(res.success).toBe(true);
+      expect(mockPrismaService.$transaction).toHaveBeenCalled();
+    });
+
+    it('should handle captain leaving with no other members cleanly deleting team', async () => {
+      mockPrismaService.team.findUnique.mockResolvedValue({ id: 't1', captainId: 'u1', members: [{ userId: 'u1' }] });
+      mockPrismaService.teamMember.findMany.mockResolvedValue([]);
+      mockPrismaService.$transaction.mockResolvedValue([{}, {}, {}]);
+      const res = await service.leaveTeam('t1', 'u1');
+      expect(res.success).toBe(true);
+    });
+  });
+
+  describe('getTeamChallenges', () => {
+    it('should return team challenges', async () => {
+      mockPrismaService.teamChallenge.findMany.mockResolvedValue([{ id: 'c1' }]);
+      const res = await service.getTeamChallenges('t1');
+      expect(res.length).toBe(1);
     });
   });
 
@@ -99,6 +151,23 @@ describe('TeamsService', () => {
     it('should throw BadRequest if same team', async () => {
       await expect(service.initiateBattle('t1', 't1', 'u1')).rejects.toThrow(BadRequestException);
     });
+    
+    it('should throw Forbidden if not captain', async () => {
+      mockPrismaService.team.findUnique.mockResolvedValue({ captainId: 'u2' });
+      await expect(service.initiateBattle('t1', 't2', 'u1')).rejects.toThrow(ForbiddenException);
+    });
+
+    it('should throw NotFound if opponent not found', async () => {
+      mockPrismaService.team.findUnique.mockResolvedValueOnce({ captainId: 'u1' }).mockResolvedValueOnce(null);
+      await expect(service.initiateBattle('t1', 't2', 'u1')).rejects.toThrow(NotFoundException);
+    });
+
+    it('should throw BadRequest if active battle exists', async () => {
+      mockPrismaService.team.findUnique.mockResolvedValueOnce({ captainId: 'u1' }).mockResolvedValueOnce({ id: 't2' });
+      mockPrismaService.teamBattle.findFirst.mockResolvedValue({ id: 'b1' });
+      await expect(service.initiateBattle('t1', 't2', 'u1')).rejects.toThrow(BadRequestException);
+    });
+
     it('should create a battle successfully', async () => {
       mockPrismaService.team.findUnique.mockResolvedValueOnce({ captainId: 'u1' }).mockResolvedValueOnce({ id: 't2' });
       mockPrismaService.teamBattle.findFirst.mockResolvedValue(null);
@@ -108,11 +177,36 @@ describe('TeamsService', () => {
     });
   });
 
+  describe('getTeamLeaderboard', () => {
+    it('should return team leaderboard', async () => {
+      mockPrismaService.team.findMany.mockResolvedValue([{ id: 't1', members: [{}] }]);
+      const res = await service.getTeamLeaderboard();
+      expect(res.length).toBe(1);
+      expect(res[0].rank).toBe(1);
+    });
+  });
+
   describe('deleteTeam', () => {
+    it('should throw NotFound if team not found', async () => {
+      mockPrismaService.team.findUnique.mockResolvedValue(null);
+      await expect(service.deleteTeam('t1', 'u1')).rejects.toThrow(NotFoundException);
+    });
+
     it('should throw Forbidden if not captain', async () => {
       mockPrismaService.team.findUnique.mockResolvedValue({ captainId: 'u2' });
       await expect(service.deleteTeam('t1', 'u1')).rejects.toThrow(ForbiddenException);
     });
+
+    it('should throw BadRequest if active challenges', async () => {
+      mockPrismaService.team.findUnique.mockResolvedValue({ captainId: 'u1', teamChallenges: [{}] });
+      await expect(service.deleteTeam('t1', 'u1')).rejects.toThrow(BadRequestException);
+    });
+
+    it('should throw BadRequest if other active members', async () => {
+      mockPrismaService.team.findUnique.mockResolvedValue({ captainId: 'u1', teamChallenges: [], members: [{ userId: 'u1' }, { userId: 'u2' }] });
+      await expect(service.deleteTeam('t1', 'u1')).rejects.toThrow(BadRequestException);
+    });
+
     it('should delete team successfully', async () => {
       mockPrismaService.team.findUnique.mockResolvedValue({ captainId: 'u1', teamChallenges: [], members: [{ userId: 'u1' }] });
       const res = await service.deleteTeam('t1', 'u1');

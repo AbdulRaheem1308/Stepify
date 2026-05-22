@@ -403,9 +403,7 @@ export class StepsService {
       );
     }
 
-    if (dto.stepCount < 0) {
-      throw new BadRequestException("Step count cannot be negative.");
-    }
+    this.validateStepCountLimits(userId, dto.stepCount);
 
     if (dto.nonce) {
       const isUnique = await this.redisService.setNonce(dto.nonce, 86400);
@@ -427,36 +425,44 @@ export class StepsService {
       }
     }
 
-    if (dto.integrity) {
-      if (dto.integrity.isJailBroken) {
-        this.logger.warn(
-          `🚨 JAILBROKEN DEVICE: Rejected steps from user ${userId}`,
-        );
-        throw new BadRequestException(
-          "Jailbroken or rooted devices are blocked.",
-        );
-      }
-      if (dto.integrity.isMockLocation) {
-        this.logger.warn(
-          `🚨 LOCATION SPOOFING: Rejected steps from user ${userId}`,
-        );
-        throw new BadRequestException("Location spoofing is blocked.");
-      }
-    }
+    this.validateIntegrity(userId, dto.integrity);
+  }
 
-    if (dto.stepCount > MAX_STEPS_PER_DAY) {
+  private validateStepCountLimits(userId: string, stepCount: number) {
+    if (stepCount < 0) {
+      throw new BadRequestException("Step count cannot be negative.");
+    }
+    if (stepCount > MAX_STEPS_PER_DAY) {
       this.logger.warn(
-        `🚨 ANTI-CHEAT: User ${userId} claimed ${dto.stepCount} steps. Rejecting.`,
+        `🚨 ANTI-CHEAT: User ${userId} claimed ${stepCount} steps. Rejecting.`,
       );
       throw new BadRequestException(
         `Step count exceeds maximum of ${MAX_STEPS_PER_DAY}.`,
       );
     }
-
-    if (dto.stepCount > SUSPICIOUS_STEPS_THRESHOLD) {
+    if (stepCount > SUSPICIOUS_STEPS_THRESHOLD) {
       this.logger.warn(
-        `⚠️ SUSPICIOUS: User ${userId} reported ${dto.stepCount} steps. Flagged.`,
+        `⚠️ SUSPICIOUS: User ${userId} reported ${stepCount} steps. Flagged.`,
       );
+    }
+  }
+
+  private validateIntegrity(userId: string, integrity?: any) {
+    if (!integrity) return;
+
+    if (integrity.isJailBroken) {
+      this.logger.warn(
+        `🚨 JAILBROKEN DEVICE: Rejected steps from user ${userId}`,
+      );
+      throw new BadRequestException(
+        "Jailbroken or rooted devices are blocked.",
+      );
+    }
+    if (integrity.isMockLocation) {
+      this.logger.warn(
+        `🚨 LOCATION SPOOFING: Rejected steps from user ${userId}`,
+      );
+      throw new BadRequestException("Location spoofing is blocked.");
     }
   }
 

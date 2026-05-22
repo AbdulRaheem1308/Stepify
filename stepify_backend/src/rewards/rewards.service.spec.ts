@@ -213,5 +213,72 @@ describe('RewardsService', () => {
 
       await expect(service.redeemReward('u1', 'r1')).rejects.toThrow('Insufficient coins');
     });
+  describe('getTransactions', () => {
+    it('should return paginated transactions', async () => {
+      mockPrisma.transaction.findMany.mockResolvedValueOnce([{ id: 'tx1' }]);
+      mockPrisma.transaction.count.mockResolvedValueOnce(1);
+      const res = await service.getTransactions('u1', 1, 10);
+      expect(res.data.length).toBe(1);
+      expect(res.pagination.total).toBe(1);
+    });
   });
+
+  describe('checkMonthlyReset', () => {
+    it('should reset monthly stats if it is a new month', async () => {
+      const pastDate = new Date();
+      pastDate.setMonth(pastDate.getMonth() - 1);
+      mockPrisma.wallet.findUnique.mockResolvedValueOnce({ userId: 'u1', lastResetDate: pastDate });
+      mockPrisma.wallet.update.mockResolvedValueOnce({});
+      mockPrisma.userAchievement.updateMany.mockResolvedValueOnce({});
+
+      await service.checkMonthlyReset('u1');
+      expect(mockPrisma.wallet.update).toHaveBeenCalled();
+      expect(mockPrisma.userAchievement.updateMany).toHaveBeenCalled();
+    });
+
+    it('should do nothing if same month', async () => {
+      mockPrisma.wallet.findUnique.mockResolvedValueOnce({ userId: 'u1', lastResetDate: new Date() });
+      await service.checkMonthlyReset('u1');
+      expect(mockPrisma.wallet.update).not.toHaveBeenCalled();
+    });
+  });
+
+  describe('getStreak', () => {
+    it('should recalculate streak and return it', async () => {
+      mockPrisma.step.findMany.mockResolvedValueOnce([{ date: new Date(), stepCount: 5000 }]);
+      mockPrisma.streak.findUnique.mockResolvedValueOnce({ userId: 'u1', currentStreak: 1, longestStreak: 1 });
+      mockPrisma.streak.update.mockResolvedValueOnce({ currentStreak: 1, longestStreak: 1, lastActiveDate: new Date() });
+
+      const res = await service.getStreak('u1');
+      expect(res.currentStreak).toBe(1);
+      expect(res.nextMilestone).toBe(7);
+      expect(res.daysToMilestone).toBe(6);
+    });
+  });
+
+  describe('getLevels', () => {
+    it('should return levels', async () => {
+      mockPrisma.level.findMany.mockResolvedValueOnce([{ levelNumber: 1 }]);
+      const res = await service.getLevels();
+      expect(res.length).toBe(1);
+    });
+  });
+
+  describe('getRewardsCatalog', () => {
+    it('should return rewards and check affordance', async () => {
+      mockPrisma.wallet.findUnique.mockResolvedValueOnce({ balance: 500 });
+      mockPrisma.reward.findMany.mockResolvedValueOnce([{ coinCost: 100, availableStock: 1 }]);
+      const res = await service.getRewardsCatalog('u1');
+      expect(res[0].canAfford).toBe(true);
+    });
+  });
+
+  describe('getMyOffers', () => {
+    it('should return user redemptions', async () => {
+      mockPrisma.userRedemption.findMany.mockResolvedValueOnce([{ id: 'red1' }]);
+      const res = await service.getMyOffers('u1');
+      expect(res.length).toBe(1);
+    });
+  });
+});
 });

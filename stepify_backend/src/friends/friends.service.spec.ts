@@ -106,6 +106,11 @@ describe('FriendsService', () => {
   });
 
   describe('searchUsers', () => {
+    it('should return empty if query is empty', async () => {
+      const res = await service.searchUsers('u1', '');
+      expect(res).toEqual([]);
+    });
+
     it('should return empty if query too short', async () => {
       const res = await service.searchUsers('u1', 'a');
       expect(res).toEqual([]);
@@ -245,9 +250,13 @@ describe('FriendsService', () => {
 
     it('should compute daily/weekly leaderboard', async () => {
       mockRedis.getCache.mockResolvedValueOnce(null);
-      mockPrisma.user.findMany.mockResolvedValueOnce([{ id: 'u1', steps: [{ stepCount: 100 }] }]);
+      mockPrisma.user.findMany.mockResolvedValueOnce([
+        { id: 'u1', steps: [{ stepCount: 100 }] },
+        { id: 'u2', steps: [{ stepCount: 200 }] }
+      ]);
       const res = await service.getGlobalLeaderboard('weekly');
-      expect(res[0].todaySteps).toBe(100);
+      expect(res[0].todaySteps).toBe(200);
+      expect(res[1].todaySteps).toBe(100);
     });
   });
 });
