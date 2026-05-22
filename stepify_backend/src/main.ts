@@ -22,8 +22,6 @@ Sentry.init({
   tracesSampleRate: 1,
 });
 
-
-
 async function bootstrap() {
   // Strip console logs in production for security and performance
   if (process.env.NODE_ENV === "production") {

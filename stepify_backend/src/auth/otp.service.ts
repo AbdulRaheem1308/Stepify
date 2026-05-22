@@ -6,9 +6,9 @@ import * as crypto from "node:crypto";
 @Injectable()
 export class OtpService {
   private readonly logger = new Logger(OtpService.name);
-  private twilioClient: Twilio.Twilio | null = null;
+  private readonly twilioClient: Twilio.Twilio | null = null;
 
-  constructor(private configService: ConfigService) {
+  constructor(private readonly configService: ConfigService) {
     const accountSid = this.configService.get("TWILIO_ACCOUNT_SID");
     const authToken = this.configService.get("TWILIO_AUTH_TOKEN");
     const isProduction = this.configService.get("NODE_ENV") === "production";

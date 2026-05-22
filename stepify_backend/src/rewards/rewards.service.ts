@@ -11,9 +11,9 @@ export class RewardsService {
   private readonly pointsPerStep: number;
 
   constructor(
-    private prisma: PrismaService,
-    private configService: ConfigService,
-    private questsService: QuestsService,
+    private readonly prisma: PrismaService,
+    private readonly configService: ConfigService,
+    private readonly questsService: QuestsService,
   ) {
     this.pointsPerStep = Number.parseFloat(
       this.configService.get("POINTS_PER_STEP", "0.1"),
@@ -87,16 +87,14 @@ export class RewardsService {
         where: { userId },
       });
 
-      if (!wallet) {
-        wallet = await this.prisma.wallet.create({
-          data: {
-            userId,
-            balance: 0,
-            lifetimePoints: 0,
-            monthlyXp: 0,
-          },
-        });
-      }
+      wallet ??= await this.prisma.wallet.create({
+        data: {
+          userId,
+          balance: 0,
+          lifetimePoints: 0,
+          monthlyXp: 0,
+        },
+      });
 
       return wallet;
     } catch (error) {
@@ -115,7 +113,10 @@ export class RewardsService {
   async getTransactions(userId: string, page: number = 1, limit: number = 20) {
     // Ensure page and limit are valid integers
     const pageNum = Math.max(1, Number.parseInt(String(page)) || 1);
-    const limitNum = Math.max(1, Math.min(100, Number.parseInt(String(limit)) || 20));
+    const limitNum = Math.max(
+      1,
+      Math.min(100, Number.parseInt(String(limit)) || 20),
+    );
     const skip = (pageNum - 1) * limitNum;
 
     const [transactions, total] = await Promise.all([
@@ -275,6 +276,7 @@ export class RewardsService {
       where: { userId },
     });
 
+    let isNewStreak = false;
     if (!streak) {
       streak = await this.prisma.streak.create({
         data: {
@@ -284,6 +286,10 @@ export class RewardsService {
           lastActiveDate: dateOnly,
         },
       });
+      isNewStreak = true;
+    }
+
+    if (isNewStreak) {
       return streak;
     }
 
@@ -553,14 +559,15 @@ export class RewardsService {
 
     for (const achievement of achievements) {
       // Calculate progress and check if unlocked
-      const { progress, currentValue, unlocked } = this.calculateAchievementProgress(achievement, {
-        lifetimeSteps,
-        currentStreak,
-        longestStreak,
-        friendships,
-        challengesCompleted,
-        lifetimeCoins,
-      });
+      const { progress, currentValue, unlocked } =
+        this.calculateAchievementProgress(achievement, {
+          lifetimeSteps,
+          currentStreak,
+          longestStreak,
+          friendships,
+          challengesCompleted,
+          lifetimeCoins,
+        });
 
       // Get existing record
       const existing = await this.prisma.userAchievement.findUnique({
@@ -856,12 +863,15 @@ export class RewardsService {
     let tempStreak = 1;
     let lastActiveDate: Date | null = null;
 
-    if (uniqueDates.length === 0) return { currentStreak: 0, longestStreak: 0, lastActiveDate: null };
+    if (uniqueDates.length === 0)
+      return { currentStreak: 0, longestStreak: 0, lastActiveDate: null };
 
     for (let i = 1; i < uniqueDates.length; i++) {
       const prevDate = new Date(uniqueDates[i - 1]);
       const currDate = new Date(uniqueDates[i]);
-      const diffDays = Math.ceil(Math.abs(currDate.getTime() - prevDate.getTime()) / 86400000);
+      const diffDays = Math.ceil(
+        Math.abs(currDate.getTime() - prevDate.getTime()) / 86400000,
+      );
 
       if (diffDays === 1) {
         tempStreak++;
@@ -878,12 +888,16 @@ export class RewardsService {
     const yesterday = new Date(now);
     yesterday.setDate(now.getDate() - 1);
     const yesterdayLocal = `${yesterday.getFullYear()}-${String(yesterday.getMonth() + 1).padStart(2, "0")}-${String(yesterday.getDate()).padStart(2, "0")}`;
-    const yesterdayUtc = new Date(Date.now() - 86400000).toISOString().split("T")[0];
+    const yesterdayUtc = new Date(Date.now() - 86400000)
+      .toISOString()
+      .split("T")[0];
 
-    const lastDateStr = uniqueDates[uniqueDates.length - 1];
+    const lastDateStr = uniqueDates.at(-1);
     lastActiveDate = new Date(lastDateStr + "T00:00:00.000Z");
 
-    if ([todayLocal, todayUtc, yesterdayLocal, yesterdayUtc].includes(lastDateStr)) {
+    if (
+      [todayLocal, todayUtc, yesterdayLocal, yesterdayUtc].includes(lastDateStr)
+    ) {
       currentStreak = tempStreak;
     }
 
@@ -891,22 +905,35 @@ export class RewardsService {
   }
 
   private calculateAchievementProgress(achievement: any, stats: any) {
-    let progress = 0, currentValue = 0, unlocked = false;
+    let progress = 0,
+      currentValue = 0,
+      unlocked = false;
 
     if (achievement.stepsRequired) {
       currentValue = stats.lifetimeSteps;
-      progress = Math.min(100, Math.floor((currentValue / achievement.stepsRequired) * 100));
+      progress = Math.min(
+        100,
+        Math.floor((currentValue / achievement.stepsRequired) * 100),
+      );
       unlocked = currentValue >= achievement.stepsRequired;
     } else if (achievement.streakRequired) {
       currentValue = Math.max(stats.currentStreak, stats.longestStreak);
-      progress = Math.min(100, Math.floor((currentValue / achievement.streakRequired) * 100));
+      progress = Math.min(
+        100,
+        Math.floor((currentValue / achievement.streakRequired) * 100),
+      );
       unlocked = currentValue >= achievement.streakRequired;
     } else if (achievement.targetValue) {
       if (achievement.category === "SOCIAL") currentValue = stats.friendships;
-      else if (achievement.category === "CHALLENGE") currentValue = stats.challengesCompleted;
-      else if (achievement.category === "COINS") currentValue = stats.lifetimeCoins;
+      else if (achievement.category === "CHALLENGE")
+        currentValue = stats.challengesCompleted;
+      else if (achievement.category === "COINS")
+        currentValue = stats.lifetimeCoins;
 
-      progress = Math.min(100, Math.floor((currentValue / achievement.targetValue) * 100));
+      progress = Math.min(
+        100,
+        Math.floor((currentValue / achievement.targetValue) * 100),
+      );
       unlocked = currentValue >= achievement.targetValue;
     }
 

@@ -16,7 +16,7 @@ import {
 @Controller("steps")
 @UseGuards(JwtAuthGuard)
 export class StepsController {
-  constructor(private stepsService: StepsService) {}
+  constructor(private readonly stepsService: StepsService) {}
 
   /**
    * Sync step data

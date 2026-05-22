@@ -239,7 +239,9 @@ export class AuthService {
       // Generate new tokens
       return this.generateTokens(tokenRecord.user);
     } catch (error: any) {
-      throw new UnauthorizedException("Invalid refresh token", { cause: error });
+      throw new UnauthorizedException("Invalid refresh token", {
+        cause: error,
+      });
     }
   }
 

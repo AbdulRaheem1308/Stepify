@@ -29,7 +29,7 @@ interface AuthenticatedRequest extends ExpressRequest {
 @Controller("teams")
 @UseGuards(JwtAuthGuard)
 export class TeamsController {
-  constructor(private teamsService: TeamsService) {}
+  constructor(private readonly teamsService: TeamsService) {}
 
   /**
    * Get user's teams

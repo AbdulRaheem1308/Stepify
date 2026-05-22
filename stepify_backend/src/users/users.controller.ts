@@ -29,7 +29,7 @@ import {
 @Controller("users")
 @UseGuards(JwtAuthGuard)
 export class UsersController {
-  constructor(private usersService: UsersService) {}
+  constructor(private readonly usersService: UsersService) {}
 
   /**
    * Get available avatars

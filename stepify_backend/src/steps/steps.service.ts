@@ -23,12 +23,12 @@ export class StepsService {
   private readonly kmPerStep: number;
 
   constructor(
-    private prisma: PrismaService,
-    private configService: ConfigService,
-    private rewardsService: RewardsService,
-    private postHog: PostHogService,
-    private redisService: RedisService,
-    @InjectQueue("steps-processing") private stepsQueue: Queue,
+    private readonly prisma: PrismaService,
+    private readonly configService: ConfigService,
+    private readonly rewardsService: RewardsService,
+    private readonly postHog: PostHogService,
+    private readonly redisService: RedisService,
+    @InjectQueue("steps-processing") private readonly stepsQueue: Queue,
   ) {
     this.caloriesPerStep = Number.parseFloat(
       this.configService.get("CALORIES_PER_STEP", "0.04"),
@@ -353,40 +353,9 @@ export class StepsService {
       orderBy: { date: "asc" },
     });
 
-    const totalSteps = steps.reduce((sum, s) => sum + s.stepCount, 0);
-    const totalCalories = steps.reduce((sum, s) => sum + s.caloriesBurned, 0);
-    const totalDistance = steps.reduce(
-      (sum, s) => sum + Number(s.distanceKm),
-      0,
-    );
-    const avgSteps =
-      steps.length > 0 ? Math.round(totalSteps / steps.length) : 0;
-
-    // Get best day
-    const bestDay = steps.reduce(
-      (max, s) => (s.stepCount > (max?.stepCount || 0) ? s : max),
-      steps[0] || null,
-    );
-
-    // Weekly breakdown
-    const weeks = [];
-    // const currentWeek = { startDate: "", steps: 0, calories: 0 };
-    // const weekStart = new Date(startOfMonth);
-
-    for (const step of steps) {
-      const stepDate = new Date(step.date);
-      const weekNum = Math.floor((stepDate.getDate() - 1) / 7);
-
-      if (!weeks[weekNum]) {
-        weeks[weekNum] = {
-          weekNumber: weekNum + 1,
-          steps: 0,
-          calories: 0,
-        };
-      }
-      weeks[weekNum].steps += step.stepCount;
-      weeks[weekNum].calories += step.caloriesBurned;
-    }
+    const { totalSteps, totalCalories, totalDistance, avgSteps, bestDay } =
+      this.calculateMonthlyTotals(steps);
+    const weeklyBreakdown = this.calculateWeeklyBreakdown(steps);
 
     return {
       year: targetYear,
@@ -410,13 +379,15 @@ export class StepsService {
             stepCount: bestDay.stepCount,
           }
         : null,
-      weeklyBreakdown: weeks.filter(Boolean),
+      weeklyBreakdown,
     };
   }
 
   private async validateSyncRequest(userId: string, dto: SyncStepsDto) {
     if (!dto.deviceIdentifier) {
-      throw new BadRequestException("Device identifier is required for step synchronization.");
+      throw new BadRequestException(
+        "Device identifier is required for step synchronization.",
+      );
     }
 
     const boundDevice = await this.prisma.device.findFirst({
@@ -424,8 +395,12 @@ export class StepsService {
     });
 
     if (!boundDevice) {
-      this.logger.warn(`🚨 SECURITY VIOLATION: User ${userId} attempted step sync from unauthorized device: ${dto.deviceIdentifier}`);
-      throw new BadRequestException("Step synchronization is only allowed from a registered, active bound device.");
+      this.logger.warn(
+        `🚨 SECURITY VIOLATION: User ${userId} attempted step sync from unauthorized device: ${dto.deviceIdentifier}`,
+      );
+      throw new BadRequestException(
+        "Step synchronization is only allowed from a registered, active bound device.",
+      );
     }
 
     if (dto.stepCount < 0) {
@@ -435,7 +410,9 @@ export class StepsService {
     if (dto.nonce) {
       const isUnique = await this.redisService.setNonce(dto.nonce, 86400);
       if (!isUnique) {
-        this.logger.warn(`🚨 REPLAY DETECTED: Nonce ${dto.nonce} already processed. Rejecting.`);
+        this.logger.warn(
+          `🚨 REPLAY DETECTED: Nonce ${dto.nonce} already processed. Rejecting.`,
+        );
         throw new BadRequestException("Request replay detected.");
       }
     }
@@ -443,29 +420,76 @@ export class StepsService {
     if (dto.timestamp) {
       const timeDiff = Math.abs(Date.now() - dto.timestamp);
       if (timeDiff > 300000) {
-        this.logger.warn(`🚨 TIME DRIFT: Request timestamp differs by ${timeDiff}ms. Rejecting.`);
+        this.logger.warn(
+          `🚨 TIME DRIFT: Request timestamp differs by ${timeDiff}ms. Rejecting.`,
+        );
         throw new BadRequestException("Request expired or timestamp invalid.");
       }
     }
 
     if (dto.integrity) {
       if (dto.integrity.isJailBroken) {
-        this.logger.warn(`🚨 JAILBROKEN DEVICE: Rejected steps from user ${userId}`);
-        throw new BadRequestException("Jailbroken or rooted devices are blocked.");
+        this.logger.warn(
+          `🚨 JAILBROKEN DEVICE: Rejected steps from user ${userId}`,
+        );
+        throw new BadRequestException(
+          "Jailbroken or rooted devices are blocked.",
+        );
       }
       if (dto.integrity.isMockLocation) {
-        this.logger.warn(`🚨 LOCATION SPOOFING: Rejected steps from user ${userId}`);
+        this.logger.warn(
+          `🚨 LOCATION SPOOFING: Rejected steps from user ${userId}`,
+        );
         throw new BadRequestException("Location spoofing is blocked.");
       }
     }
 
     if (dto.stepCount > MAX_STEPS_PER_DAY) {
-      this.logger.warn(`🚨 ANTI-CHEAT: User ${userId} claimed ${dto.stepCount} steps. Rejecting.`);
-      throw new BadRequestException(`Step count exceeds maximum of ${MAX_STEPS_PER_DAY}.`);
+      this.logger.warn(
+        `🚨 ANTI-CHEAT: User ${userId} claimed ${dto.stepCount} steps. Rejecting.`,
+      );
+      throw new BadRequestException(
+        `Step count exceeds maximum of ${MAX_STEPS_PER_DAY}.`,
+      );
     }
 
     if (dto.stepCount > SUSPICIOUS_STEPS_THRESHOLD) {
-      this.logger.warn(`⚠️ SUSPICIOUS: User ${userId} reported ${dto.stepCount} steps. Flagged.`);
+      this.logger.warn(
+        `⚠️ SUSPICIOUS: User ${userId} reported ${dto.stepCount} steps. Flagged.`,
+      );
     }
+  }
+
+  private calculateMonthlyTotals(steps: any[]) {
+    const totalSteps = steps.reduce((sum, s) => sum + s.stepCount, 0);
+    const totalCalories = steps.reduce((sum, s) => sum + s.caloriesBurned, 0);
+    const totalDistance = steps.reduce(
+      (sum, s) => sum + Number(s.distanceKm),
+      0,
+    );
+    const avgSteps =
+      steps.length > 0 ? Math.round(totalSteps / steps.length) : 0;
+
+    const bestDay = steps.reduce(
+      (max, s) => (s.stepCount > (max?.stepCount || 0) ? s : max),
+      steps[0] || null,
+    );
+
+    return { totalSteps, totalCalories, totalDistance, avgSteps, bestDay };
+  }
+
+  private calculateWeeklyBreakdown(steps: any[]) {
+    const weeks = [];
+    for (const step of steps) {
+      const stepDate = new Date(step.date);
+      const weekNum = Math.floor((stepDate.getDate() - 1) / 7);
+
+      if (!weeks[weekNum]) {
+        weeks[weekNum] = { weekNumber: weekNum + 1, steps: 0, calories: 0 };
+      }
+      weeks[weekNum].steps += step.stepCount;
+      weeks[weekNum].calories += step.caloriesBurned;
+    }
+    return weeks.filter(Boolean);
   }
 }

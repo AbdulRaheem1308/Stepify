@@ -253,14 +253,14 @@ export class FriendsService {
     const friends = await this.getFriends(userId);
 
     // Sort by steps and take top 5
-    const sortedFriends = [...friends].sort((a: any, b: any) => b.dailyStepCount - a.dailyStepCount);
-    return sortedFriends
-      .slice(0, 5)
-      .map((f: any, index: number) => ({
-        ...f,
-        rank: index + 1,
-        isTopFriend: index === 0,
-      }));
+    const sortedFriends = [...friends].sort(
+      (a: any, b: any) => b.dailyStepCount - a.dailyStepCount,
+    );
+    return sortedFriends.slice(0, 5).map((f: any, index: number) => ({
+      ...f,
+      rank: index + 1,
+      isTopFriend: index === 0,
+    }));
   }
 
   /**
@@ -394,7 +394,10 @@ export class FriendsService {
         id: u.id,
         name: u.name || "Unknown",
         avatarUrl: u.avatarUrl,
-        todaySteps: u.steps.reduce((sum: number, s: any) => sum + s.stepCount, 0),
+        todaySteps: u.steps.reduce(
+          (sum: number, s: any) => sum + s.stepCount,
+          0,
+        ),
         xp: u.steps.reduce((sum: number, s: any) => sum + s.stepCount, 0),
       }));
       const sortedUsers = [...usersWithSteps].sort(

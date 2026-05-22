@@ -43,7 +43,7 @@ export class SentryExceptionFilter extends BaseExceptionFilter {
           lang: (request.headers["accept-language"] as string) || "en",
         });
 
-        if (typeof (translateResult as any)?.then === 'function') {
+        if (typeof (translateResult as any)?.then === "function") {
           (translateResult as Promise<any>)
             .then((translated: any) => {
               response.status(status).json({

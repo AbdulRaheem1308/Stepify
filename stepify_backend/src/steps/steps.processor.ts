@@ -12,10 +12,10 @@ export class StepsProcessor extends WorkerHost {
   private readonly logger = new Logger(StepsProcessor.name);
 
   constructor(
-    private prisma: PrismaService,
-    private rewardsService: RewardsService,
-    private postHog: PostHogService,
-    private leaderboardGateway: LeaderboardGateway,
+    private readonly prisma: PrismaService,
+    private readonly rewardsService: RewardsService,
+    private readonly postHog: PostHogService,
+    private readonly leaderboardGateway: LeaderboardGateway,
   ) {
     super();
   }
@@ -25,90 +25,87 @@ export class StepsProcessor extends WorkerHost {
       `🔄 Processing background job ${job.id} of type ${job.name}`,
     );
 
-    switch (job.name) {
-      case "process-sync": {
-        const { userId, effectiveStepCount, date, effectiveSource } = job.data;
-        const parsedDate = new Date(date);
+    if (job.name === "process-sync") {
+      const { userId, effectiveStepCount, date, effectiveSource } = job.data;
+      const parsedDate = new Date(date);
 
-        // 1. Process achievements, streaks, and wallet rewards asynchronously
-        try {
-          await this.rewardsService.processStepRewards(
-            userId,
-            effectiveStepCount,
-            parsedDate,
-          );
+      // 1. Process achievements, streaks, and wallet rewards asynchronously
+      try {
+        await this.rewardsService.processStepRewards(
+          userId,
+          effectiveStepCount,
+          parsedDate,
+        );
+        this.logger.log(
+          `✅ Successfully processed step rewards for user ${userId}`,
+        );
+      } catch (err) {
+        this.logger.error(
+          `❌ Failed to process step rewards for user ${userId}: ${err.message}`,
+        );
+      }
+
+      // 2. Update corporate leaderboard cache if the user is in a company
+      try {
+        const totalUserSteps = await this.prisma.step.aggregate({
+          where: { userId },
+          _sum: { stepCount: true },
+        });
+        const sumSteps = totalUserSteps._sum.stepCount || 0;
+
+        const member = await this.prisma.companyMember.findUnique({
+          where: { userId },
+        });
+
+        if (member) {
+          await this.prisma.companyMember.update({
+            where: { userId },
+            data: { totalSteps: sumSteps },
+          });
           this.logger.log(
-            `✅ Successfully processed step rewards for user ${userId}`,
+            `📈 Updated company membership steps cache for user ${userId} to ${sumSteps}`,
           );
-        } catch (err) {
-          this.logger.error(
-            `❌ Failed to process step rewards for user ${userId}: ${err.message}`,
-          );
-        }
 
-        // 2. Update corporate leaderboard cache if the user is in a company
-        try {
-          const totalUserSteps = await this.prisma.step.aggregate({
-            where: { userId },
-            _sum: { stepCount: true },
-          });
-          const sumSteps = totalUserSteps._sum.stepCount || 0;
-
-          const member = await this.prisma.companyMember.findUnique({
-            where: { userId },
-          });
-
-          if (member) {
-            await this.prisma.companyMember.update({
-              where: { userId },
-              data: { totalSteps: sumSteps },
-            });
-            this.logger.log(
-              `📈 Updated company membership steps cache for user ${userId} to ${sumSteps}`,
-            );
-
-            // 3. Broadcast real-time leaderboard update to WebSocket clients
-            const leaderboard = await this.prisma.companyMember.findMany({
-              where: { companyId: member.companyId },
-              orderBy: { totalSteps: "desc" },
-              take: 20,
-              include: {
-                user: {
-                  select: {
-                    name: true,
-                    avatarUrl: true,
-                  },
+          // 3. Broadcast real-time leaderboard update to WebSocket clients
+          const leaderboard = await this.prisma.companyMember.findMany({
+            where: { companyId: member.companyId },
+            orderBy: { totalSteps: "desc" },
+            take: 20,
+            include: {
+              user: {
+                select: {
+                  name: true,
+                  avatarUrl: true,
                 },
               },
-            });
-            this.leaderboardGateway.broadcastLeaderboardUpdate(
-              member.companyId,
-              leaderboard,
-            );
-          }
-        } catch (err) {
-          this.logger.error(
-            `❌ Failed to update corporate leaderboard stats for user ${userId}: ${err.message}`,
+            },
+          });
+          this.leaderboardGateway.broadcastLeaderboardUpdate(
+            member.companyId,
+            leaderboard,
           );
         }
-
-        // 4. Asynchronously track PostHog analytics
-        try {
-          await this.postHog.trackStepSync(
-            userId,
-            effectiveStepCount,
-            effectiveSource,
-          );
-          this.logger.log(`📊 Logged steps sync in Posthog for user ${userId}`);
-        } catch (err) {
-          this.logger.warn(
-            `⚠️ PostHog analytics logging failed for user ${userId}: ${err.message}`,
-          );
-        }
-        break;
+      } catch (err) {
+        this.logger.error(
+          `❌ Failed to update corporate leaderboard stats for user ${userId}: ${err.message}`,
+        );
       }
-      default:
-        this.logger.warn(`❓ Unknown background job type: ${job.name}`);
+
+      // 4. Asynchronously track PostHog analytics
+      try {
+        await this.postHog.trackStepSync(
+          userId,
+          effectiveStepCount,
+          effectiveSource,
+        );
+        this.logger.log(`📊 Logged steps sync in Posthog for user ${userId}`);
+      } catch (err) {
+        this.logger.warn(
+          `⚠️ PostHog analytics logging failed for user ${userId}: ${err.message}`,
+        );
+      }
+    } else {
+      this.logger.warn(`❓ Unknown background job type: ${job.name}`);
     }
   }
 }

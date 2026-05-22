@@ -80,7 +80,7 @@ import { HealthController } from "./health.controller";
             };
           } catch (e) {
             Logger.warn(
-              "Failed to parse REDIS_URL for BullMQ, falling back to HOST/PORT",
+              `Failed to parse REDIS_URL for BullMQ, falling back to HOST/PORT: ${e.message}`,
             );
           }
         }
