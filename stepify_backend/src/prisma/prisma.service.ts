@@ -16,18 +16,18 @@ export class PrismaService
   constructor() {
     super({
       log: [
-        { emit: 'event', level: 'query' },
-        { emit: 'stdout', level: 'error' },
-        { emit: 'stdout', level: 'info' },
-        { emit: 'stdout', level: 'warn' },
+        { emit: "event", level: "query" },
+        { emit: "stdout", level: "error" },
+        { emit: "stdout", level: "info" },
+        { emit: "stdout", level: "warn" },
       ],
     });
   }
 
   async onModuleInit() {
     // Enable slow query logging
-    // @ts-ignore
-    this.$on('query', (e: any) => {
+    // @ts-expect-error - Prisma client types don't always expose query events properly
+    this.$on("query", (e: any) => {
       if (e.duration > 200) {
         this.logger.warn(`Slow Query [${e.duration}ms]: ${e.query}`);
       }
