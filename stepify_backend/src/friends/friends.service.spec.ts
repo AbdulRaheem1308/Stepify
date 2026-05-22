@@ -28,6 +28,7 @@ describe('FriendsService', () => {
     },
     wallet: {
       upsert: jest.fn(),
+      findMany: jest.fn(),
     },
     transaction: {
       create: jest.fn(),

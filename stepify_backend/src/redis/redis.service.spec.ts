@@ -21,6 +21,7 @@ jest.mock('ioredis', () => {
   return {
     __esModule: true,
     default: mRedis,
+    Redis: mRedis,
   };
 });
 

@@ -40,7 +40,7 @@ describe('ActivitiesService', () => {
     it('should throw BadRequestException if duration exceeds max limit', async () => {
       await expect(
         service.logActivity('user1', {
-          type: 'WALKING' as any,
+          type: 'walking' as any,
           durationMinutes: 301,
           startTime: new Date().toISOString(),
           caloriesBurned: 100,
@@ -51,7 +51,7 @@ describe('ActivitiesService', () => {
     it('should throw BadRequestException if distance violates speed constraints', async () => {
       await expect(
         service.logActivity('user1', {
-          type: 'WALKING' as any,
+          type: 'walking' as any,
           durationMinutes: 10,
           distanceKm: 2.0,
           startTime: new Date().toISOString(),
@@ -65,7 +65,7 @@ describe('ActivitiesService', () => {
 
       await expect(
         service.logActivity('user1', {
-          type: 'RUNNING' as any,
+          type: 'running' as any,
           durationMinutes: 30,
           distanceKm: 5,
           startTime: new Date().toISOString(),
@@ -116,7 +116,7 @@ describe('ActivitiesService', () => {
       });
 
       const result = await service.logActivity('user1', {
-        type: 'YOGA' as any,
+        type: 'yoga' as any,
         durationMinutes: 0,
         startTime: new Date().toISOString(),
         caloriesBurned: 100,
@@ -155,7 +155,7 @@ describe('ActivitiesService', () => {
 
       await expect(
         service.logActivity('user1', {
-          type: 'RUNNING' as any,
+          type: 'running' as any,
           durationMinutes: 30,
           startTime: new Date().toISOString(),
           caloriesBurned: 100,

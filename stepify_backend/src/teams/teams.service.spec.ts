@@ -3,13 +3,13 @@ import { TeamsService } from './teams.service';
 import { PrismaService } from '../prisma/prisma.service';
 import { BadRequestException, ForbiddenException, NotFoundException } from '@nestjs/common';
 
-const mockPrismaService = {
+const mockPrismaService: any = {
   teamMember: { findMany: jest.fn(), create: jest.fn(), update: jest.fn(), deleteMany: jest.fn() },
   team: { findMany: jest.fn(), findUnique: jest.fn(), create: jest.fn(), update: jest.fn(), delete: jest.fn() },
   user: { findMany: jest.fn() },
   teamChallenge: { deleteMany: jest.fn(), findMany: jest.fn() },
   teamBattle: { findFirst: jest.fn(), create: jest.fn() },
-  $transaction: jest.fn((queries) => {
+  $transaction: jest.fn((queries: any): any => {
     if (typeof queries === 'function') { return queries(mockPrismaService); }
     return Promise.resolve(queries);
   }),
