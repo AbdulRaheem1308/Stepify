@@ -4,6 +4,9 @@ import 'package:flutter_animate/flutter_animate.dart';
 import 'package:go_router/go_router.dart';
 import 'package:posthog_flutter/posthog_flutter.dart';
 
+import 'package:flutter/foundation.dart';
+import 'dart:io';
+
 import '../../../../core/theme/app_theme.dart';
 import '../../../../core/router/app_router.dart';
 import '../../../../services/api_service.dart';
@@ -30,7 +33,11 @@ class _StepAnalyticsScreenState extends ConsumerState<StepAnalyticsScreen>
   @override
   void initState() {
     super.initState();
-    Posthog().capture(eventName: 'view_step_analytics');
+    try {
+      Posthog().capture(eventName: 'view_step_analytics');
+    } catch (_) {
+      // Ignore during tests
+    }
     _tabController = TabController(length: 2, vsync: this);
     _fetchData();
   }
@@ -64,6 +71,9 @@ class _StepAnalyticsScreenState extends ConsumerState<StepAnalyticsScreen>
       }
     } catch (e) {
       if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text('Failed to load analytics: $e'), backgroundColor: AppTheme.error),
+        );
         setState(() {
           _weeklyData ??= _getEmptyWeeklyData();
           _monthlyData ??= _getEmptyMonthlyData();
@@ -81,13 +91,13 @@ class _StepAnalyticsScreenState extends ConsumerState<StepAnalyticsScreen>
       'totalDistanceKm': 0.0,
       'activeDays': 0,
       'dailyBreakdown': [
-        {'dayName': 'Mon', 'stepCount': 0},
-        {'dayName': 'Tue', 'stepCount': 0},
-        {'dayName': 'Wed', 'stepCount': 0},
-        {'dayName': 'Thu', 'stepCount': 0},
-        {'dayName': 'Fri', 'stepCount': 0},
-        {'dayName': 'Sat', 'stepCount': 0},
-        {'dayName': 'Sun', 'stepCount': 0},
+        {'dayName': 'Mon', 'date': DateTime.now().subtract(const Duration(days: 6)).toIso8601String(), 'stepCount': 0},
+        {'dayName': 'Tue', 'date': DateTime.now().subtract(const Duration(days: 5)).toIso8601String(), 'stepCount': 0},
+        {'dayName': 'Wed', 'date': DateTime.now().subtract(const Duration(days: 4)).toIso8601String(), 'stepCount': 0},
+        {'dayName': 'Thu', 'date': DateTime.now().subtract(const Duration(days: 3)).toIso8601String(), 'stepCount': 0},
+        {'dayName': 'Fri', 'date': DateTime.now().subtract(const Duration(days: 2)).toIso8601String(), 'stepCount': 0},
+        {'dayName': 'Sat', 'date': DateTime.now().subtract(const Duration(days: 1)).toIso8601String(), 'stepCount': 0},
+        {'dayName': 'Sun', 'date': DateTime.now().toIso8601String(), 'stepCount': 0},
       ],
     };
   }
@@ -141,58 +151,72 @@ class _StepAnalyticsScreenState extends ConsumerState<StepAnalyticsScreen>
       child: Row(
         mainAxisAlignment: MainAxisAlignment.spaceBetween,
         children: [
-          IconButton(
-            onPressed: () {
-              if (Navigator.canPop(context)) {
-                Navigator.pop(context);
-              } else {
-                // Fallback for direct launches/web refresh
-                context.go(AppRoutes.home);
-              }
-            },
-            icon: Icon(Icons.arrow_back_ios_new, size: 20, color: Theme.of(context).iconTheme.color),
-            style: IconButton.styleFrom(
-              backgroundColor: Theme.of(context).cardColor,
-              padding: const EdgeInsets.all(12),
+          Tooltip(
+            message: 'Go back',
+            child: IconButton(
+              onPressed: () {
+                if (Navigator.canPop(context)) {
+                  Navigator.pop(context);
+                } else {
+                  context.go(AppRoutes.home);
+                }
+              },
+              icon: Icon(Icons.arrow_back_ios_new, size: 20, color: Theme.of(context).iconTheme.color),
+              style: IconButton.styleFrom(
+                backgroundColor: Theme.of(context).cardColor,
+                padding: const EdgeInsets.all(12),
+                minimumSize: const Size(48, 48),
+              ),
+              tooltip: 'Go back',
             ),
           ),
-          Container(
-            height: 44,
-            width: 200, // Fixed width for better control
-            padding: const EdgeInsets.all(4),
-            decoration: BoxDecoration(
-              color: Theme.of(context).cardColor,
-              borderRadius: BorderRadius.circular(25),
-              border: Border.all(color: Theme.of(context).dividerColor.withOpacity(0.1)),
-            ),
-            child: TabBar(
-              controller: _tabController,
-              indicatorSize: TabBarIndicatorSize.tab,
-              indicator: BoxDecoration(
-                color: AppTheme.primaryGreen,
-                borderRadius: BorderRadius.circular(20),
-                boxShadow: [
-                  BoxShadow(
-                    color: AppTheme.primaryGreen.withOpacity(0.3),
-                    blurRadius: 8,
-                    offset: const Offset(0, 2),
-                  ),
+          Semantics(
+            label: 'Analytics period selector',
+            child: Container(
+              height: 44,
+              width: 200,
+              padding: const EdgeInsets.all(4),
+              decoration: BoxDecoration(
+                color: Theme.of(context).cardColor,
+                borderRadius: BorderRadius.circular(25),
+                border: Border.all(color: Theme.of(context).dividerColor.withValues(alpha: 0.1)),
+              ),
+              child: TabBar(
+                controller: _tabController,
+                indicatorSize: TabBarIndicatorSize.tab,
+                indicator: BoxDecoration(
+                  color: AppTheme.primaryGreen,
+                  borderRadius: BorderRadius.circular(20),
+                  boxShadow: [
+                    BoxShadow(
+                      color: AppTheme.primaryGreen.withValues(alpha: 0.3),
+                      blurRadius: 8,
+                      offset: const Offset(0, 2),
+                    ),
+                  ],
+                ),
+                labelColor: Colors.white,
+                unselectedLabelColor: Theme.of(context).textTheme.bodyMedium?.color,
+                labelStyle: const TextStyle(fontWeight: FontWeight.w600, fontSize: 13),
+                dividerColor: Colors.transparent,
+                overlayColor: const WidgetStatePropertyAll(Colors.transparent),
+                tabs: const [
+                  Tab(text: 'Weekly'),
+                  Tab(text: 'Monthly'),
                 ],
               ),
-              labelColor: Colors.white,
-              unselectedLabelColor: Theme.of(context).textTheme.bodyMedium?.color,
-              labelStyle: const TextStyle(fontWeight: FontWeight.w600, fontSize: 13),
-              dividerColor: Colors.transparent,
-              overlayColor: const WidgetStatePropertyAll(Colors.transparent),
-              tabs: const [
-                Tab(text: 'Weekly'),
-                Tab(text: 'Monthly'),
-              ],
             ),
           ),
-          IconButton(
-            onPressed: () => _fetchData(isRefresh: true),
-            icon: Icon(Icons.refresh, size: 24, color: Theme.of(context).iconTheme.color),
+          Tooltip(
+            message: 'Refresh data',
+            child: IconButton(
+              onPressed: () => _fetchData(isRefresh: true),
+              icon: Icon(Icons.refresh, size: 24, color: Theme.of(context).iconTheme.color),
+              tooltip: 'Refresh data',
+              style: IconButton.styleFrom(
+                minimumSize: const Size(48, 48),
+              ),
+            ),
           ),
         ],
       ),
@@ -298,7 +322,7 @@ class _StepAnalyticsScreenState extends ConsumerState<StepAnalyticsScreen>
         borderRadius: BorderRadius.circular(32),
         boxShadow: [
            BoxShadow(
-             color: const Color(0xFF0F172A).withOpacity(0.4),
+             color: const Color(0xFF0F172A).withValues(alpha: 0.4),
              blurRadius: 20,
              offset: const Offset(0, 10),
            ),
@@ -336,7 +360,7 @@ class _StepAnalyticsScreenState extends ConsumerState<StepAnalyticsScreen>
               Container(
                 padding: const EdgeInsets.all(12),
                 decoration: BoxDecoration(
-                  color: Colors.white.withOpacity(0.1),
+                  color: Colors.white.withValues(alpha: 0.1),
                   shape: BoxShape.circle,
                 ),
                 child: const Icon(Icons.insights, color: AppTheme.primaryGreen, size: 32),
@@ -348,7 +372,7 @@ class _StepAnalyticsScreenState extends ConsumerState<StepAnalyticsScreen>
             Container(
               padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
               decoration: BoxDecoration(
-                color: trendPercentage >= 0 ? Colors.green.withOpacity(0.2) : Colors.red.withOpacity(0.2),
+                color: trendPercentage >= 0 ? Colors.green.withValues(alpha: 0.2) : Colors.red.withValues(alpha: 0.2),
                 borderRadius: BorderRadius.circular(12),
               ),
               child: Row(
@@ -374,30 +398,33 @@ class _StepAnalyticsScreenState extends ConsumerState<StepAnalyticsScreen>
           ],
           const SizedBox(height: 24),
           // Progress Bar within Hero
-          Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              Row(
-                mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                children: [
-                  Text(goalLabel, style: const TextStyle(color: Colors.white70, fontSize: 14)),
-                  Text(
-                    '${(steps / goalTarget * 100).toInt()}%',
-                    style: const TextStyle(color: AppTheme.primaryGreen, fontWeight: FontWeight.bold),
-                  ),
-                ],
-              ),
-              const SizedBox(height: 8),
-              ClipRRect(
-                borderRadius: BorderRadius.circular(4),
-                child: LinearProgressIndicator(
-                  value: (steps / goalTarget).clamp(0.0, 1.0),
-                  backgroundColor: Colors.white10,
-                  color: AppTheme.primaryGreen,
-                  minHeight: 6,
+          Semantics(
+            label: '$goalLabel: ${(steps / goalTarget * 100).toInt()}% complete. $steps of $goalTarget steps.',
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Row(
+                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                  children: [
+                    Text(goalLabel, style: const TextStyle(color: Colors.white70, fontSize: 14)),
+                    Text(
+                      '${(steps / goalTarget * 100).toInt()}%',
+                      style: const TextStyle(color: AppTheme.primaryGreen, fontWeight: FontWeight.bold),
+                    ),
+                  ],
                 ),
-              ),
-            ],
+                const SizedBox(height: 8),
+                ClipRRect(
+                  borderRadius: BorderRadius.circular(4),
+                  child: LinearProgressIndicator(
+                    value: (steps / goalTarget).clamp(0.0, 1.0),
+                    backgroundColor: Colors.white10,
+                    color: AppTheme.primaryGreen,
+                    minHeight: 8,
+                  ),
+                ),
+              ],
+            ),
           ),
         ],
       ),
@@ -463,70 +490,77 @@ class _StepAnalyticsScreenState extends ConsumerState<StepAnalyticsScreen>
   }
 
   Widget _buildMetricCard(BuildContext context, String title, String value, String unit, IconData icon, Color color) {
-    return Container(
-      padding: const EdgeInsets.all(14),
-      decoration: BoxDecoration(
-        color: Theme.of(context).cardColor,
-        borderRadius: BorderRadius.circular(20),
-        border: Border.all(color: Theme.of(context).dividerColor.withOpacity(0.1)),
-      ),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        mainAxisAlignment: MainAxisAlignment.spaceBetween,
-        children: [
-          Row(
-            mainAxisAlignment: MainAxisAlignment.spaceBetween,
-            children: [
-               Container(
-                 padding: const EdgeInsets.all(6),
-                 decoration: BoxDecoration(
-                   color: color.withOpacity(0.15),
-                   shape: BoxShape.circle,
-                 ),
-                 child: Icon(icon, size: 18, color: color),
-               ),
-               if (unit == 'kcal') 
-                 const Icon(Icons.arrow_outward, size: 14, color: Colors.green), // Fake trend
-            ],
-          ),
-          const SizedBox(height: 12),
-          Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              RichText(
-                 text: TextSpan(
-                   children: [
-                     TextSpan(
-                       text: value,
-                       style: TextStyle(
-                         fontSize: 20,
-                         fontWeight: FontWeight.bold,
-                         color: Theme.of(context).textTheme.bodyLarge?.color,
-                         fontFamily: 'Inter',
-                       ),
-                     ),
-                     TextSpan(
-                       text: ' $unit',
-                       style: TextStyle(
-                         fontSize: 10,
-                         color: Theme.of(context).disabledColor,
-                       ),
-                     ),
-                   ],
-                 ),
-              ),
-              const SizedBox(height: 2),
-              Text(
-                title,
-                style: TextStyle(
-                  color: Theme.of(context).disabledColor,
-                  fontSize: 11,
-                  fontWeight: FontWeight.w500,
+    return Semantics(
+      label: '$title: $value $unit',
+      child: Container(
+        padding: const EdgeInsets.all(14),
+        decoration: BoxDecoration(
+          color: Theme.of(context).cardColor,
+          borderRadius: BorderRadius.circular(20),
+          border: Border.all(color: Theme.of(context).dividerColor.withValues(alpha: 0.1)),
+        ),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          mainAxisAlignment: MainAxisAlignment.spaceBetween,
+          children: [
+            Row(
+              mainAxisAlignment: MainAxisAlignment.spaceBetween,
+              children: [
+                ExcludeSemantics(
+                  child: Container(
+                    padding: const EdgeInsets.all(6),
+                    decoration: BoxDecoration(
+                      color: color.withValues(alpha: 0.15),
+                      shape: BoxShape.circle,
+                    ),
+                    child: Icon(icon, size: 18, color: color),
+                  ),
                 ),
-              ),
-            ],
-          ),
-        ],
+                if (unit == 'kcal')
+                  ExcludeSemantics(
+                    child: const Icon(Icons.arrow_outward, size: 14, color: Colors.green),
+                  ),
+              ],
+            ),
+            const SizedBox(height: 12),
+            Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                RichText(
+                  text: TextSpan(
+                    children: [
+                      TextSpan(
+                        text: value,
+                        style: TextStyle(
+                          fontSize: 20,
+                          fontWeight: FontWeight.bold,
+                          color: Theme.of(context).textTheme.bodyLarge?.color,
+                          fontFamily: 'Inter',
+                        ),
+                      ),
+                      TextSpan(
+                        text: ' $unit',
+                        style: TextStyle(
+                          fontSize: 10,
+                          color: Theme.of(context).disabledColor,
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+                const SizedBox(height: 2),
+                Text(
+                  title,
+                  style: TextStyle(
+                    color: Theme.of(context).disabledColor,
+                    fontSize: 11,
+                    fontWeight: FontWeight.w500,
+                  ),
+                ),
+              ],
+            ),
+          ],
+        ),
       ),
     );
   }
@@ -577,10 +611,10 @@ class _StepAnalyticsScreenState extends ConsumerState<StepAnalyticsScreen>
                padding: const EdgeInsets.all(20),
                decoration: BoxDecoration(
                  gradient: LinearGradient(
-                   colors: [AppTheme.accentYellow.withOpacity(0.2), AppTheme.accentYellow.withOpacity(0.03)],
+                   colors: [AppTheme.accentYellow.withValues(alpha: 0.2), AppTheme.accentYellow.withValues(alpha: 0.03)],
                  ),
                  borderRadius: BorderRadius.circular(24),
-                 border: Border.all(color: AppTheme.accentYellow.withOpacity(0.25)),
+                 border: Border.all(color: AppTheme.accentYellow.withValues(alpha: 0.25)),
                ),
                child: Row(
                  children: [
@@ -591,7 +625,7 @@ class _StepAnalyticsScreenState extends ConsumerState<StepAnalyticsScreen>
                        shape: BoxShape.circle,
                        boxShadow: [
                          BoxShadow(
-                           color: Colors.black.withOpacity(0.04),
+                           color: Colors.black.withValues(alpha: 0.04),
                            blurRadius: 8,
                          )
                        ],
@@ -659,42 +693,47 @@ class _StepAnalyticsScreenState extends ConsumerState<StepAnalyticsScreen>
     required IconData icon,
     required Color iconColor,
   }) {
-    return Container(
-      margin: const EdgeInsets.only(bottom: 12),
-      padding: const EdgeInsets.all(16),
-      decoration: BoxDecoration(
-        color: Theme.of(context).cardColor,
-        borderRadius: BorderRadius.circular(24),
-        border: Border.all(color: Theme.of(context).dividerColor.withOpacity(0.08)),
-      ),
-      child: Row(
-        children: [
-          Container(
-            padding: const EdgeInsets.all(12),
-            decoration: BoxDecoration(
-              color: iconColor.withOpacity(0.12),
-              shape: BoxShape.circle,
-            ),
-            child: Icon(icon, color: iconColor, size: 22),
-          ),
-          const SizedBox(width: 16),
-          Expanded(
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Text(
-                  title,
-                  style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 14),
+    return Semantics(
+      label: '$title. $description',
+      child: Container(
+        margin: const EdgeInsets.only(bottom: 12),
+        padding: const EdgeInsets.all(16),
+        decoration: BoxDecoration(
+          color: Theme.of(context).cardColor,
+          borderRadius: BorderRadius.circular(24),
+          border: Border.all(color: Theme.of(context).dividerColor.withValues(alpha: 0.08)),
+        ),
+        child: Row(
+          children: [
+            ExcludeSemantics(
+              child: Container(
+                padding: const EdgeInsets.all(12),
+                decoration: BoxDecoration(
+                  color: iconColor.withValues(alpha: 0.12),
+                  shape: BoxShape.circle,
                 ),
-                const SizedBox(height: 4),
-                Text(
-                  description,
-                  style: Theme.of(context).textTheme.bodySmall?.copyWith(fontSize: 12),
-                ),
-              ],
+                child: Icon(icon, color: iconColor, size: 22),
+              ),
             ),
-          ),
-        ],
+            const SizedBox(width: 16),
+            Expanded(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(
+                    title,
+                    style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 14),
+                  ),
+                  const SizedBox(height: 4),
+                  Text(
+                    description,
+                    style: Theme.of(context).textTheme.bodySmall?.copyWith(fontSize: 12),
+                  ),
+                ],
+              ),
+            ),
+          ],
+        ),
       ),
     ).animate().fadeIn(duration: 400.ms).slideY(begin: 0.1, end: 0);
   }

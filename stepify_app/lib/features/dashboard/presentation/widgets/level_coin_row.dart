@@ -38,7 +38,7 @@ class LevelCoinRow extends StatelessWidget {
                 borderRadius: BorderRadius.circular(10),
                 boxShadow: [
                   BoxShadow(
-                    color: Colors.black.withOpacity(0.05),
+                    color: Colors.black.withAlpha(13),
                     blurRadius: 10,
                     offset: const Offset(0, 4),
                   ),
@@ -64,7 +64,7 @@ class LevelCoinRow extends StatelessWidget {
                   const SizedBox(height: 12),
                   LinearProgressIndicator(
                     value: xpProgress,
-                    backgroundColor: Theme.of(context).dividerColor.withOpacity(0.3),
+                    backgroundColor: Theme.of(context).dividerColor.withAlpha(77),
                     color: AppTheme.primaryGreen,
                     borderRadius: BorderRadius.circular(4),
                     minHeight: 8,
@@ -98,7 +98,7 @@ class LevelCoinRow extends StatelessWidget {
                 borderRadius: BorderRadius.circular(10),
                 boxShadow: [
                   BoxShadow(
-                    color: Colors.orange.withOpacity(0.3),
+                    color: Colors.orange.withAlpha(77),
                     blurRadius: 10,
                     offset: const Offset(0, 4),
                   ),
@@ -109,7 +109,7 @@ class LevelCoinRow extends StatelessWidget {
                    Container(
                      padding: const EdgeInsets.all(8),
                      decoration: BoxDecoration(
-                       color: Colors.white.withOpacity(0.2),
+                       color: Colors.white.withAlpha(51),
                        shape: BoxShape.circle,
                      ),
                      child: const Icon(Icons.stars_rounded, color: Colors.white, size: 24),

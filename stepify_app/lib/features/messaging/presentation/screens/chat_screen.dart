@@ -1,6 +1,8 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:stepify_app/core/theme/app_theme.dart';
+import 'package:stepify_app/features/auth/presentation/providers/auth_provider.dart';
+import 'package:stepify_app/l10n/app_localizations.dart';
 import '../providers/messaging_provider.dart';
 
 class ChatScreen extends ConsumerStatefulWidget {
@@ -22,47 +24,93 @@ class _ChatScreenState extends ConsumerState<ChatScreen> {
   final ScrollController _scrollController = ScrollController();
 
   @override
+  void initState() {
+    super.initState();
+    Future.microtask(() {
+      if (mounted) {
+        ref.read(messagingProvider.notifier).loadMessages(widget.conversationId);
+      }
+    });
+  }
+
+  @override
+  void dispose() {
+    _controller.dispose();
+    _scrollController.dispose();
+    super.dispose();
+  }
+
+  @override
   Widget build(BuildContext context) {
+    final l10n = AppLocalizations.of(context)!;
     final state = ref.watch(messagingProvider);
     final messages = state.messages[widget.conversationId] ?? [];
+    final currentUserId = ref.watch(currentUserProvider)?.id;
+
+    // Listen for error changes and display a snackbar
+    ref.listen<MessagingState>(messagingProvider, (previous, next) {
+      if (next.error != null && next.error != previous?.error) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text(next.error!),
+            backgroundColor: Colors.red,
+            action: SnackBarAction(
+              label: l10n.retry,
+              textColor: Colors.white,
+              onPressed: () {
+                ref.read(messagingProvider.notifier).clearError();
+                ref.read(messagingProvider.notifier).loadMessages(widget.conversationId);
+              },
+            ),
+          ),
+        );
+      }
+    });
 
     return Scaffold(
       appBar: AppBar(title: Text(widget.userName)),
       body: Column(
         children: [
           Expanded(
-            child: ListView.builder(
-              controller: _scrollController,
-              padding: const EdgeInsets.all(16),
-              itemCount: messages.length,
-              itemBuilder: (context, index) {
-                final message = messages[index];
-                final isMe = message.senderId == 'me';
-                
-                return Align(
-                  alignment: isMe ? Alignment.centerRight : Alignment.centerLeft,
-                  child: Container(
-                    margin: const EdgeInsets.symmetric(vertical: 4),
-                    padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
-                    decoration: BoxDecoration(
-                      color: isMe ? AppTheme.primaryGreen : AppTheme.neutral100,
-                      borderRadius: BorderRadius.only(
-                        topLeft: const Radius.circular(16),
-                        topRight: const Radius.circular(16),
-                        bottomLeft: isMe ? const Radius.circular(16) : Radius.zero,
-                        bottomRight: isMe ? Radius.zero : const Radius.circular(16),
-                      ),
-                    ),
-                    child: Text(
-                      message.content,
-                      style: TextStyle(
-                        color: isMe ? Colors.white : Colors.black87,
-                      ),
-                    ),
+            child: messages.isEmpty && state.isLoading
+                ? const Center(child: CircularProgressIndicator())
+                : ListView.builder(
+                    controller: _scrollController,
+                    padding: const EdgeInsets.all(16),
+                    itemCount: messages.length,
+                    itemBuilder: (context, index) {
+                      final message = messages[index];
+                      final isMe = message.senderId == currentUserId;
+                      
+                      return Semantics(
+                        label: isMe ? l10n.youSaid(message.content) : l10n.userSaid(widget.userName, message.content),
+                        child: Align(
+                          alignment: isMe ? Alignment.centerRight : Alignment.centerLeft,
+                          child: Container(
+                            margin: const EdgeInsets.symmetric(vertical: 4),
+                            padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
+                            decoration: BoxDecoration(
+                              color: isMe ? AppTheme.primaryGreen : Theme.of(context).colorScheme.surface,
+                              borderRadius: BorderRadius.only(
+                                topLeft: const Radius.circular(16),
+                                topRight: const Radius.circular(16),
+                                bottomLeft: isMe ? const Radius.circular(16) : Radius.zero,
+                                bottomRight: isMe ? Radius.zero : const Radius.circular(16),
+                              ),
+                            ),
+                            child: ExcludeSemantics(
+                              child: Text(
+                                message.content,
+                                style: TextStyle(
+                                  color: isMe ? Colors.white : Theme.of(context).textTheme.bodyMedium?.color,
+                                ),
+                              ),
+                            ),
+                          ),
+                        ),
+                      );
+                    },
                   ),
-                );
-              },
-            ),
           ),
           
           // Input Area
@@ -70,7 +118,7 @@ class _ChatScreenState extends ConsumerState<ChatScreen> {
             padding: const EdgeInsets.all(16),
             decoration: BoxDecoration(
               color: Theme.of(context).cardColor,
-              border: Border(top: BorderSide(color: AppTheme.neutral200)),
+              border: Border(top: BorderSide(color: Theme.of(context).dividerColor)),
             ),
             child: Row(
               children: [
@@ -78,13 +126,13 @@ class _ChatScreenState extends ConsumerState<ChatScreen> {
                   child: TextField(
                     controller: _controller,
                     decoration: InputDecoration(
-                      hintText: 'Type a message...',
+                      hintText: l10n.typeAMessage,
                       border: OutlineInputBorder(
                         borderRadius: BorderRadius.circular(24),
                         borderSide: BorderSide.none,
                       ),
                       filled: true,
-                      fillColor: AppTheme.neutral100,
+                      fillColor: Theme.of(context).colorScheme.surface,
                       contentPadding: const EdgeInsets.symmetric(horizontal: 20, vertical: 10),
                     ),
                     textCapitalization: TextCapitalization.sentences,
@@ -95,6 +143,11 @@ class _ChatScreenState extends ConsumerState<ChatScreen> {
                   onPressed: _sendMessage,
                   icon: const Icon(Icons.send),
                   color: AppTheme.primaryGreen,
+                  tooltip: l10n.done, // Using 'done' as a generic fallback since 'send' isn't standard in default arb
+                  constraints: const BoxConstraints(
+                    minWidth: 48,
+                    minHeight: 48,
+                  ),
                 ),
               ],
             ),

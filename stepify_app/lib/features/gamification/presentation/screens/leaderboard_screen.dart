@@ -52,14 +52,14 @@ class _LeaderboardScreenState extends ConsumerState<LeaderboardScreen> with Sing
           tabs: [
             Tab(text: l10n.global),
             Tab(text: l10n.friends),
-            const Tab(text: 'Corporate'),
+            Tab(text: l10n.corporate),
           ],
         ),
       ),
       body: Column(
         children: [
           // Time Filters
-          _buildTimeFilters(context, state),
+          _buildTimeFilters(context, state, l10n),
           
           // List
           Expanded(
@@ -79,13 +79,13 @@ class _LeaderboardScreenState extends ConsumerState<LeaderboardScreen> with Sing
                               child: Icon(Icons.leaderboard_outlined, size: 48, color: AppTheme.neutral400),
                             ),
                             const SizedBox(height: 24),
-                            const Text(
-                              'Leaderboard is empty',
-                              style: TextStyle(fontSize: 18, fontWeight: FontWeight.w600),
+                            Text(
+                              l10n.leaderboardEmpty,
+                              style: const TextStyle(fontSize: 18, fontWeight: FontWeight.w600),
                             ),
                             const SizedBox(height: 8),
                             Text(
-                              'Start walking to appear here!',
+                              l10n.startWalkingLeaderboard,
                               style: TextStyle(color: AppTheme.neutral500),
                             ),
                           ],
@@ -98,7 +98,7 @@ class _LeaderboardScreenState extends ConsumerState<LeaderboardScreen> with Sing
                           itemCount: state.entries.length,
                           itemBuilder: (context, index) {
                             final entry = state.entries[index];
-                            return _buildLeaderboardItem(context, entry, index);
+                            return _buildLeaderboardItem(context, entry, index, l10n);
                           },
                         ),
                       ),
@@ -106,13 +106,13 @@ class _LeaderboardScreenState extends ConsumerState<LeaderboardScreen> with Sing
           
           // Sticky User Rank
           if (state.currentUserEntry != null)
-            _buildStickyRank(context, state.currentUserEntry!),
+            _buildStickyRank(context, state.currentUserEntry!, l10n),
         ],
       ),
     );
   }
 
-  Widget _buildTimeFilters(BuildContext context, LeaderboardState state) {
+  Widget _buildTimeFilters(BuildContext context, LeaderboardState state, AppLocalizations l10n) {
     return Container(
       height: 50,
       margin: const EdgeInsets.symmetric(vertical: 8),
@@ -124,7 +124,7 @@ class _LeaderboardScreenState extends ConsumerState<LeaderboardScreen> with Sing
           return Padding(
             padding: const EdgeInsets.only(right: 8),
             child: ChoiceChip(
-              label: Text(_getFrameLabel(frame)),
+              label: Text(_getFrameLabel(frame, l10n)),
               selected: isSelected,
               onSelected: (selected) {
                 if (selected) {
@@ -132,7 +132,7 @@ class _LeaderboardScreenState extends ConsumerState<LeaderboardScreen> with Sing
                 }
               },
               backgroundColor: AppTheme.neutral100,
-              selectedColor: AppTheme.primaryGreen.withOpacity(0.1),
+              selectedColor: AppTheme.primaryGreen.withValues(alpha: 0.1),
               labelStyle: TextStyle(
                 color: isSelected ? AppTheme.primaryGreen : AppTheme.neutral600,
                 fontWeight: isSelected ? FontWeight.bold : FontWeight.normal,
@@ -150,16 +150,16 @@ class _LeaderboardScreenState extends ConsumerState<LeaderboardScreen> with Sing
     );
   }
 
-  String _getFrameLabel(TimeFrame frame) {
+  String _getFrameLabel(TimeFrame frame, AppLocalizations l10n) {
     switch (frame) {
-      case TimeFrame.daily: return 'Today';
-      case TimeFrame.weekly: return 'This Week';
-      case TimeFrame.monthly: return 'This Month';
-      case TimeFrame.allTime: return 'All Time';
+      case TimeFrame.daily: return l10n.timeDaily;
+      case TimeFrame.weekly: return l10n.timeWeekly;
+      case TimeFrame.monthly: return l10n.timeMonthly;
+      case TimeFrame.allTime: return l10n.timeAllTime;
     }
   }
 
-  Widget _buildLeaderboardItem(BuildContext context, LeaderboardEntry entry, int index) {
+  Widget _buildLeaderboardItem(BuildContext context, LeaderboardEntry entry, int index, AppLocalizations l10n) {
     final isTop3 = index < 3;
     Color? rankColor;
     if (index == 0) {
@@ -168,13 +168,15 @@ class _LeaderboardScreenState extends ConsumerState<LeaderboardScreen> with Sing
     else if (index == 2) rankColor = const Color(0xFFCD7F32); // Bronze
     else rankColor = AppTheme.neutral500;
 
-    return Container(
+    return Semantics(
+      label: 'Rank ${entry.rank}, ${entry.username}, ${entry.xp} ${l10n.xpText}',
+      child: Container(
       margin: const EdgeInsets.symmetric(horizontal: 16, vertical: 4),
       padding: const EdgeInsets.all(12),
       decoration: BoxDecoration(
-        color: entry.isCurrentUser ? AppTheme.primaryGreen.withOpacity(0.05) : Colors.white,
+        color: entry.isCurrentUser ? AppTheme.primaryGreen.withValues(alpha: 0.1) : Theme.of(context).colorScheme.surface,
         borderRadius: BorderRadius.circular(12),
-        border: entry.isCurrentUser ? Border.all(color: AppTheme.primaryGreen.withOpacity(0.3)) : null,
+        border: entry.isCurrentUser ? Border.all(color: AppTheme.primaryGreen.withValues(alpha: 0.3)) : null,
       ),
       child: Row(
         children: [
@@ -214,7 +216,7 @@ class _LeaderboardScreenState extends ConsumerState<LeaderboardScreen> with Sing
                     children: [
                       const Icon(Icons.local_fire_department, size: 14, color: AppTheme.accentOrange),
                       const SizedBox(width: 4),
-                      Text('On Fire!', style: TextStyle(color: AppTheme.accentOrange, fontSize: 12)),
+                      Text(l10n.onFire, style: const TextStyle(color: AppTheme.accentOrange, fontSize: 12)),
                     ],
                   ),
               ],
@@ -226,7 +228,7 @@ class _LeaderboardScreenState extends ConsumerState<LeaderboardScreen> with Sing
             crossAxisAlignment: CrossAxisAlignment.end,
             children: [
               Text(
-                '${entry.xp} XP',
+                '${entry.xp} ${l10n.xpText}',
                 style: const TextStyle(
                   fontWeight: FontWeight.bold,
                   color: AppTheme.primaryGreen,
@@ -237,6 +239,7 @@ class _LeaderboardScreenState extends ConsumerState<LeaderboardScreen> with Sing
           ),
         ],
       ),
+      ),
     ).animate().fadeIn(delay: (index * 50).ms).slideX(begin: 0.1, end: 0);
   }
 
@@ -246,14 +249,14 @@ class _LeaderboardScreenState extends ConsumerState<LeaderboardScreen> with Sing
     return const Icon(Icons.remove, color: AppTheme.neutral400, size: 16);
   }
 
-  Widget _buildStickyRank(BuildContext context, LeaderboardEntry entry) {
+  Widget _buildStickyRank(BuildContext context, LeaderboardEntry entry, AppLocalizations l10n) {
     return Container(
       padding: const EdgeInsets.all(16),
       decoration: BoxDecoration(
-        color: Colors.white,
+        color: Theme.of(context).colorScheme.surface,
         boxShadow: [
           BoxShadow(
-            color: Colors.black.withOpacity(0.1),
+            color: Colors.black.withValues(alpha: 0.1),
             blurRadius: 10,
             offset: const Offset(0, -4),
           ),
@@ -267,7 +270,7 @@ class _LeaderboardScreenState extends ConsumerState<LeaderboardScreen> with Sing
               crossAxisAlignment: CrossAxisAlignment.start,
               mainAxisSize: MainAxisSize.min,
               children: [
-                const Text('Your Rank', style: TextStyle(color: AppTheme.neutral500, fontSize: 12)),
+                Text(l10n.yourRank, style: const TextStyle(color: AppTheme.neutral500, fontSize: 12)),
                 Text(
                   '#${entry.rank}',
                   style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 20, color: AppTheme.primaryGreen),
@@ -276,7 +279,7 @@ class _LeaderboardScreenState extends ConsumerState<LeaderboardScreen> with Sing
             ),
             const Spacer(),
             Text(
-              '${entry.xp} XP',
+              '${entry.xp} ${l10n.xpText}',
               style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 18),
             ),
             const SizedBox(width: 8),

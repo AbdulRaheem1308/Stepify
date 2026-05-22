@@ -49,7 +49,7 @@ export class LeaderboardGateway
   }
 
   @SubscribeMessage("ping")
-  handlePing(client: Socket): string {
+  handlePing(_client: Socket): string {
     return "pong";
   }
 }

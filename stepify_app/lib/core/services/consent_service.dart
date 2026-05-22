@@ -48,7 +48,6 @@ class ConsentService {
           debugPrint('Consent Form Error: ${error.message}');
         } else {
           // Consent gathered or not required
-          debugPrint('Consent gathering complete.');
         }
       });
     } catch (e) {

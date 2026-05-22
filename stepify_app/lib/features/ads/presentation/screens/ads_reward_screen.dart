@@ -6,6 +6,7 @@ import 'package:go_router/go_router.dart';
 import '../../../../core/theme/app_theme.dart';
 import '../../../../services/api_service.dart';
 import '../../../../services/ad_service.dart';
+import '../../../../l10n/app_localizations.dart';
 
 /// Ads Reward Screen
 class AdsRewardScreen extends ConsumerStatefulWidget {
@@ -83,7 +84,10 @@ class _AdsRewardScreenState extends ConsumerState<AdsRewardScreen> {
       );
       
       if (response.statusCode == 200 || response.statusCode == 201) {
-        _showRewardDialog();
+        if (mounted) {
+          final l10n = AppLocalizations.of(context)!;
+          _showRewardDialog(l10n);
+        }
         await _checkAdAvailability();
       } else {
         throw Exception('Failed to claim reward');
@@ -91,8 +95,9 @@ class _AdsRewardScreenState extends ConsumerState<AdsRewardScreen> {
     } catch (e) {
       setState(() => _isLoading = false);
       if (mounted) {
+        final l10n = AppLocalizations.of(context)!;
         ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text('Failed to claim reward: $e')),
+          SnackBar(content: Text(l10n.failedToClaimReward(e.toString()))),
         );
       }
     }
@@ -121,7 +126,7 @@ class _AdsRewardScreenState extends ConsumerState<AdsRewardScreen> {
     );
   }
 
-  void _showRewardDialog() {
+  void _showRewardDialog(AppLocalizations l10n) {
     showDialog(
       context: context,
       builder: (ctx) => Dialog(
@@ -137,15 +142,15 @@ class _AdsRewardScreenState extends ConsumerState<AdsRewardScreen> {
             children: [
               const Icon(Icons.celebration, size: 64, color: Colors.white),
               const SizedBox(height: 16),
-              const Text('Reward Earned!',
-                  style: TextStyle(color: Colors.white, fontSize: 24, fontWeight: FontWeight.bold)),
-              Text('+$_pointsPerAd points',
+              Text(l10n.rewardEarned,
+                  style: const TextStyle(color: Colors.white, fontSize: 24, fontWeight: FontWeight.bold)),
+              Text(l10n.pointsAdded(_pointsPerAd),
                   style: const TextStyle(color: Colors.white, fontSize: 32, fontWeight: FontWeight.bold)),
               const SizedBox(height: 24),
               ElevatedButton(
                 onPressed: () => Navigator.pop(ctx),
                 style: ElevatedButton.styleFrom(backgroundColor: Colors.white, foregroundColor: AppTheme.accentOrange),
-                child: const Text('Awesome!'),
+                child: Text(l10n.awesomeBtn),
               ),
             ],
           ),
@@ -162,9 +167,10 @@ class _AdsRewardScreenState extends ConsumerState<AdsRewardScreen> {
 
   @override
   Widget build(BuildContext context) {
+    final l10n = AppLocalizations.of(context)!;
     return Scaffold(
       appBar: AppBar(
-        title: const Text('Watch & Earn'),
+        title: Text(l10n.watchAndEarn),
         leading: IconButton(icon: const Icon(Icons.arrow_back), onPressed: () => context.pop()),
       ),
       body: _isLoading
@@ -181,18 +187,18 @@ class _AdsRewardScreenState extends ConsumerState<AdsRewardScreen> {
                       children: [
                         const Icon(Icons.play_circle_filled, size: 64, color: Colors.white),
                         const SizedBox(height: 16),
-                        const Text('Watch ads to earn points!',
-                            style: TextStyle(color: Colors.white, fontSize: 20, fontWeight: FontWeight.bold)),
-                        Text('Earn $_pointsPerAd points per ad', style: TextStyle(color: Colors.white70, fontSize: 16)),
+                        Text(l10n.watchAdsToEarn,
+                            style: const TextStyle(color: Colors.white, fontSize: 20, fontWeight: FontWeight.bold)),
+                        Text(l10n.earnPointsPerAd(_pointsPerAd), style: const TextStyle(color: Colors.white70, fontSize: 16)),
                       ],
                     ),
                   ),
                   const SizedBox(height: 32),
                   Row(
                     children: [
-                      Expanded(child: _buildStat('Today', '$_todayViews/$_maxDailyAds', Icons.today, AppTheme.secondaryBlue)),
+                      Expanded(child: _buildStat(l10n.todayViews, '$_todayViews/$_maxDailyAds', Icons.today, AppTheme.secondaryBlue)),
                       const SizedBox(width: 12),
-                      Expanded(child: _buildStat('Remaining', '${_maxDailyAds - _todayViews}', Icons.hourglass_empty, AppTheme.accentPurple)),
+                      Expanded(child: _buildStat(l10n.remainingViews, '${_maxDailyAds - _todayViews}', Icons.hourglass_empty, AppTheme.accentPurple)),
                     ],
                   ),
                   const SizedBox(height: 32),
@@ -200,13 +206,13 @@ class _AdsRewardScreenState extends ConsumerState<AdsRewardScreen> {
                     ElevatedButton.icon(
                       onPressed: _watchAd,
                       icon: const Icon(Icons.play_arrow),
-                      label: const Text('Watch Ad Now'),
+                      label: Text(l10n.watchAdNow),
                       style: ElevatedButton.styleFrom(backgroundColor: AppTheme.accentOrange, padding: const EdgeInsets.symmetric(vertical: 16)),
                     )
                   else if (_cooldownRemaining > 0)
-                    _buildCooldown()
+                    _buildCooldown(l10n)
                   else
-                    _buildLimitReached(),
+                    _buildLimitReached(l10n),
                 ],
               ),
             ),
@@ -214,26 +220,59 @@ class _AdsRewardScreenState extends ConsumerState<AdsRewardScreen> {
   }
 
   Widget _buildStat(String label, String value, IconData icon, Color color) {
-    return Container(
-      padding: const EdgeInsets.all(16),
-      decoration: BoxDecoration(color: Theme.of(context).colorScheme.surface, borderRadius: BorderRadius.circular(16), border: Border.all(color: AppTheme.neutral200)),
-      child: Column(children: [Icon(icon, color: color, size: 28), const SizedBox(height: 8), Text(value, style: TextStyle(fontSize: 24, fontWeight: FontWeight.bold, color: color)), Text(label, style: TextStyle(color: AppTheme.neutral500, fontSize: 12))]),
+    return Semantics(
+      label: '$label: $value',
+      child: Container(
+        padding: const EdgeInsets.all(16),
+        decoration: BoxDecoration(
+          color: Theme.of(context).colorScheme.surface,
+          borderRadius: BorderRadius.circular(16),
+          border: Border.all(color: AppTheme.neutral200),
+        ),
+        child: Column(
+          children: [
+            Icon(icon, color: color, size: 28),
+            const SizedBox(height: 8),
+            Text(value, style: TextStyle(fontSize: 24, fontWeight: FontWeight.bold, color: color)),
+            Text(label, style: const TextStyle(color: AppTheme.neutral500, fontSize: 12)),
+          ],
+        ),
+      ),
     );
   }
 
-  Widget _buildCooldown() {
-    return Container(
-      padding: const EdgeInsets.all(20),
-      decoration: BoxDecoration(color: AppTheme.neutral100, borderRadius: BorderRadius.circular(16)),
-      child: Column(children: [const Icon(Icons.timer, size: 48, color: AppTheme.neutral400), const SizedBox(height: 12), Text('Next ad available in', style: TextStyle(color: AppTheme.neutral500)), Text(_formatTime(_cooldownRemaining), style: const TextStyle(fontSize: 32, fontWeight: FontWeight.bold))]),
+  Widget _buildCooldown(AppLocalizations l10n) {
+    return Semantics(
+      label: '${l10n.nextAdAvailableIn}: ${_formatTime(_cooldownRemaining)}',
+      child: Container(
+        padding: const EdgeInsets.all(20),
+        decoration: BoxDecoration(color: AppTheme.neutral100, borderRadius: BorderRadius.circular(16)),
+        child: Column(
+          children: [
+            const Icon(Icons.timer, size: 48, color: AppTheme.neutral400),
+            const SizedBox(height: 12),
+            Text(l10n.nextAdAvailableIn, style: const TextStyle(color: AppTheme.neutral500)),
+            Text(_formatTime(_cooldownRemaining), style: const TextStyle(fontSize: 32, fontWeight: FontWeight.bold)),
+          ],
+        ),
+      ),
     );
   }
 
-  Widget _buildLimitReached() {
-    return Container(
-      padding: const EdgeInsets.all(20),
-      decoration: BoxDecoration(color: AppTheme.warning.withOpacity(0.1), borderRadius: BorderRadius.circular(16)),
-      child: Column(children: [const Icon(Icons.check_circle, size: 48, color: AppTheme.warning), const Text('Daily limit reached!', style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold)), Text('Come back tomorrow', style: TextStyle(color: AppTheme.neutral500))]),
+  Widget _buildLimitReached(AppLocalizations l10n) {
+    return Semantics(
+      label: '${l10n.dailyLimitReached} ${l10n.comeBackTomorrow}',
+      child: Container(
+        padding: const EdgeInsets.all(20),
+        decoration: BoxDecoration(color: AppTheme.warning.withAlpha(26), borderRadius: BorderRadius.circular(16)),
+        child: Column(
+          children: [
+            const Icon(Icons.check_circle, size: 48, color: AppTheme.warning),
+            Text(l10n.dailyLimitReached, style: const TextStyle(fontSize: 18, fontWeight: FontWeight.bold)),
+            Text(l10n.comeBackTomorrow, style: const TextStyle(color: AppTheme.neutral500)),
+          ],
+        ),
+      ),
     );
   }
 }
@@ -270,6 +309,7 @@ class _AdSimulationDialogState extends State<_AdSimulationDialog> {
 
   @override
   Widget build(BuildContext context) {
+    final l10n = AppLocalizations.of(context)!;
     return Dialog(
       shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
       child: Padding(
@@ -277,7 +317,7 @@ class _AdSimulationDialogState extends State<_AdSimulationDialog> {
         child: Column(mainAxisSize: MainAxisSize.min, children: [
           const Icon(Icons.play_circle_filled, size: 80, color: AppTheme.primaryGreen),
           const SizedBox(height: 16),
-          const Text('Watching Ad...', style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold)),
+          Text(l10n.watchAndEarn, style: const TextStyle(fontSize: 18, fontWeight: FontWeight.bold)),
           const SizedBox(height: 24),
           Text('${(5 - _progress * 5).ceil()}', style: const TextStyle(fontSize: 32, fontWeight: FontWeight.bold, color: AppTheme.primaryGreen)),
           const SizedBox(height: 16),

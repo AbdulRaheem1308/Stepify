@@ -40,7 +40,6 @@ class _StreakScreenState extends ConsumerState<StreakScreen> {
           .toList()
         ..sort((a, b) => (a['streakRequired'] ?? 0).compareTo(b['streakRequired'] ?? 0));
       
-      debugPrint('Streak achievements found: ${streakOnly.length}');
       
       setState(() {
         _streakAchievements = streakOnly;
@@ -63,16 +62,17 @@ class _StreakScreenState extends ConsumerState<StreakScreen> {
 
     if (state.isLoading && dashboardState.isLoading) {
       return Scaffold(
-        appBar: AppBar(title: Text(AppLocalizations.of(context)!.streak)),
+        appBar: AppBar(title: Text(AppLocalizations.of(context)!.streakHistory)),
         body: const Center(child: CircularProgressIndicator()),
       );
     }
 
+    final l10n = AppLocalizations.of(context)!;
     return Scaffold(
       body: CustomScrollView(
         slivers: [
           // Compact header with streak info (using dashboard synced data)
-          _buildHeader(context, currentStreak, longestStreak),
+          _buildHeader(context, currentStreak, longestStreak, l10n),
           
           SliverPadding(
             padding: const EdgeInsets.all(16),
@@ -80,25 +80,25 @@ class _StreakScreenState extends ConsumerState<StreakScreen> {
               delegate: SliverChildListDelegate([
                 // Weekly Activity Chart
                 if (dashboardState.weeklyHistory.isNotEmpty) ...[
-                  _buildSectionHeader('This Week\'s Activity', Icons.bar_chart),
+                  _buildSectionHeader(l10n.thisWeeksActivity, Icons.bar_chart),
                   const SizedBox(height: 12),
                   WeeklyStepsChart(weeklyHistory: dashboardState.weeklyHistory),
                   const SizedBox(height: 24),
                 ],
 
                 // Calendar Heatmap with period toggle
-                _buildCalendarHeader(),
+                _buildCalendarHeader(l10n),
                 const SizedBox(height: 12),
-                _buildSingleMonthCalendar(context, state.activeDates),
+                _buildSingleMonthCalendar(context, state.activeDates, l10n),
                 const SizedBox(height: 24),
 
                 // Streak Achievements (from database)
-                _buildSectionHeader('Streak Achievements', Icons.emoji_events),
+                _buildSectionHeader(l10n.streakAchievements, Icons.emoji_events),
                 const SizedBox(height: 12),
                 if (_streakAchievements.isNotEmpty)
-                  _buildStreakAchievements(context, state)
+                  _buildStreakAchievements(context, state, l10n)
                 else
-                  _buildEmptyAchievements(),
+                  _buildEmptyAchievements(l10n),
                 const SizedBox(height: 32),
               ]),
             ),
@@ -108,7 +108,7 @@ class _StreakScreenState extends ConsumerState<StreakScreen> {
     );
   }
 
-  Widget _buildHeader(BuildContext context, int currentStreak, int longestStreak) {
+  Widget _buildHeader(BuildContext context, int currentStreak, int longestStreak, AppLocalizations l10n) {
     final isActive = currentStreak > 0;
     
     return SliverAppBar(
@@ -116,13 +116,13 @@ class _StreakScreenState extends ConsumerState<StreakScreen> {
       pinned: true,
       backgroundColor: isActive ? AppTheme.accentOrange : AppTheme.neutral600,
       flexibleSpace: FlexibleSpaceBar(
-        title: const Text('Streak History', style: TextStyle(color: Colors.white)),
+        title: Text(l10n.streakHistory, style: const TextStyle(color: Colors.white)),
         centerTitle: true,
         background: Container(
           decoration: BoxDecoration(
             gradient: LinearGradient(
               colors: isActive 
-                  ? [AppTheme.accentOrange.withOpacity(0.9), AppTheme.primaryGreen.withOpacity(0.8)]
+                  ? [AppTheme.accentOrange.withValues(alpha: 0.9), AppTheme.primaryGreen.withValues(alpha: 0.8)]
                   : [AppTheme.neutral500, AppTheme.neutral700],
               begin: Alignment.topCenter,
               end: Alignment.bottomCenter,
@@ -138,7 +138,7 @@ class _StreakScreenState extends ConsumerState<StreakScreen> {
                   Container(
                     padding: const EdgeInsets.all(12),
                     decoration: BoxDecoration(
-                      color: Colors.white.withOpacity(0.2),
+                      color: Colors.white.withValues(alpha: 0.2),
                       shape: BoxShape.circle,
                     ),
                     child: Icon(
@@ -167,11 +167,11 @@ class _StreakScreenState extends ConsumerState<StreakScreen> {
                             ),
                           ),
                           const SizedBox(width: 8),
-                          const Padding(
-                            padding: EdgeInsets.only(bottom: 6),
+                          Padding(
+                            padding: const EdgeInsets.only(bottom: 6),
                             child: Text(
                               'days',
-                              style: TextStyle(
+                              style: const TextStyle(
                                 fontSize: 18,
                                 fontWeight: FontWeight.w500,
                                 color: Colors.white70,
@@ -184,11 +184,11 @@ class _StreakScreenState extends ConsumerState<StreakScreen> {
                       Container(
                         padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
                         decoration: BoxDecoration(
-                          color: Colors.white.withOpacity(0.2),
+                          color: Colors.white.withValues(alpha: 0.2),
                           borderRadius: BorderRadius.circular(8),
                         ),
                         child: Text(
-                          'Best: $longestStreak days',
+                          l10n.bestStreak(longestStreak),
                           style: const TextStyle(
                             color: Colors.white,
                             fontSize: 12,
@@ -223,7 +223,7 @@ class _StreakScreenState extends ConsumerState<StreakScreen> {
     );
   }
 
-  Widget _buildEmptyAchievements() {
+  Widget _buildEmptyAchievements(AppLocalizations l10n) {
     return Container(
       padding: const EdgeInsets.all(24),
       decoration: BoxDecoration(
@@ -236,7 +236,7 @@ class _StreakScreenState extends ConsumerState<StreakScreen> {
           Icon(Icons.emoji_events_outlined, size: 48, color: AppTheme.neutral400),
           const SizedBox(height: 12),
           Text(
-            'No streak achievements yet',
+            l10n.noStreakAchievements,
             style: TextStyle(
               fontSize: 16,
               fontWeight: FontWeight.w600,
@@ -245,7 +245,7 @@ class _StreakScreenState extends ConsumerState<StreakScreen> {
           ),
           const SizedBox(height: 4),
           Text(
-            'Keep walking daily to unlock streak badges!',
+            l10n.keepWalkingStreak,
             style: TextStyle(
               fontSize: 13,
               color: AppTheme.neutral500,
@@ -257,7 +257,7 @@ class _StreakScreenState extends ConsumerState<StreakScreen> {
     );
   }
 
-  Widget _buildCalendarHeader() {
+  Widget _buildCalendarHeader(AppLocalizations l10n) {
     final today = DateTime.now();
     final selectedMonth = DateTime(today.year, today.month - _monthOffset, 1);
     final monthNames = List.generate(12, (i) => DateFormat.MMMM().format(DateTime(2024, i + 1, 1)));
@@ -266,9 +266,9 @@ class _StreakScreenState extends ConsumerState<StreakScreen> {
       children: [
         Icon(Icons.calendar_month, size: 20, color: AppTheme.neutral600),
         const SizedBox(width: 8),
-        const Text(
-          'Activity',
-          style: TextStyle(
+        Text(
+          l10n.activity,
+          style: const TextStyle(
             fontSize: 18,
             fontWeight: FontWeight.bold,
           ),
@@ -287,6 +287,7 @@ class _StreakScreenState extends ConsumerState<StreakScreen> {
                 icon: Icon(Icons.chevron_left, size: 20, color: _monthOffset < 5 ? AppTheme.neutral700 : AppTheme.neutral300),
                 onPressed: _monthOffset < 5 ? () => setState(() => _monthOffset++) : null,
                 padding: EdgeInsets.zero,
+                tooltip: 'Previous Month',
                 constraints: const BoxConstraints(minWidth: 32, minHeight: 32),
               ),
               // Current month label
@@ -306,6 +307,7 @@ class _StreakScreenState extends ConsumerState<StreakScreen> {
                 icon: Icon(Icons.chevron_right, size: 20, color: _monthOffset > 0 ? AppTheme.neutral700 : AppTheme.neutral300),
                 onPressed: _monthOffset > 0 ? () => setState(() => _monthOffset--) : null,
                 padding: EdgeInsets.zero,
+                tooltip: 'Next Month',
                 constraints: const BoxConstraints(minWidth: 32, minHeight: 32),
               ),
             ],
@@ -315,15 +317,15 @@ class _StreakScreenState extends ConsumerState<StreakScreen> {
     );
   }
 
-  Widget _buildSingleMonthCalendar(BuildContext context, List<DateTime> activeDates) {
+  Widget _buildSingleMonthCalendar(BuildContext context, List<DateTime> activeDates, AppLocalizations l10n) {
     final today = DateTime.now();
     final selectedMonth = DateTime(today.year, today.month - _monthOffset, 1);
     final isCurrentMonth = _monthOffset == 0;
     
-    return _buildMonthCard(context, selectedMonth, activeDates, isCurrentMonth);
+    return _buildMonthCard(context, selectedMonth, activeDates, isCurrentMonth, l10n);
   }
 
-  Widget _buildMonthCard(BuildContext context, DateTime month, List<DateTime> activeDates, bool isCurrentMonth) {
+  Widget _buildMonthCard(BuildContext context, DateTime month, List<DateTime> activeDates, bool isCurrentMonth, AppLocalizations l10n) {
     final today = DateTime.now();
     final firstDayOfMonth = DateTime(month.year, month.month, 1);
     final lastDayOfMonth = DateTime(month.year, month.month + 1, 0);
@@ -346,7 +348,7 @@ class _StreakScreenState extends ConsumerState<StreakScreen> {
       decoration: BoxDecoration(
         color: Theme.of(context).colorScheme.surface,
         borderRadius: BorderRadius.circular(12),
-        border: Border.all(color: isCurrentMonth ? AppTheme.primaryGreen.withOpacity(0.3) : AppTheme.neutral200),
+        border: Border.all(color: isCurrentMonth ? AppTheme.primaryGreen.withValues(alpha: 0.3) : AppTheme.neutral200),
       ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
@@ -367,12 +369,12 @@ class _StreakScreenState extends ConsumerState<StreakScreen> {
                 padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
                 decoration: BoxDecoration(
                   color: activeDaysInMonth > 0 
-                      ? AppTheme.primaryGreen.withOpacity(0.1) 
+                      ? AppTheme.primaryGreen.withValues(alpha: 0.1) 
                       : AppTheme.neutral100,
                   borderRadius: BorderRadius.circular(8),
                 ),
                 child: Text(
-                  '$activeDaysInMonth active',
+                  l10n.activeDays(activeDaysInMonth),
                   style: TextStyle(
                     fontSize: 11,
                     fontWeight: FontWeight.w500,
@@ -440,7 +442,9 @@ class _StreakScreenState extends ConsumerState<StreakScreen> {
                 textColor = AppTheme.neutral500;
               }
 
-              return Container(
+              return Semantics(
+                label: '$day. ${isActive ? 'Active' : isFuture ? 'Future' : 'Inactive'}',
+                child: Container(
                 decoration: BoxDecoration(
                   color: bgColor,
                   borderRadius: BorderRadius.circular(4),
@@ -458,6 +462,7 @@ class _StreakScreenState extends ConsumerState<StreakScreen> {
                     ),
                   ),
                 ),
+              ),
               );
             },
           ),
@@ -490,7 +495,7 @@ class _StreakScreenState extends ConsumerState<StreakScreen> {
     );
   }
 
-  Widget _buildStreakAchievements(BuildContext context, StreakState state) {
+  Widget _buildStreakAchievements(BuildContext context, StreakState state, AppLocalizations l10n) {
     return Container(
       padding: const EdgeInsets.all(12),
       decoration: BoxDecoration(
@@ -509,7 +514,9 @@ class _StreakScreenState extends ConsumerState<StreakScreen> {
           final progress = achievement['progress'] ?? 0;
           final iconName = achievement['icon'] ?? 'local_fire_department';
 
-          return Column(
+          return Semantics(
+            label: '$name. $description. ${unlocked ? "Unlocked" : "$progress% complete"}.',
+            child: Column(
             children: [
               Row(
                 children: [
@@ -518,7 +525,7 @@ class _StreakScreenState extends ConsumerState<StreakScreen> {
                     padding: const EdgeInsets.all(8),
                     decoration: BoxDecoration(
                       color: unlocked 
-                          ? AppTheme.accentYellow.withOpacity(0.2)
+                          ? AppTheme.accentYellow.withValues(alpha: 0.2)
                           : AppTheme.neutral100,
                       shape: BoxShape.circle,
                     ),
@@ -585,6 +592,7 @@ class _StreakScreenState extends ConsumerState<StreakScreen> {
               if (index < _streakAchievements.length - 1)
                 const Divider(height: 16),
             ],
+          ),
           );
         }).toList(),
       ),

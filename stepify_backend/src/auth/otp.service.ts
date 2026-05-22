@@ -1,6 +1,7 @@
 import { Injectable, Logger } from "@nestjs/common";
 import { ConfigService } from "@nestjs/config";
 import Twilio from "twilio";
+import * as crypto from "crypto";
 
 @Injectable()
 export class OtpService {
@@ -31,7 +32,7 @@ export class OtpService {
     const length = this.configService.get<number>("OTP_LENGTH", 6);
     let otp = "";
     for (let i = 0; i < length; i++) {
-      otp += Math.floor(Math.random() * 10).toString();
+      otp += crypto.randomInt(0, 10).toString();
     }
     return otp;
   }

@@ -24,9 +24,6 @@ class _EditProfileScreenState extends ConsumerState<EditProfileScreen> {
   late TextEditingController _weightController;
   late TextEditingController _heightController;
   
-  final bool _isEmailReadOnly = false;
-  final bool _isPhoneReadOnly = false;
-  
   double _stepGoal = 5000;
   int _selectedAvatarIndex = 0;
   
@@ -74,8 +71,6 @@ class _EditProfileScreenState extends ConsumerState<EditProfileScreen> {
     if (user != null) {
       _nameController.text = user['name'] ?? '';
       
-      // Email/Phone might be read-only identifiers depending on auth method
-      // For now, allowing edits but realistically backend handles uniqueness checks
       if (user['email'] != null) {
         _emailController.text = user['email'];
       }
@@ -152,7 +147,7 @@ class _EditProfileScreenState extends ConsumerState<EditProfileScreen> {
     } catch (e) {
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text('Error saving profile: \${e.toString()}')),
+          SnackBar(content: Text('Error saving profile: ${e.toString()}')),
         );
       }
     } finally {
@@ -177,37 +172,48 @@ class _EditProfileScreenState extends ConsumerState<EditProfileScreen> {
               padding: const EdgeInsets.all(24),
               children: [
                 // Avatar Selection
-                SingleChildScrollView(
-                  scrollDirection: Axis.horizontal,
-                  child: Row(
-                    children: List.generate(_avatars.length, (index) {
-                      final avatar = _avatars[index];
-                      final isSelected = index == _selectedAvatarIndex;
-                      return GestureDetector(
-                        onTap: () => setState(() => _selectedAvatarIndex = index),
-                        child: Container(
-                          margin: const EdgeInsets.only(right: 16),
-                          padding: const EdgeInsets.all(4),
-                          decoration: BoxDecoration(
-                            shape: BoxShape.circle,
-                            border: Border.all(
-                              color: isSelected ? AppTheme.primaryGreen : Colors.transparent,
-                              width: 3,
+                Semantics(
+                  header: true,
+                  label: 'Choose an Avatar',
+                  child: SingleChildScrollView(
+                    scrollDirection: Axis.horizontal,
+                    child: Row(
+                      children: List.generate(_avatars.length, (index) {
+                        final avatar = _avatars[index];
+                        final isSelected = index == _selectedAvatarIndex;
+                        return Semantics(
+                          button: true,
+                          selected: isSelected,
+                          label: 'Avatar ${index + 1}',
+                          child: GestureDetector(
+                            onTap: () => setState(() => _selectedAvatarIndex = index),
+                            child: Container(
+                              margin: const EdgeInsets.only(right: 16),
+                              padding: const EdgeInsets.all(4),
+                              decoration: BoxDecoration(
+                                shape: BoxShape.circle,
+                                border: Border.all(
+                                  color: isSelected ? AppTheme.primaryGreen : Colors.transparent,
+                                  width: 3,
+                                ),
+                              ),
+                              child: CircleAvatar(
+                                radius: 30,
+                                backgroundColor: Theme.of(context).dividerColor.withValues(alpha: 0.1),
+                                backgroundImage: NetworkImage(avatar['url']),
+                              ),
                             ),
                           ),
-                          child: CircleAvatar(
-                            radius: 30,
-                            backgroundImage: NetworkImage(avatar['url']),
-                          ),
-                        ),
-                      );
-                    }),
+                        );
+                      }),
+                    ),
                   ),
                 ),
                 const SizedBox(height: 32),
                 
                 // Name
                 _buildTextField(
+                  context: context,
                   label: 'Full Name',
                   controller: _nameController,
                   icon: Icons.person_outline,
@@ -217,6 +223,7 @@ class _EditProfileScreenState extends ConsumerState<EditProfileScreen> {
                 
                 // Email
                 _buildTextField(
+                  context: context,
                   label: 'Email',
                   controller: _emailController,
                   icon: Icons.email_outlined,
@@ -226,6 +233,7 @@ class _EditProfileScreenState extends ConsumerState<EditProfileScreen> {
                 
                 // Phone
                 _buildTextField(
+                  context: context,
                   label: 'Phone',
                   controller: _phoneController,
                   icon: Icons.phone_outlined,
@@ -238,6 +246,7 @@ class _EditProfileScreenState extends ConsumerState<EditProfileScreen> {
                   children: [
                     Expanded(
                       child: _buildTextField(
+                        context: context,
                         label: 'Age',
                         controller: _ageController,
                         keyboardType: TextInputType.number,
@@ -247,6 +256,7 @@ class _EditProfileScreenState extends ConsumerState<EditProfileScreen> {
                     const SizedBox(width: 16),
                     Expanded(
                       child: _buildTextField(
+                        context: context,
                         label: 'Weight (kg)',
                         controller: _weightController,
                         keyboardType: TextInputType.number,
@@ -256,6 +266,7 @@ class _EditProfileScreenState extends ConsumerState<EditProfileScreen> {
                     const SizedBox(width: 16),
                     Expanded(
                       child: _buildTextField(
+                        context: context,
                         label: 'Height (cm)',
                         controller: _heightController,
                         keyboardType: TextInputType.number,
@@ -267,31 +278,43 @@ class _EditProfileScreenState extends ConsumerState<EditProfileScreen> {
                 const SizedBox(height: 24),
                 
                 // Step Goal
-                Text(
-                  'Daily Step Goal: ${_stepGoal.toInt()}',
-                  style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 16),
+                Semantics(
+                  label: 'Daily step goal is ${_stepGoal.toInt()}',
+                  child: Text(
+                    'Daily Step Goal: ${_stepGoal.toInt()}',
+                    style: TextStyle(fontWeight: FontWeight.bold, fontSize: 16, color: Theme.of(context).textTheme.bodyLarge?.color),
+                  ),
                 ),
-                Slider(
-                  value: _stepGoal,
-                  min: 1000,
-                  max: 20000,
-                  divisions: 19,
-                  activeColor: AppTheme.primaryGreen,
-                  label: _stepGoal.round().toString(),
-                  onChanged: (val) => setState(() => _stepGoal = val),
+                Semantics(
+                  slider: true,
+                  value: '${_stepGoal.toInt()} steps',
+                  child: Slider(
+                    value: _stepGoal,
+                    min: 1000,
+                    max: 20000,
+                    divisions: 19,
+                    activeColor: AppTheme.primaryGreen,
+                    inactiveColor: Theme.of(context).dividerColor.withValues(alpha: 0.2),
+                    label: _stepGoal.round().toString(),
+                    onChanged: (val) => setState(() => _stepGoal = val),
+                  ),
                 ),
                 const SizedBox(height: 32),
                 
                 // Save Button
-                ElevatedButton(
-                  onPressed: _saveProfile,
-                  style: ElevatedButton.styleFrom(
-                    padding: const EdgeInsets.symmetric(vertical: 16),
-                    backgroundColor: AppTheme.primaryGreen,
-                    foregroundColor: Colors.white,
-                    shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+                Semantics(
+                  button: true,
+                  label: 'Save Profile Changes',
+                  child: ElevatedButton(
+                    onPressed: _saveProfile,
+                    style: ElevatedButton.styleFrom(
+                      padding: const EdgeInsets.symmetric(vertical: 16),
+                      backgroundColor: AppTheme.primaryGreen,
+                      foregroundColor: Colors.white,
+                      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+                    ),
+                    child: const Text('Save Changes', style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold)),
                   ),
-                  child: const Text('Save Changes', style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold)),
                 ),
               ],
             ),
@@ -300,6 +323,7 @@ class _EditProfileScreenState extends ConsumerState<EditProfileScreen> {
   }
 
   Widget _buildTextField({
+    required BuildContext context,
     required String label,
     required TextEditingController controller,
     required IconData icon,
@@ -307,24 +331,30 @@ class _EditProfileScreenState extends ConsumerState<EditProfileScreen> {
     String? Function(String?)? validator,
     bool readOnly = false,
   }) {
+    final isDark = Theme.of(context).brightness == Brightness.dark;
+    
     return TextFormField(
       controller: controller,
       readOnly: readOnly,
       keyboardType: keyboardType,
       validator: validator,
+      style: TextStyle(color: Theme.of(context).textTheme.bodyLarge?.color),
       decoration: InputDecoration(
         labelText: label,
-        prefixIcon: Icon(icon, color: AppTheme.neutral500),
+        labelStyle: TextStyle(color: Theme.of(context).textTheme.bodyMedium?.color?.withValues(alpha: 0.7)),
+        prefixIcon: Icon(icon, color: Theme.of(context).iconTheme.color?.withValues(alpha: 0.5)),
         border: OutlineInputBorder(
           borderRadius: BorderRadius.circular(12),
-          borderSide: BorderSide(color: AppTheme.neutral200),
+          borderSide: BorderSide(color: Theme.of(context).dividerColor),
         ),
         enabledBorder: OutlineInputBorder(
           borderRadius: BorderRadius.circular(12),
-          borderSide: BorderSide(color: AppTheme.neutral200),
+          borderSide: BorderSide(color: Theme.of(context).dividerColor),
         ),
         filled: true,
-        fillColor: readOnly ? AppTheme.neutral100 : Colors.white,
+        fillColor: readOnly 
+            ? Theme.of(context).dividerColor.withValues(alpha: 0.1) 
+            : Theme.of(context).colorScheme.surface,
       ),
     );
   }

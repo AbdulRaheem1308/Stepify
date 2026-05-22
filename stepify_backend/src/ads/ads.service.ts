@@ -1,32 +1,32 @@
-import { Injectable, BadRequestException } from "@nestjs/common";
+import { Injectable, BadRequestException, Logger } from "@nestjs/common";
 import { PrismaService } from "../prisma/prisma.service";
 import { RedisService } from "../redis/redis.service";
 import { ConfigService } from "@nestjs/config";
-import { RewardsService } from "../rewards/rewards.service";
 import { TransactionType, AdType } from "@prisma/client";
 
 @Injectable()
 export class AdsService {
+  private readonly logger = new Logger(AdsService.name);
   private readonly adRewardPoints: number;
   private readonly cooldownMinutes: number;
+  private readonly maxDailyAds: number;
 
   constructor(
-    private prisma: PrismaService,
-    private redis: RedisService,
-    private configService: ConfigService,
-    private rewardsService: RewardsService,
+    private readonly prisma: PrismaService,
+    private readonly redis: RedisService,
+    private readonly configService: ConfigService,
   ) {
     this.adRewardPoints = parseInt(
       this.configService.get("AD_REWARD_POINTS", "10"),
+      10,
     );
     this.cooldownMinutes = parseInt(
       this.configService.get("AD_COOLDOWN_MINUTES", "5"),
+      10,
     );
+    this.maxDailyAds = 10;
   }
 
-  /**
-   * Check if user can watch a rewarded ad
-   */
   async checkCanWatchAd(userId: string) {
     const canWatch = await this.redis.checkAdCooldown(userId);
     let cooldownRemaining = 0;
@@ -35,7 +35,6 @@ export class AdsService {
       cooldownRemaining = await this.redis.getAdCooldownRemaining(userId);
     }
 
-    // Get today's ad watch count
     const today = new Date();
     today.setHours(0, 0, 0, 0);
 
@@ -47,23 +46,17 @@ export class AdsService {
       },
     });
 
-    const maxDailyAds = 10; // Limit rewarded ads per day
-
     return {
-      canWatch: canWatch && todayViews < maxDailyAds,
+      canWatch: canWatch && todayViews < this.maxDailyAds,
       cooldownRemaining: canWatch ? 0 : cooldownRemaining,
       todayViews,
-      maxDailyAds,
-      remainingAds: Math.max(0, maxDailyAds - todayViews),
+      maxDailyAds: this.maxDailyAds,
+      remainingAds: Math.max(0, this.maxDailyAds - todayViews),
       pointsPerAd: this.adRewardPoints,
     };
   }
 
-  /**
-   * Claim reward for watching ad
-   */
   async claimAdReward(userId: string, adType: AdType, adUnitId?: string) {
-    // Verify cooldown for rewarded ads
     if (adType === AdType.REWARDED) {
       const canWatch = await this.redis.checkAdCooldown(userId);
       if (!canWatch) {
@@ -73,7 +66,6 @@ export class AdsService {
         );
       }
 
-      // Check daily limit
       const today = new Date();
       today.setHours(0, 0, 0, 0);
 
@@ -85,47 +77,71 @@ export class AdsService {
         },
       });
 
-      if (todayViews >= 10) {
+      if (todayViews >= this.maxDailyAds) {
         throw new BadRequestException("Daily rewarded ad limit reached");
       }
     }
 
     const pointsEarned = adType === AdType.REWARDED ? this.adRewardPoints : 0;
 
-    // Record ad view
-    const adView = await this.prisma.adView.create({
-      data: {
-        userId,
-        adType,
-        adUnitId,
-        pointsEarned,
-      },
-    });
+    try {
+      // Atomic Transaction: Log AdView, Record Points Transaction, Update Wallet Balance
+      await this.prisma.$transaction(async (tx) => {
+        const adView = await tx.adView.create({
+          data: {
+            userId,
+            adType,
+            adUnitId,
+            pointsEarned,
+          },
+        });
 
-    // Award points for rewarded ads
-    if (pointsEarned > 0) {
-      await this.rewardsService.addPoints(
-        userId,
+        if (pointsEarned > 0) {
+          await tx.transaction.create({
+            data: {
+              userId,
+              type: TransactionType.AD_REWARD,
+              points: pointsEarned,
+              description: "📺 Reward for watching ad",
+              metadata: { adViewId: adView.id },
+            },
+          });
+
+          await tx.wallet.upsert({
+            where: { userId },
+            update: {
+              balance: { increment: pointsEarned },
+              lifetimePoints: { increment: pointsEarned },
+              monthlyXp: { increment: pointsEarned },
+            },
+            create: {
+              userId,
+              balance: pointsEarned,
+              lifetimePoints: pointsEarned,
+              monthlyXp: pointsEarned,
+            },
+          });
+        }
+      });
+
+      if (pointsEarned > 0) {
+        await this.redis.setAdCooldown(userId, this.cooldownMinutes);
+      }
+
+      return {
+        success: true,
         pointsEarned,
-        TransactionType.AD_REWARD,
-        "📺 Reward for watching ad",
-        { adViewId: adView.id },
+        cooldownMinutes: adType === AdType.REWARDED ? this.cooldownMinutes : 0,
+      };
+    } catch (error) {
+      this.logger.error(
+        `Failed to process ad reward for user ${userId}: ${error.message}`,
+        error.stack,
       );
-
-      // Set cooldown
-      await this.redis.setAdCooldown(userId, this.cooldownMinutes);
+      throw error;
     }
-
-    return {
-      success: true,
-      pointsEarned,
-      cooldownMinutes: adType === AdType.REWARDED ? this.cooldownMinutes : 0,
-    };
   }
 
-  /**
-   * Get ad history for user
-   */
   async getAdHistory(userId: string, page: number = 1, limit: number = 20) {
     const skip = (page - 1) * limit;
 
@@ -139,7 +155,6 @@ export class AdsService {
       this.prisma.adView.count({ where: { userId } }),
     ]);
 
-    // Calculate totals
     const totals = await this.prisma.adView.aggregate({
       where: { userId },
       _sum: { pointsEarned: true },

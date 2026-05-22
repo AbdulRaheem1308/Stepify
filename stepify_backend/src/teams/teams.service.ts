@@ -57,7 +57,7 @@ export class TeamsService {
   }
 
   // Get team details
-  async getTeamDetails(teamId: string, userId: string) {
+  async getTeamDetails(teamId: string, _userId: string) {
     const team = await this.prisma.team.findUnique({
       where: { id: teamId },
       include: {
@@ -280,7 +280,7 @@ export class TeamsService {
     }
 
     // Check if an active battle already exists between these two teams
-    const existingBattle = await (this.prisma as any).teamBattle.findFirst({
+    const existingBattle = await this.prisma.teamBattle.findFirst({
       where: {
         OR: [
           {
@@ -306,7 +306,7 @@ export class TeamsService {
     const now = new Date();
     const nextWeek = new Date(now.getTime() + 7 * 24 * 60 * 60 * 1000); // 7 days from now
 
-    const battle = await (this.prisma as any).teamBattle.create({
+    const battle = await this.prisma.teamBattle.create({
       data: {
         challengerId: challengerTeamId,
         opponentId: opponentTeamId,

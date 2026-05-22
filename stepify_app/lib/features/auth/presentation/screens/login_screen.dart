@@ -3,6 +3,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 import 'package:font_awesome_flutter/font_awesome_flutter.dart'; 
 import 'dart:io';
+import 'package:stepify_app/l10n/app_localizations.dart';
 
 import '../../../../core/theme/app_theme.dart';
 import '../../../../core/router/app_router.dart';
@@ -18,7 +19,6 @@ class LoginScreen extends ConsumerStatefulWidget {
 }
 
 class _LoginScreenState extends ConsumerState<LoginScreen> {
-  final SocialAuthService _socialAuth = SocialAuthService();
   bool _isLoading = false;
 
   Future<void> _handleSocialLogin(Future<String?> Function() signInMethod, String providerName) async {
@@ -44,8 +44,10 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
       }
     } catch (e) {
       if (mounted) {
+        final l10n = AppLocalizations.of(context);
+        final errorMessage = l10n?.signInFailed(providerName, e.toString()) ?? 'Failed to sign in with $providerName: $e';
         ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text('Failed to sign in with $providerName: $e'), backgroundColor: AppTheme.error),
+          SnackBar(content: Text(errorMessage), backgroundColor: AppTheme.error),
         );
       }
     } finally {
@@ -57,6 +59,8 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
 
   @override
   Widget build(BuildContext context) {
+    final socialAuth = ref.watch(socialAuthServiceProvider);
+    
     return Scaffold(
       body: Container(
         decoration: BoxDecoration(
@@ -80,7 +84,7 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
                         borderRadius: BorderRadius.circular(24),
                         boxShadow: [
                           BoxShadow(
-                            color: Colors.black.withOpacity(0.1),
+                            color: Colors.black.withAlpha(26),
                             blurRadius: 20,
                             offset: const Offset(0, 10),
                           ),
@@ -113,10 +117,10 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
                 
                 const SizedBox(height: 12),
                 
-                const Text(
-                  'Walk more. Earn more.\nJoin the movement safely.',
+                Text(
+                  AppLocalizations.of(context)?.loginSubtitle ?? 'Walk more. Earn more.\nJoin the movement safely.',
                   textAlign: TextAlign.center,
-                  style: TextStyle(
+                  style: const TextStyle(
                     color: Colors.white70,
                     fontSize: 16,
                     height: 1.5,
@@ -131,10 +135,10 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
                   // Google Button
                   _SocialButton(
                     icon: FontAwesomeIcons.google.data,
-                    label: 'Continue with Google',
-                    onTap: () => _handleSocialLogin(_socialAuth.signInWithGoogle, 'Google'),
-                    color: Colors.white,
-                    textColor: Colors.black87,
+                    label: AppLocalizations.of(context)?.continueWithGoogle ?? 'Continue with Google',
+                    onTap: () => _handleSocialLogin(socialAuth.signInWithGoogle, 'Google'),
+                    color: Theme.of(context).colorScheme.surface,
+                    textColor: Theme.of(context).textTheme.bodyLarge?.color ?? Colors.black87,
                   ),
                   
                   const SizedBox(height: 16),
@@ -143,20 +147,19 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
                   if (Platform.isIOS) 
                     _SocialButton(
                       icon: FontAwesomeIcons.apple.data,
-                      label: 'Continue with Apple',
-                      onTap: () => _handleSocialLogin(_socialAuth.signInWithGoogle, 'Apple'), // Using Google placeholder for now as Apple setup is complex locally without certs
-                      // TODO: Switch to _socialAuth.signInWithApple when provisioned
-                      color: Colors.black,
-                      textColor: Colors.white,
+                      label: AppLocalizations.of(context)?.continueWithApple ?? 'Continue with Apple',
+                      onTap: () => _handleSocialLogin(socialAuth.signInWithApple, 'Apple'),
+                      color: Theme.of(context).brightness == Brightness.dark ? Colors.white : Colors.black,
+                      textColor: Theme.of(context).brightness == Brightness.dark ? Colors.black : Colors.white,
                     ),
                 ],
                 
                 const Spacer(),
                 
                 Text(
-                  'By continuing, you agree to our Terms & Privacy Policy',
+                  AppLocalizations.of(context)?.termsAndPrivacy ?? 'By continuing, you agree to our Terms & Privacy Policy',
                   textAlign: TextAlign.center,
-                  style: TextStyle(color: Colors.white.withOpacity(0.6), fontSize: 12),
+                  style: TextStyle(color: Colors.white.withAlpha(153), fontSize: 12),
                 ),
                 
                 const SizedBox(height: 16),
@@ -186,30 +189,35 @@ class _SocialButton extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return ElevatedButton(
-      onPressed: onTap,
-      style: ElevatedButton.styleFrom(
-        backgroundColor: color,
-        foregroundColor: textColor,
-        padding: const EdgeInsets.symmetric(vertical: 16),
-        shape: RoundedRectangleBorder(
-          borderRadius: BorderRadius.circular(16),
-        ),
-        elevation: 0,
-      ),
-      child: Row(
-        mainAxisAlignment: MainAxisAlignment.center,
-        children: [
-          ExcludeSemantics(child: Icon(icon, size: 20)),
-          const SizedBox(width: 12),
-          Text(
-            label,
-            style: const TextStyle(
-              fontSize: 16,
-              fontWeight: FontWeight.bold,
-            ),
+    return Semantics(
+      button: true,
+      label: label,
+      child: ElevatedButton(
+        onPressed: onTap,
+        style: ElevatedButton.styleFrom(
+          backgroundColor: color,
+          foregroundColor: textColor,
+          padding: const EdgeInsets.symmetric(vertical: 16),
+          minimumSize: const Size(double.infinity, 56), // Touch target size
+          shape: RoundedRectangleBorder(
+            borderRadius: BorderRadius.circular(16),
           ),
-        ],
+          elevation: 0,
+        ),
+        child: Row(
+          mainAxisAlignment: MainAxisAlignment.center,
+          children: [
+            ExcludeSemantics(child: Icon(icon, size: 20)),
+            const SizedBox(width: 12),
+            Text(
+              label,
+              style: const TextStyle(
+                fontSize: 16,
+                fontWeight: FontWeight.bold,
+              ),
+            ),
+          ],
+        ),
       ),
     );
   }

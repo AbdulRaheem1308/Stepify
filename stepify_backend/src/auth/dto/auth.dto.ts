@@ -4,7 +4,6 @@ import {
   IsPhoneNumber,
   IsEmail,
   Length,
-  ValidateIf,
 } from "class-validator";
 
 export class SendOtpDto {

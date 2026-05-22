@@ -2,6 +2,7 @@ import 'package:firebase_auth/firebase_auth.dart';
 import 'package:google_sign_in/google_sign_in.dart';
 import 'package:sign_in_with_apple/sign_in_with_apple.dart';
 import 'package:flutter/foundation.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 class SocialAuthService {
   final FirebaseAuth _auth = FirebaseAuth.instance;
@@ -58,3 +59,8 @@ class SocialAuthService {
     await _auth.signOut();
   }
 }
+
+/// Provider for SocialAuthService
+final socialAuthServiceProvider = Provider<SocialAuthService>((ref) {
+  return SocialAuthService();
+});

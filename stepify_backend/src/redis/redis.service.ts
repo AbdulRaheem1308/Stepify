@@ -1,18 +1,40 @@
-import { Injectable, OnModuleDestroy } from "@nestjs/common";
+import { Injectable, OnModuleDestroy, Logger } from "@nestjs/common";
 import { ConfigService } from "@nestjs/config";
 import Redis from "ioredis";
 
 @Injectable()
 export class RedisService implements OnModuleDestroy {
+  private readonly logger = new Logger(RedisService.name);
   private readonly client: Redis;
   private readonly isProduction: boolean;
   private readonly memoryStore = new Map<
     string,
     { value: any; expiry: number }
   >();
+  private sweepInterval: NodeJS.Timeout;
 
   constructor(private configService: ConfigService) {
     this.isProduction = this.configService.get("NODE_ENV") === "production";
+
+    // Memory leak prevention: sweep expired keys every 5 minutes
+    this.sweepInterval = setInterval(
+      () => {
+        const now = Date.now();
+        let swept = 0;
+        for (const [key, item] of this.memoryStore.entries()) {
+          if (item.expiry < now) {
+            this.memoryStore.delete(key);
+            swept++;
+          }
+        }
+        if (swept > 0) {
+          this.logger.debug(
+            `Swept ${swept} expired items from fallback memory store`,
+          );
+        }
+      },
+      5 * 60 * 1000,
+    );
 
     const redisUrl = this.configService.get("REDIS_URL");
     const redisOptions = {
@@ -23,10 +45,10 @@ export class RedisService implements OnModuleDestroy {
         if (times > 3) {
           const msg = "⚠️ Redis connection failed, running without cache";
           if (this.isProduction)
-            console.error(
+            this.logger.error(
               "CRITICAL: Redis connection failing in PRODUCTION! Services degraded.",
             );
-          else console.warn(msg);
+          else this.logger.warn(msg);
           return null;
         }
         return Math.min(times * 100, 3000);
@@ -38,17 +60,20 @@ export class RedisService implements OnModuleDestroy {
       : new Redis(redisOptions);
 
     this.client.on("connect", () => {
-      console.log("🔴 Redis connected");
+      this.logger.log("🔴 Redis connected");
     });
 
     this.client.on("error", (err) => {
       if (this.isProduction)
-        console.error("CRITICAL: Redis error in PRODUCTION:", err.message);
-      else console.warn("⚠️ Redis error:", err.message);
+        this.logger.error(
+          `CRITICAL: Redis error in PRODUCTION: ${err.message}`,
+        );
+      else this.logger.warn(`⚠️ Redis error: ${err.message}`);
     });
   }
 
   async onModuleDestroy() {
+    clearInterval(this.sweepInterval);
     await this.client.quit();
   }
 

@@ -37,6 +37,15 @@ class _ReferralScreenState extends ConsumerState<ReferralScreen> {
     final l10n = AppLocalizations.of(context)!;
     final state = ref.watch(referralProvider);
 
+    ref.listen(referralProvider, (previous, next) {
+      if (next.error != null) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text(next.error!), backgroundColor: Colors.red),
+        );
+        ref.read(referralProvider.notifier).clearError();
+      }
+    });
+
     return Scaffold(
       appBar: AppBar(
         title: Text(l10n.referral),
@@ -90,7 +99,7 @@ class _ReferralScreenState extends ConsumerState<ReferralScreen> {
         borderRadius: BorderRadius.circular(16),
         boxShadow: [
           BoxShadow(
-            color: AppTheme.primaryGreen.withOpacity(0.3),
+            color: AppTheme.primaryGreen.withValues(alpha: 0.3),
             blurRadius: 15,
             offset: const Offset(0, 8),
           ),
@@ -110,9 +119,9 @@ class _ReferralScreenState extends ConsumerState<ReferralScreen> {
             child: Container(
               padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 12),
               decoration: BoxDecoration(
-                color: Colors.white.withOpacity(0.2),
+                color: Colors.white.withValues(alpha: 0.2),
                 borderRadius: BorderRadius.circular(12),
-                border: Border.all(color: Colors.white.withOpacity(0.3)),
+                border: Border.all(color: Colors.white.withValues(alpha: 0.3)),
               ),
               child: Row(
                 mainAxisSize: MainAxisSize.min,
@@ -135,7 +144,7 @@ class _ReferralScreenState extends ConsumerState<ReferralScreen> {
           const SizedBox(height: 16),
           Text(
             'Earn 50 coins for each friend who joins!',
-            style: TextStyle(color: Colors.white.withOpacity(0.8), fontSize: 13),
+            style: TextStyle(color: Colors.white.withValues(alpha: 0.8), fontSize: 13),
           ),
           const SizedBox(height: 16),
           ElevatedButton.icon(
@@ -173,14 +182,14 @@ class _ReferralScreenState extends ConsumerState<ReferralScreen> {
       decoration: BoxDecoration(
         color: Theme.of(context).colorScheme.surface,
         borderRadius: BorderRadius.circular(16),
-        border: Border.all(color: AppTheme.neutral200),
+        border: Border.all(color: Theme.of(context).dividerColor),
       ),
       child: Column(
         children: [
           Icon(icon, color: color, size: 28),
           const SizedBox(height: 8),
           Text(value, style: TextStyle(fontWeight: FontWeight.bold, fontSize: 22, color: color)),
-          Text(label, style: TextStyle(color: AppTheme.neutral500, fontSize: 12)),
+          Text(label, style: TextStyle(color: Theme.of(context).textTheme.bodySmall?.color, fontSize: 12)),
         ],
       ),
     );
@@ -205,7 +214,7 @@ class _ReferralScreenState extends ConsumerState<ReferralScreen> {
               const Spacer(),
               Text(
                 '${stats.invitesAccepted} / ${stats.nextMilestoneTarget}',
-                style: TextStyle(color: AppTheme.neutral500, fontSize: 14),
+                style: TextStyle(color: Theme.of(context).textTheme.bodySmall?.color, fontSize: 14),
               ),
             ],
           ),
@@ -253,7 +262,7 @@ class _ReferralScreenState extends ConsumerState<ReferralScreen> {
       padding: const EdgeInsets.all(14),
       decoration: BoxDecoration(
         color: milestone.isUnlocked 
-            ? AppTheme.success.withOpacity(0.1) 
+            ? AppTheme.success.withValues(alpha: 0.1) 
             : Theme.of(context).cardColor,
         borderRadius: BorderRadius.circular(12),
         border: Border.all(
@@ -267,7 +276,7 @@ class _ReferralScreenState extends ConsumerState<ReferralScreen> {
             width: 40,
             height: 40,
             decoration: BoxDecoration(
-              color: milestone.isUnlocked ? AppTheme.success : Theme.of(context).dividerColor.withOpacity(0.3),
+              color: milestone.isUnlocked ? AppTheme.success : Theme.of(context).dividerColor.withValues(alpha: 0.3),
               shape: BoxShape.circle,
             ),
             child: Center(
@@ -290,7 +299,7 @@ class _ReferralScreenState extends ConsumerState<ReferralScreen> {
                 ),
                 Text(
                   milestone.isUnlocked ? 'Completed!' : 'Invite ${milestone.target} friends',
-                  style: TextStyle(color: AppTheme.neutral500, fontSize: 12),
+                  style: TextStyle(color: Theme.of(context).textTheme.bodySmall?.color, fontSize: 12),
                 ),
               ],
             ),
@@ -298,7 +307,7 @@ class _ReferralScreenState extends ConsumerState<ReferralScreen> {
           Container(
             padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
             decoration: BoxDecoration(
-              color: AppTheme.accentYellow.withOpacity(0.1),
+              color: AppTheme.accentYellow.withValues(alpha: 0.1),
               borderRadius: BorderRadius.circular(20),
             ),
             child: Row(
@@ -339,11 +348,11 @@ class _ReferralScreenState extends ConsumerState<ReferralScreen> {
                 decoration: BoxDecoration(
                   color: Theme.of(context).colorScheme.surface,
                   borderRadius: BorderRadius.circular(16),
-                  border: Border.all(color: AppTheme.neutral200),
+                  border: Border.all(color: Theme.of(context).dividerColor),
                 ),
                 child: Column(
                   children: [
-                    Icon(Icons.emoji_events_outlined, size: 48, color: AppTheme.neutral300),
+                    Icon(Icons.emoji_events_outlined, size: 48, color: Theme.of(context).iconTheme.color?.withValues(alpha: 0.3)),
                     const SizedBox(height: 12),
                     Text(
                       'No top referrers yet',
@@ -352,7 +361,7 @@ class _ReferralScreenState extends ConsumerState<ReferralScreen> {
                     const SizedBox(height: 4),
                     Text(
                       'Be the first to invite friends!',
-                      style: Theme.of(context).textTheme.bodyMedium?.copyWith(color: AppTheme.neutral500),
+                      style: Theme.of(context).textTheme.bodyMedium?.copyWith(color: Theme.of(context).textTheme.bodySmall?.color),
                     ),
                   ],
                 ),
@@ -361,7 +370,7 @@ class _ReferralScreenState extends ConsumerState<ReferralScreen> {
                 decoration: BoxDecoration(
                   color: Theme.of(context).colorScheme.surface,
                   borderRadius: BorderRadius.circular(16),
-                  border: Border.all(color: AppTheme.neutral200),
+                  border: Border.all(color: Theme.of(context).dividerColor),
                 ),
                 child: Column(
                   children: leaderboard.take(5).toList().asMap().entries.map((entry) {
@@ -384,7 +393,7 @@ class _ReferralScreenState extends ConsumerState<ReferralScreen> {
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
       decoration: BoxDecoration(
-        border: isLast ? null : Border(bottom: BorderSide(color: AppTheme.neutral200)),
+        border: isLast ? null : Border(bottom: BorderSide(color: Theme.of(context).dividerColor)),
       ),
       child: Row(
         children: [
@@ -394,17 +403,17 @@ class _ReferralScreenState extends ConsumerState<ReferralScreen> {
             Container(
               width: 24,
               alignment: Alignment.center,
-              child: Text('#${referrer.rank}', style: TextStyle(color: AppTheme.neutral500, fontWeight: FontWeight.bold)),
+              child: Text('#${referrer.rank}', style: TextStyle(color: Theme.of(context).textTheme.bodySmall?.color, fontWeight: FontWeight.bold)),
             ),
           const SizedBox(width: 12),
           CircleAvatar(
             radius: 18,
-            backgroundColor: AppTheme.neutral200,
-            child: Text(referrer.name[0], style: const TextStyle(fontWeight: FontWeight.bold)),
+            backgroundColor: Theme.of(context).dividerColor,
+            child: Text(referrer.name.isNotEmpty ? referrer.name[0] : '?', style: TextStyle(fontWeight: FontWeight.bold, color: Theme.of(context).textTheme.bodyMedium?.color)),
           ),
           const SizedBox(width: 12),
           Expanded(child: Text(referrer.name, style: const TextStyle(fontWeight: FontWeight.w500))),
-          Text('${referrer.referrals} invites', style: TextStyle(color: AppTheme.neutral500, fontSize: 13)),
+          Text('${referrer.referrals} invites', style: TextStyle(color: Theme.of(context).textTheme.bodySmall?.color, fontSize: 13)),
         ],
       ),
     );

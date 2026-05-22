@@ -311,48 +311,59 @@ export class AuthService {
 
     if (!inviter) return; // Invalid referral code, fail silently
 
-    // 1. Reward Inviter (500 coins)
-    await this.prisma.$transaction([
-      this.prisma.wallet.upsert({
-        where: { userId: inviter.id },
-        update: {
-          balance: { increment: 500 },
-          lifetimePoints: { increment: 500 },
-        },
-        create: { userId: inviter.id, balance: 500, lifetimePoints: 500 },
-      }),
-      this.prisma.transaction.create({
-        data: {
-          userId: inviter.id,
-          type: "REFERRAL",
-          points: 500,
-          description: "Bonus for referring a new friend!",
-        },
-      }),
-      this.prisma.user.update({
-        where: { id: inviter.id },
-        data: {
-          referralCount: { increment: 1 },
-          referralCoinsEarned: { increment: 500 },
-        },
-      }),
-      // 2. Reward Invitee (200 coins)
-      this.prisma.wallet.upsert({
-        where: { userId: newUserId },
-        update: {
-          balance: { increment: 200 },
-          lifetimePoints: { increment: 200 },
-        },
-        create: { userId: newUserId, balance: 200, lifetimePoints: 200 },
-      }),
-      this.prisma.transaction.create({
-        data: {
-          userId: newUserId,
-          type: "REFERRAL",
-          points: 200,
-          description: "Bonus for using a referral code!",
-        },
-      }),
-    ]);
+    try {
+      await this.prisma.$transaction(async (tx) => {
+        // 1. Reward Inviter (500 coins)
+        await tx.wallet.upsert({
+          where: { userId: inviter.id },
+          update: {
+            balance: { increment: 500 },
+            lifetimePoints: { increment: 500 },
+          },
+          create: { userId: inviter.id, balance: 500, lifetimePoints: 500 },
+        });
+
+        await tx.transaction.create({
+          data: {
+            userId: inviter.id,
+            type: "REFERRAL",
+            points: 500,
+            description: "Bonus for referring a new friend!",
+          },
+        });
+
+        await tx.user.update({
+          where: { id: inviter.id },
+          data: {
+            referralCount: { increment: 1 },
+            referralCoinsEarned: { increment: 500 },
+          },
+        });
+
+        // 2. Reward Invitee (200 coins)
+        await tx.wallet.upsert({
+          where: { userId: newUserId },
+          update: {
+            balance: { increment: 200 },
+            lifetimePoints: { increment: 200 },
+          },
+          create: { userId: newUserId, balance: 200, lifetimePoints: 200 },
+        });
+
+        await tx.transaction.create({
+          data: {
+            userId: newUserId,
+            type: "REFERRAL",
+            points: 200,
+            description: "Bonus for using a referral code!",
+          },
+        });
+      });
+    } catch (error) {
+      this.logger.error(
+        `Failed to attribute referral rewards for new user ${newUserId} using code ${referralCode}: ${error.message}`,
+      );
+      // Fail silently to not block auth flow
+    }
   }
 }

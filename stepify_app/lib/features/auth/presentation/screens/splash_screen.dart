@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_animate/flutter_animate.dart';
 import 'package:go_router/go_router.dart';
+import 'package:stepify_app/l10n/app_localizations.dart';
 
 import '../../../../core/theme/app_theme.dart';
 import '../../../../core/router/app_router.dart';
@@ -36,6 +37,9 @@ class _SplashScreenState extends State<SplashScreen> {
     
     // Check if user is logged in
     final token = await StorageService.getAccessToken();
+    
+    if (!mounted) return;
+
     if (token != null) {
       context.go(AppRoutes.home);
     } else {
@@ -57,7 +61,9 @@ class _SplashScreenState extends State<SplashScreen> {
             mainAxisAlignment: MainAxisAlignment.center,
             children: [
               // Logo Icon
-              Container(
+              Semantics(
+                label: 'Stepify Logo',
+                child: Container(
                 width: 120,
                 height: 120,
                 decoration: BoxDecoration(
@@ -65,7 +71,7 @@ class _SplashScreenState extends State<SplashScreen> {
                   borderRadius: BorderRadius.circular(30),
                   boxShadow: [
                     BoxShadow(
-                      color: Colors.black.withOpacity(0.2),
+                      color: Colors.black.withAlpha(51),
                       blurRadius: 20,
                       offset: const Offset(0, 10),
                     ),
@@ -76,6 +82,7 @@ class _SplashScreenState extends State<SplashScreen> {
                   size: 70,
                   color: AppTheme.primaryGreen,
                 ),
+              ),
               )
                   .animate()
                   .scale(
@@ -87,12 +94,15 @@ class _SplashScreenState extends State<SplashScreen> {
               const SizedBox(height: 32),
               
               // App Name
-              Text(
-                'Stepify',
-                style: Theme.of(context).textTheme.displaySmall?.copyWith(
-                  color: Colors.white,
-                  fontWeight: FontWeight.bold,
-                  letterSpacing: 2,
+              Semantics(
+                header: true,
+                child: Text(
+                  'Stepify',
+                  style: Theme.of(context).textTheme.displaySmall?.copyWith(
+                    color: Colors.white,
+                    fontWeight: FontWeight.bold,
+                    letterSpacing: 2,
+                  ),
                 ),
               )
                   .animate(delay: 300.ms)
@@ -102,11 +112,14 @@ class _SplashScreenState extends State<SplashScreen> {
               const SizedBox(height: 8),
               
               // Tagline
-              Text(
-                'Walk • Track • Earn',
-                style: Theme.of(context).textTheme.bodyLarge?.copyWith(
-                  color: Colors.white.withOpacity(0.9),
-                  letterSpacing: 3,
+              Semantics(
+                label: AppLocalizations.of(context)?.appTagline ?? 'Walk, Track, Earn',
+                child: Text(
+                  AppLocalizations.of(context)?.appTagline ?? 'Walk • Track • Earn',
+                  style: Theme.of(context).textTheme.bodyLarge?.copyWith(
+                    color: Colors.white.withAlpha(230),
+                    letterSpacing: 3,
+                  ),
                 ),
               )
                   .animate(delay: 500.ms)

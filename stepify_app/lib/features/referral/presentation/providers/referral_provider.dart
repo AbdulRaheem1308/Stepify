@@ -12,7 +12,7 @@ class ReferralStats {
   final int rank;
   final List<ReferralMilestone> milestones;
 
-  ReferralStats({
+  const ReferralStats({
     required this.referralCode,
     this.invitesSent = 0,
     this.invitesAccepted = 0,
@@ -20,6 +20,45 @@ class ReferralStats {
     this.rank = 0,
     this.milestones = const [],
   });
+
+  ReferralStats copyWith({
+    String? referralCode,
+    int? invitesSent,
+    int? invitesAccepted,
+    int? coinsEarned,
+    int? rank,
+    List<ReferralMilestone>? milestones,
+  }) {
+    return ReferralStats(
+      referralCode: referralCode ?? this.referralCode,
+      invitesSent: invitesSent ?? this.invitesSent,
+      invitesAccepted: invitesAccepted ?? this.invitesAccepted,
+      coinsEarned: coinsEarned ?? this.coinsEarned,
+      rank: rank ?? this.rank,
+      milestones: milestones ?? this.milestones,
+    );
+  }
+
+  @override
+  bool operator ==(Object other) =>
+      identical(this, other) ||
+      other is ReferralStats &&
+          runtimeType == other.runtimeType &&
+          referralCode == other.referralCode &&
+          invitesSent == other.invitesSent &&
+          invitesAccepted == other.invitesAccepted &&
+          coinsEarned == other.coinsEarned &&
+          rank == other.rank &&
+          _listEquals(milestones, other.milestones);
+
+  @override
+  int get hashCode =>
+      referralCode.hashCode ^
+      invitesSent.hashCode ^
+      invitesAccepted.hashCode ^
+      coinsEarned.hashCode ^
+      rank.hashCode ^
+      milestones.hashCode;
 
   int get nextMilestoneTarget {
     final targets = [1, 3, 5, 10, 25, 50, 100];
@@ -44,11 +83,32 @@ class ReferralMilestone {
   final int reward;
   final bool isUnlocked;
 
-  ReferralMilestone({
+  const ReferralMilestone({
     required this.target,
     required this.reward,
     required this.isUnlocked,
   });
+
+  @override
+  bool operator ==(Object other) =>
+      identical(this, other) ||
+      other is ReferralMilestone &&
+          runtimeType == other.runtimeType &&
+          target == other.target &&
+          reward == other.reward &&
+          isUnlocked == other.isUnlocked;
+
+  @override
+  int get hashCode => target.hashCode ^ reward.hashCode ^ isUnlocked.hashCode;
+}
+
+bool _listEquals<T>(List<T>? a, List<T>? b) {
+  if (a == null) return b == null;
+  if (b == null || a.length != b.length) return false;
+  for (int i = 0; i < a.length; i++) {
+    if (a[i] != b[i]) return false;
+  }
+  return true;
 }
 
 /// Top Referrer Model
@@ -59,13 +119,32 @@ class TopReferrer {
   final int referrals;
   final int rank;
 
-  TopReferrer({
+  const TopReferrer({
     required this.id,
     required this.name,
     this.avatarUrl,
     required this.referrals,
     required this.rank,
   });
+
+  @override
+  bool operator ==(Object other) =>
+      identical(this, other) ||
+      other is TopReferrer &&
+          runtimeType == other.runtimeType &&
+          id == other.id &&
+          name == other.name &&
+          avatarUrl == other.avatarUrl &&
+          referrals == other.referrals &&
+          rank == other.rank;
+
+  @override
+  int get hashCode =>
+      id.hashCode ^
+      name.hashCode ^
+      avatarUrl.hashCode ^
+      referrals.hashCode ^
+      rank.hashCode;
 }
 
 /// Referral State
@@ -80,11 +159,39 @@ class ReferralState {
     ReferralStats? stats,
     this.leaderboard = const [],
     this.error,
-  }) : stats = stats ?? ReferralStats(referralCode: '');
+  }) : stats = stats ?? const ReferralStats(referralCode: '');
+
+  ReferralState copyWith({
+    bool? isLoading,
+    ReferralStats? stats,
+    List<TopReferrer>? leaderboard,
+    String? error,
+  }) {
+    return ReferralState(
+      isLoading: isLoading ?? this.isLoading,
+      stats: stats ?? this.stats,
+      leaderboard: leaderboard ?? this.leaderboard,
+      error: error, // Can be null to clear
+    );
+  }
+
+  @override
+  bool operator ==(Object other) =>
+      identical(this, other) ||
+      other is ReferralState &&
+          runtimeType == other.runtimeType &&
+          isLoading == other.isLoading &&
+          stats == other.stats &&
+          _listEquals(leaderboard, other.leaderboard) &&
+          error == other.error;
+
+  @override
+  int get hashCode =>
+      isLoading.hashCode ^ stats.hashCode ^ leaderboard.hashCode ^ error.hashCode;
 }
 
 /// Referral Provider
-final referralProvider = StateNotifierProvider<ReferralNotifier, ReferralState>((ref) {
+final referralProvider = StateNotifierProvider.autoDispose<ReferralNotifier, ReferralState>((ref) {
   return ReferralNotifier(ref.watch(apiServiceProvider));
 });
 
@@ -93,9 +200,15 @@ class ReferralNotifier extends StateNotifier<ReferralState> {
 
   ReferralNotifier(this._apiService) : super(ReferralState());
 
+  void clearError() {
+    if (state.error != null) {
+      state = state.copyWith(error: null);
+    }
+  }
+
   /// Fetch referral data
   Future<void> fetchReferralData() async {
-    state = ReferralState(isLoading: true);
+    state = state.copyWith(isLoading: true, error: null);
 
     try {
       final results = await Future.wait([
@@ -125,7 +238,7 @@ class ReferralNotifier extends StateNotifier<ReferralState> {
         );
       }).toList();
       
-      state = ReferralState(
+      state = state.copyWith(
         isLoading: false,
         stats: ReferralStats(
           referralCode: code,
@@ -138,7 +251,7 @@ class ReferralNotifier extends StateNotifier<ReferralState> {
         leaderboard: leaderboard,
       );
     } catch (e) {
-      state = ReferralState(
+      state = state.copyWith(
         isLoading: false,
         error: ApiError.from(e).message,
       );

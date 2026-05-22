@@ -31,6 +31,18 @@ class _TeamDetailScreenState extends ConsumerState<TeamDetailScreen> {
 
   @override
   Widget build(BuildContext context) {
+    ref.listen(teamsProvider, (previous, next) {
+      if (next.error != null) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text(next.error!),
+            backgroundColor: AppTheme.error,
+          ),
+        );
+        ref.read(teamsProvider.notifier).clearError();
+      }
+    });
+
     final state = ref.watch(teamsProvider);
     final team = state.currentTeam;
 
@@ -145,7 +157,7 @@ class _TeamDetailScreenState extends ConsumerState<TeamDetailScreen> {
                   width: 80,
                   height: 80,
                   decoration: BoxDecoration(
-                    color: Colors.white.withOpacity(0.2),
+                    color: Colors.white.withValues(alpha: 0.2),
                     shape: BoxShape.circle,
                   ),
                   child: const Icon(
@@ -191,7 +203,7 @@ class _TeamDetailScreenState extends ConsumerState<TeamDetailScreen> {
         borderRadius: BorderRadius.circular(16),
         boxShadow: [
           BoxShadow(
-            color: Colors.black.withOpacity(0.05),
+            color: Colors.black.withValues(alpha: 0.05),
             blurRadius: 10,
           ),
         ],
@@ -228,7 +240,9 @@ class _TeamDetailScreenState extends ConsumerState<TeamDetailScreen> {
   }
 
   Widget _buildMemberTile(TeamMember member, int index) {
-    return Container(
+    return Semantics(
+      label: '${member.name}, ${member.isCaptain ? "Team Captain" : "Member"}. ${member.weeklySteps} steps this week.',
+      child: Container(
       margin: const EdgeInsets.symmetric(horizontal: 16, vertical: 4),
       decoration: BoxDecoration(
         color: Theme.of(context).cardColor,
@@ -241,7 +255,7 @@ class _TeamDetailScreenState extends ConsumerState<TeamDetailScreen> {
         leading: Stack(
           children: [
             CircleAvatar(
-              backgroundColor: AppTheme.primaryGreen.withOpacity(0.2),
+              backgroundColor: AppTheme.primaryGreen.withValues(alpha: 0.2),
               backgroundImage: member.avatarUrl != null
                   ? NetworkImage(member.avatarUrl!)
                   : null,
@@ -296,18 +310,21 @@ class _TeamDetailScreenState extends ConsumerState<TeamDetailScreen> {
           ],
         ),
       ),
+    ),
     );
   }
 
   Widget _buildChallengeCard(TeamChallenge challenge) {
-    return Container(
+    return Semantics(
+      label: 'Challenge: ${challenge.title}. Status: ${challenge.status}. ${challenge.currentSteps} out of ${challenge.targetSteps} steps completed.',
+      child: Container(
       margin: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
       padding: const EdgeInsets.all(16),
       decoration: BoxDecoration(
         gradient: challenge.isActive 
             ? AppTheme.primaryGradient 
             : null,
-        color: challenge.isActive ? null : AppTheme.neutral100,
+        color: challenge.isActive ? null : Theme.of(context).colorScheme.surface,
         borderRadius: BorderRadius.circular(16),
       ),
       child: Column(
@@ -329,7 +346,7 @@ class _TeamDetailScreenState extends ConsumerState<TeamDetailScreen> {
               Container(
                 padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
                 decoration: BoxDecoration(
-                  color: Colors.white.withOpacity(challenge.isActive ? 0.2 : 1),
+                  color: Colors.white.withValues(alpha: challenge.isActive ? 0.2 : 1),
                   borderRadius: BorderRadius.circular(8),
                 ),
                 child: Text(
@@ -348,7 +365,7 @@ class _TeamDetailScreenState extends ConsumerState<TeamDetailScreen> {
             borderRadius: BorderRadius.circular(4),
             child: LinearProgressIndicator(
               value: challenge.progress.clamp(0.0, 1.0),
-              backgroundColor: Colors.white.withOpacity(0.3),
+              backgroundColor: Colors.white.withValues(alpha: 0.3),
               valueColor: AlwaysStoppedAnimation(
                 challenge.isActive ? Colors.white : AppTheme.primaryGreen,
               ),
@@ -365,6 +382,7 @@ class _TeamDetailScreenState extends ConsumerState<TeamDetailScreen> {
           ),
         ],
       ),
+      ),
     );
   }
 
@@ -373,9 +391,9 @@ class _TeamDetailScreenState extends ConsumerState<TeamDetailScreen> {
       margin: const EdgeInsets.all(16),
       padding: const EdgeInsets.all(16),
       decoration: BoxDecoration(
-        color: AppTheme.info.withOpacity(0.1),
+        color: AppTheme.info.withValues(alpha: 0.1),
         borderRadius: BorderRadius.circular(16),
-        border: Border.all(color: AppTheme.info.withOpacity(0.3)),
+        border: Border.all(color: AppTheme.info.withValues(alpha: 0.3)),
       ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
@@ -391,7 +409,7 @@ class _TeamDetailScreenState extends ConsumerState<TeamDetailScreen> {
                 child: Container(
                   padding: const EdgeInsets.all(12),
                   decoration: BoxDecoration(
-                    color: Colors.white,
+                    color: Theme.of(context).colorScheme.surface,
                     borderRadius: BorderRadius.circular(8),
                   ),
                   child: Text(

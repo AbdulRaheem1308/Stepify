@@ -169,34 +169,62 @@ export class NotificationsService {
   ): Promise<void> {
     if (!this.fcmEnabled) return;
 
-    const users = await this.prisma.user.findMany({
-      where: { fcmToken: { not: null }, isActive: true },
-      select: { fcmToken: true },
-    });
-
-    const tokens = users.map((u) => u.fcmToken!).filter(Boolean);
-    if (tokens.length === 0) return;
-
-    // Process in batches of 500 (FCM multicast limit)
     const batchSize = 500;
-    for (let i = 0; i < tokens.length; i += batchSize) {
-      const batch = tokens.slice(i, i + batchSize);
-      const multicastMessage: admin.messaging.MulticastMessage = {
-        tokens: batch,
-        notification: { title, body },
-        data: data ?? {},
-        android: { priority: "high" },
+    let cursorId: string | null = null;
+    let hasMore = true;
+    let batchNumber = 1;
+
+    while (hasMore) {
+      const query: any = {
+        where: { fcmToken: { not: null }, isActive: true },
+        select: { id: true, fcmToken: true },
+        take: batchSize,
+        orderBy: { id: "asc" },
       };
-      try {
-        const result = await admin
-          .messaging()
-          .sendEachForMulticast(multicastMessage);
-        this.logger.log(
-          `Broadcast batch ${i / batchSize + 1}: ${result.successCount} sent, ${result.failureCount} failed`,
-        );
-      } catch (err: any) {
-        this.logger.error(`Broadcast batch failed: ${err?.message}`);
+
+      if (cursorId) {
+        query.skip = 1;
+        query.cursor = { id: cursorId };
       }
+
+      const users = await this.prisma.user.findMany(query);
+
+      if (users.length === 0) {
+        hasMore = false;
+        break;
+      }
+
+      cursorId = users[users.length - 1].id;
+
+      const tokens = users
+        .map((u: { fcmToken: string | null }) => u.fcmToken!)
+        .filter(Boolean);
+
+      if (tokens.length > 0) {
+        const multicastMessage: admin.messaging.MulticastMessage = {
+          tokens,
+          notification: { title, body },
+          data: data ?? {},
+          android: { priority: "high" },
+        };
+        try {
+          const result = await admin
+            .messaging()
+            .sendEachForMulticast(multicastMessage);
+          this.logger.log(
+            `Broadcast batch ${batchNumber}: ${result.successCount} sent, ${result.failureCount} failed`,
+          );
+        } catch (err: any) {
+          this.logger.error(
+            `Broadcast batch ${batchNumber} failed: ${err?.message}`,
+          );
+        }
+      }
+
+      if (users.length < batchSize) {
+        hasMore = false;
+      }
+      batchNumber++;
     }
   }
 

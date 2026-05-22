@@ -145,6 +145,6 @@ class LeaderboardNotifier extends StateNotifier<LeaderboardState> {
 
 }
 
-final leaderboardProvider = StateNotifierProvider<LeaderboardNotifier, LeaderboardState>((ref) {
+final leaderboardProvider = StateNotifierProvider.autoDispose<LeaderboardNotifier, LeaderboardState>((ref) {
   return LeaderboardNotifier(ref.watch(apiServiceProvider));
 });

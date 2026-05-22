@@ -33,7 +33,7 @@ class QuickActionCard extends StatelessWidget {
           borderRadius: BorderRadius.circular(10),
           boxShadow: [
             BoxShadow(
-              color: gradient.colors.first.withOpacity(0.3),
+              color: gradient.colors.first.withAlpha(77),
               blurRadius: 12,
               offset: const Offset(0, 6),
             ),
@@ -60,7 +60,7 @@ class QuickActionCard extends StatelessWidget {
             Text(
               subtitle,
               style: TextStyle(
-                color: Colors.white.withOpacity(0.8),
+                color: Colors.white.withAlpha(204),
                 fontSize: 12,
               ),
             ),

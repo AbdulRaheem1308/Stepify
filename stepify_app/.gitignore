@@ -1,4 +1,6 @@
 # Dependencies
+*.hive
+*.lock
 .dart_tool/
 .packages
 build/

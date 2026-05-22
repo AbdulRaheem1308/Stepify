@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_animate/flutter_animate.dart';
+import 'package:stepify_app/l10n/app_localizations.dart';
 import '../../../../core/theme/app_theme.dart';
 
 class XpRulesScreen extends StatelessWidget {
@@ -7,16 +8,17 @@ class XpRulesScreen extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final l10n = AppLocalizations.of(context)!;
     return Scaffold(
       appBar: AppBar(
-        title: const Text('Gamification Rules'),
+        title: Text(l10n.gamificationRules),
         centerTitle: true,
       ),
       body: CustomScrollView(
         slivers: [
           // Banner
           SliverToBoxAdapter(
-            child: _buildInfoBanner(context),
+            child: _buildInfoBanner(context, l10n),
           ),
           
           // Section: How to Earn
@@ -24,7 +26,7 @@ class XpRulesScreen extends StatelessWidget {
             padding: const EdgeInsets.fromLTRB(20, 30, 20, 10),
             sliver: SliverToBoxAdapter(
               child: Text(
-                'How to Earn XP',
+                l10n.howToEarnXp,
                 style: Theme.of(context).textTheme.titleLarge?.copyWith(fontWeight: FontWeight.bold),
               ),
             ),
@@ -47,7 +49,7 @@ class XpRulesScreen extends StatelessWidget {
             padding: const EdgeInsets.fromLTRB(20, 40, 20, 10),
             sliver: SliverToBoxAdapter(
               child: Text(
-                'Level Ladder',
+                l10n.levelLadder,
                 style: Theme.of(context).textTheme.titleLarge?.copyWith(fontWeight: FontWeight.bold),
               ),
             ),
@@ -68,7 +70,7 @@ class XpRulesScreen extends StatelessWidget {
     );
   }
 
-  Widget _buildInfoBanner(BuildContext context) {
+  Widget _buildInfoBanner(BuildContext context, AppLocalizations l10n) {
     return Container(
       margin: const EdgeInsets.all(20),
       padding: const EdgeInsets.all(20),
@@ -77,7 +79,7 @@ class XpRulesScreen extends StatelessWidget {
         borderRadius: BorderRadius.circular(20),
         boxShadow: [
           BoxShadow(
-            color: AppTheme.primaryGreen.withOpacity(0.3),
+            color: AppTheme.primaryGreen.withValues(alpha: 0.3),
             blurRadius: 10,
             offset: const Offset(0, 4),
           ),
@@ -91,7 +93,7 @@ class XpRulesScreen extends StatelessWidget {
               const Icon(Icons.info_outline, color: Colors.white),
               const SizedBox(width: 10),
               Text(
-                'How it Works',
+                l10n.howItWorks,
                 style: Theme.of(context).textTheme.titleMedium?.copyWith(
                   color: Colors.white,
                   fontWeight: FontWeight.bold,
@@ -100,9 +102,9 @@ class XpRulesScreen extends StatelessWidget {
             ],
           ),
           const SizedBox(height: 12),
-          const Text(
-            'Earn XP by staying active and engaging with the community. Level up to unlock exclusive badges, avatar frames, and multipliers for step coins!',
-            style: TextStyle(color: Colors.white, height: 1.5),
+          Text(
+            l10n.howItWorksDesc,
+            style: const TextStyle(color: Colors.white, height: 1.5),
           ),
         ],
       ),
@@ -123,7 +125,7 @@ class XpRulesScreen extends StatelessWidget {
           Container(
             padding: const EdgeInsets.all(10),
             decoration: BoxDecoration(
-              color: color.withOpacity(0.1),
+              color: color.withValues(alpha: 0.1),
               borderRadius: BorderRadius.circular(12),
             ),
             child: Icon(icon, color: color, size: 24),
@@ -164,7 +166,7 @@ class XpRulesScreen extends StatelessWidget {
       ),
       child: ExpansionTile(
         leading: CircleAvatar(
-          backgroundColor: AppTheme.primaryGreen.withOpacity(0.1),
+          backgroundColor: AppTheme.primaryGreen.withValues(alpha: 0.1),
           child: Text('$level', style: const TextStyle(color: AppTheme.primaryGreen, fontWeight: FontWeight.bold)),
         ),
         title: Text(title, style: const TextStyle(fontWeight: FontWeight.bold)),

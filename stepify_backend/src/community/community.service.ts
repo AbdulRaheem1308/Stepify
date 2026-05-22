@@ -67,47 +67,51 @@ export class CommunityService {
 
   // React to a post (like, clap, fire)
   async reactToPost(userId: string, postId: string, reactionType = "like") {
-    // Toggle reaction
-    const existing = await this.prisma.feedReaction.findUnique({
-      where: { postId_userId: { postId, userId } },
-    });
+    return this.prisma.$transaction(async (tx) => {
+      // Toggle reaction
+      const existing = await tx.feedReaction.findUnique({
+        where: { postId_userId: { postId, userId } },
+      });
 
-    if (existing) {
-      // Remove reaction
-      await this.prisma.feedReaction.delete({ where: { id: existing.id } });
-      await this.prisma.feedPost.update({
-        where: { id: postId },
-        data: { likesCount: { decrement: 1 } },
-      });
-      return { reacted: false };
-    } else {
-      // Add reaction
-      await this.prisma.feedReaction.create({
-        data: { postId, userId, type: reactionType },
-      });
-      await this.prisma.feedPost.update({
-        where: { id: postId },
-        data: { likesCount: { increment: 1 } },
-      });
-      return { reacted: true };
-    }
+      if (existing) {
+        // Remove reaction
+        await tx.feedReaction.delete({ where: { id: existing.id } });
+        await tx.feedPost.update({
+          where: { id: postId },
+          data: { likesCount: { decrement: 1 } },
+        });
+        return { reacted: false };
+      } else {
+        // Add reaction
+        await tx.feedReaction.create({
+          data: { postId, userId, type: reactionType },
+        });
+        await tx.feedPost.update({
+          where: { id: postId },
+          data: { likesCount: { increment: 1 } },
+        });
+        return { reacted: true };
+      }
+    });
   }
 
   // Add a comment
   async addComment(userId: string, postId: string, content: string) {
-    const comment = await this.prisma.feedComment.create({
-      data: { postId, userId, content },
-      include: {
-        user: { select: { id: true, name: true, avatarUrl: true } },
-      },
-    });
+    return this.prisma.$transaction(async (tx) => {
+      const comment = await tx.feedComment.create({
+        data: { postId, userId, content },
+        include: {
+          user: { select: { id: true, name: true, avatarUrl: true } },
+        },
+      });
 
-    await this.prisma.feedPost.update({
-      where: { id: postId },
-      data: { commentsCount: { increment: 1 } },
-    });
+      await tx.feedPost.update({
+        where: { id: postId },
+        data: { commentsCount: { increment: 1 } },
+      });
 
-    return comment;
+      return comment;
+    });
   }
 
   // Get comments for a post

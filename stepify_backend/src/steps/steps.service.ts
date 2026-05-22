@@ -1,9 +1,4 @@
-import {
-  Injectable,
-  NotFoundException,
-  BadRequestException,
-  Logger,
-} from "@nestjs/common";
+import { Injectable, BadRequestException, Logger } from "@nestjs/common";
 import { PrismaService } from "../prisma/prisma.service";
 import { ConfigService } from "@nestjs/config";
 import { SyncStepsDto } from "./dto/steps.dto";
@@ -140,66 +135,68 @@ export class StepsService {
     const date = new Date(dto.date);
     date.setHours(0, 0, 0, 0);
 
-    // Check if a record already exists for this day
-    const existing = await this.prisma.step.findUnique({
-      where: {
-        userId_date: { userId, date },
-      },
-    });
+    const step = await this.prisma.$transaction(async (tx) => {
+      // Check if a record already exists for this day
+      const existing = await tx.step.findUnique({
+        where: {
+          userId_date: { userId, date },
+        },
+      });
 
-    // Use the higher step count to avoid overlap between multiple sources
-    const effectiveStepCount = existing
-      ? Math.max(existing.stepCount, dto.stepCount)
-      : dto.stepCount;
+      // Use the higher step count to avoid overlap between multiple sources
+      const effectiveStepCount = existing
+        ? Math.max(existing.stepCount, dto.stepCount)
+        : dto.stepCount;
 
-    // Calculate derived values from the winning step count
-    const caloriesBurned = Math.round(
-      effectiveStepCount * this.caloriesPerStep,
-    );
-    const distanceKm = parseFloat(
-      (effectiveStepCount * this.kmPerStep).toFixed(2),
-    );
+      // Calculate derived values from the winning step count
+      const caloriesBurned = Math.round(
+        effectiveStepCount * this.caloriesPerStep,
+      );
+      const distanceKm = parseFloat(
+        (effectiveStepCount * this.kmPerStep).toFixed(2),
+      );
 
-    // Determine which source provided the highest count
-    const effectiveSource =
-      existing && existing.stepCount >= dto.stepCount
-        ? existing.source
-        : dto.source || "manual";
+      // Determine which source provided the highest count
+      const effectiveSource =
+        existing && existing.stepCount >= dto.stepCount
+          ? existing.source
+          : dto.source || "manual";
 
-    // Upsert step record with the highest value
-    const step = await this.prisma.step.upsert({
-      where: {
-        userId_date: { userId, date },
-      },
-      update: {
-        stepCount: effectiveStepCount,
-        caloriesBurned,
-        distanceKm,
-        activeMinutes: Math.max(
-          existing?.activeMinutes || 0,
-          dto.activeMinutes || 0,
-        ),
-        source: effectiveSource,
-        synced: true,
-      },
-      create: {
-        userId,
-        date,
-        stepCount: effectiveStepCount,
-        caloriesBurned,
-        distanceKm,
-        activeMinutes: dto.activeMinutes || 0,
-        source: effectiveSource,
-        synced: true,
-      },
+      // Upsert step record with the highest value
+      return tx.step.upsert({
+        where: {
+          userId_date: { userId, date },
+        },
+        update: {
+          stepCount: effectiveStepCount,
+          caloriesBurned,
+          distanceKm,
+          activeMinutes: Math.max(
+            existing?.activeMinutes || 0,
+            dto.activeMinutes || 0,
+          ),
+          source: effectiveSource,
+          synced: true,
+        },
+        create: {
+          userId,
+          date,
+          stepCount: effectiveStepCount,
+          caloriesBurned,
+          distanceKm,
+          activeMinutes: dto.activeMinutes || 0,
+          source: effectiveSource,
+          synced: true,
+        },
+      });
     });
 
     // Queue background job for streaks, achievements, rewards, corporate leaderboard updates, and analytics
     await this.stepsQueue.add("process-sync", {
       userId,
-      effectiveStepCount,
+      effectiveStepCount: step.stepCount,
       date: date.toISOString(),
-      effectiveSource,
+      effectiveSource: step.source,
     });
 
     return step;
@@ -256,7 +253,9 @@ export class StepsService {
       });
     } catch (error) {
       // Ignore constraint errors from other simultaneous parallel requests that created the data first
-      console.warn("⚠️ Concurrency warning in ensureUserData:", error.message);
+      this.logger.warn(
+        "⚠️ Concurrency warning in ensureUserData: " + error.message,
+      );
     }
   }
 
@@ -454,8 +453,8 @@ export class StepsService {
 
     // Weekly breakdown
     const weeks = [];
-    const currentWeek = { startDate: "", steps: 0, calories: 0 };
-    const weekStart = new Date(startOfMonth);
+    // const currentWeek = { startDate: "", steps: 0, calories: 0 };
+    // const weekStart = new Date(startOfMonth);
 
     for (const step of steps) {
       const stepDate = new Date(step.date);

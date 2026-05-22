@@ -77,6 +77,6 @@ class CompanyNotifier extends StateNotifier<CompanyState> {
 }
 
 // Global Provider
-final companyProvider = StateNotifierProvider<CompanyNotifier, CompanyState>((ref) {
+final companyProvider = StateNotifierProvider.autoDispose<CompanyNotifier, CompanyState>((ref) {
   return CompanyNotifier(ref.watch(companyServiceProvider), ref);
 });

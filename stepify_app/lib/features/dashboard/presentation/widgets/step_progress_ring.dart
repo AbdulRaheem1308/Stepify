@@ -39,7 +39,7 @@ class StepProgressRing extends StatelessWidget {
               Text(
                 'of ${_formatNumber(goal)}',
                 style: TextStyle(
-                  color: Colors.white.withOpacity(0.8),
+                  color: Colors.white.withAlpha(204),
                   fontSize: size * 0.09,
                 ),
               ),
@@ -71,7 +71,7 @@ class _ProgressRingPainter extends CustomPainter {
 
     // Background circle
     final backgroundPaint = Paint()
-      ..color = Colors.white.withOpacity(0.2)
+      ..color = Colors.white.withAlpha(51)
       ..style = PaintingStyle.stroke
       ..strokeWidth = strokeWidth
       ..strokeCap = StrokeCap.round;

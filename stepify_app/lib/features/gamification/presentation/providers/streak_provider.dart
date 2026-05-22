@@ -72,20 +72,16 @@ class StreakNotifier extends StateNotifier<StreakState> {
       // Parse active dates from step history
       final List<DateTime> activeDates = [];
       
-      debugPrint('History response type: ${historyResponse.runtimeType}');
       
       // Handle response - could be { data: [...] } or just [...]
       List? historyList;
       if (historyResponse is List) {
         historyList = historyResponse;
-        debugPrint('History is direct List with ${historyList.length} items');
       } else if (historyResponse is Map && historyResponse['data'] != null) {
         historyList = historyResponse['data'] as List;
-        debugPrint('History is Map.data with ${historyList.length} items');
       }
       
       if (historyList != null && historyList.isNotEmpty) {
-        debugPrint('First entry: ${historyList.first}');
         for (var entry in historyList) {
           final stepCount = entry['stepCount'] ?? 0;
           if (stepCount > 0) {
@@ -102,9 +98,7 @@ class StreakNotifier extends StateNotifier<StreakState> {
             }
           }
         }
-        debugPrint('Parsed ${activeDates.length} active dates');
       } else {
-        debugPrint('No history data found');
       }
 
       state = state.copyWith(
@@ -134,6 +128,6 @@ class StreakNotifier extends StateNotifier<StreakState> {
 
 }
 
-final streakProvider = StateNotifierProvider<StreakNotifier, StreakState>((ref) {
+final streakProvider = StateNotifierProvider.autoDispose<StreakNotifier, StreakState>((ref) {
   return StreakNotifier(ref.watch(apiServiceProvider));
 });

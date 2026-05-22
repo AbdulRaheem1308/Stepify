@@ -115,6 +115,6 @@ class BadgesNotifier extends StateNotifier<BadgesState> {
   // Removed _loadDemoData
 }
 
-final badgesProvider = StateNotifierProvider<BadgesNotifier, BadgesState>((ref) {
+final badgesProvider = StateNotifierProvider.autoDispose<BadgesNotifier, BadgesState>((ref) {
   return BadgesNotifier(ref.watch(apiServiceProvider));
 });

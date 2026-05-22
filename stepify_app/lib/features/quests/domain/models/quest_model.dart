@@ -25,6 +25,27 @@ class QuestStage {
       isCompleted: json['isCompleted'] ?? false,
     );
   }
+
+  @override
+  bool operator ==(Object other) {
+    if (identical(this, other)) return true;
+  
+    return other is QuestStage &&
+      other.id == id &&
+      other.title == title &&
+      other.description == description &&
+      other.targetSteps == targetSteps &&
+      other.isCompleted == isCompleted;
+  }
+
+  @override
+  int get hashCode {
+    return id.hashCode ^
+      title.hashCode ^
+      description.hashCode ^
+      targetSteps.hashCode ^
+      isCompleted.hashCode;
+  }
 }
 
 class Quest {
@@ -111,5 +132,45 @@ class Quest {
      if (val == 'COMPLETED') return QuestStatus.completed;
      if (val == 'LOCKED') return QuestStatus.locked;
      return QuestStatus.available;
+  }
+
+  @override
+  bool operator ==(Object other) {
+    if (identical(this, other)) return true;
+  
+    return other is Quest &&
+      other.id == id &&
+      other.title == title &&
+      other.description == description &&
+      other.imageUrl == imageUrl &&
+      other.difficulty == difficulty &&
+      other.status == status &&
+      _listEquals(other.stages, stages) &&
+      other.currentStageIndex == currentStageIndex &&
+      other.rewardXp == rewardXp &&
+      other.rewardCoins == rewardCoins;
+  }
+
+  @override
+  int get hashCode {
+    return id.hashCode ^
+      title.hashCode ^
+      description.hashCode ^
+      imageUrl.hashCode ^
+      difficulty.hashCode ^
+      status.hashCode ^
+      Object.hashAll(stages) ^
+      currentStageIndex.hashCode ^
+      rewardXp.hashCode ^
+      rewardCoins.hashCode;
+  }
+
+  bool _listEquals(List<QuestStage> a, List<QuestStage> b) {
+    if (identical(a, b)) return true;
+    if (a.length != b.length) return false;
+    for (int i = 0; i < a.length; i++) {
+      if (a[i] != b[i]) return false;
+    }
+    return true;
   }
 }

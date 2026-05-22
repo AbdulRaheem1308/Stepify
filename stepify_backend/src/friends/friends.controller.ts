@@ -8,44 +8,60 @@ import {
   Query,
   UseGuards,
 } from "@nestjs/common";
-import { Request } from "express";
 import { JwtAuthGuard } from "../auth/guards/jwt-auth.guard";
 import { CurrentUser } from "../auth/decorators/current-user.decorator";
 import { FriendsService } from "./friends.service";
+import {
+  FriendRequestDto,
+  AcceptRequestDto,
+  CreateInvitationDto,
+} from "./dto/friend.dto";
+import {
+  ApiTags,
+  ApiOperation,
+  ApiResponse,
+  ApiBearerAuth,
+  ApiQuery,
+} from "@nestjs/swagger";
 
+@ApiTags("Friends")
+@ApiBearerAuth()
 @Controller("friends")
 @UseGuards(JwtAuthGuard)
 export class FriendsController {
   constructor(private readonly friendsService: FriendsService) {}
 
-  /**
-   * GET /friends - Get user's friends list
-   */
   @Get()
+  @ApiOperation({ summary: "Get user's friends list" })
+  @ApiResponse({ status: 200, description: "Returns list of friends" })
   async getFriends(@CurrentUser() user: any) {
     return this.friendsService.getFriends(user.id);
   }
 
-  /**
-   * GET /friends/pending - Get pending friend requests
-   */
   @Get("pending")
+  @ApiOperation({ summary: "Get pending friend requests" })
+  @ApiResponse({ status: 200, description: "Returns list of pending requests" })
   async getPendingRequests(@CurrentUser() user: any) {
     return this.friendsService.getPendingRequests(user.id);
   }
 
-  /**
-   * GET /friends/search - Search users
-   */
   @Get("search")
+  @ApiOperation({ summary: "Search users by name or email" })
+  @ApiQuery({ name: "q", required: true, description: "Search query string" })
+  @ApiResponse({ status: 200, description: "Returns list of matching users" })
   async searchUsers(@CurrentUser() user: any, @Query("q") query: string) {
     return this.friendsService.searchUsers(user.id, query);
   }
 
-  /**
-   * GET /friends/leaderboard - Get mini leaderboard
-   */
   @Get("leaderboard")
+  @ApiOperation({ summary: "Get global or friends mini leaderboard" })
+  @ApiQuery({ name: "type", required: false, enum: ["global", "friends"] })
+  @ApiQuery({
+    name: "timeFrame",
+    required: false,
+    enum: ["daily", "weekly", "monthly", "allTime"],
+  })
+  @ApiResponse({ status: 200, description: "Returns leaderboard entries" })
   async getLeaderboard(
     @CurrentUser() user: any,
     @Query("type") type?: string,
@@ -63,63 +79,62 @@ export class FriendsController {
     return this.friendsService.getMiniLeaderboard(user.id, timeFrame);
   }
 
-  /**
-   * GET /friends/invitations - Get user's invitations
-   */
   @Get("invitations")
+  @ApiOperation({ summary: "Get user's sent invitations" })
+  @ApiResponse({ status: 200, description: "Returns list of sent invitations" })
   async getInvitations(@CurrentUser() user: any) {
     return this.friendsService.getInvitations(user.id);
   }
 
-  /**
-   * POST /friends/request - Send friend request
-   */
   @Post("request")
-  async sendRequest(
-    @CurrentUser() user: any,
-    @Body("friendId") friendId: string,
-  ) {
-    return this.friendsService.sendFriendRequest(user.id, friendId);
+  @ApiOperation({ summary: "Send a friend request" })
+  @ApiResponse({ status: 201, description: "Friend request sent" })
+  @ApiResponse({ status: 409, description: "Request already exists" })
+  async sendRequest(@CurrentUser() user: any, @Body() body: FriendRequestDto) {
+    return this.friendsService.sendFriendRequest(user.id, body.friendId);
   }
 
-  /**
-   * POST /friends/accept - Accept friend request
-   */
   @Post("accept")
+  @ApiOperation({ summary: "Accept a friend request" })
+  @ApiResponse({ status: 201, description: "Friend request accepted" })
+  @ApiResponse({ status: 404, description: "Request not found" })
   async acceptRequest(
     @CurrentUser() user: any,
-    @Body("requesterId") requesterId: string,
+    @Body() body: AcceptRequestDto,
   ) {
-    return this.friendsService.acceptFriendRequest(user.id, requesterId);
+    return this.friendsService.acceptFriendRequest(user.id, body.requesterId);
   }
 
-  /**
-   * POST /friends/boost - Send boost to friend
-   */
   @Post("boost")
+  @ApiOperation({ summary: "Send a daily boost to a friend" })
+  @ApiResponse({ status: 201, description: "Boost sent successfully" })
+  @ApiResponse({ status: 400, description: "You can only boost friends" })
+  @ApiResponse({ status: 409, description: "Boost already sent today" })
   async sendBoost(
     @CurrentUser() user: any,
-    @Body("friendId") friendId: string,
+    @Body() body: FriendRequestDto, // reusing FriendRequestDto as it just needs friendId
   ) {
-    return this.friendsService.sendBoost(user.id, friendId);
+    return this.friendsService.sendBoost(user.id, body.friendId);
   }
 
-  /**
-   * POST /friends/invite - Create invitation
-   */
   @Post("invite")
+  @ApiOperation({ summary: "Create an invitation link" })
+  @ApiResponse({ status: 201, description: "Invitation created" })
   async createInvitation(
     @CurrentUser() user: any,
-    @Body("email") email?: string,
-    @Body("phone") phone?: string,
+    @Body() body: CreateInvitationDto,
   ) {
-    return this.friendsService.createInvitation(user.id, email, phone);
+    return this.friendsService.createInvitation(
+      user.id,
+      body.email,
+      body.phone,
+    );
   }
 
-  /**
-   * DELETE /friends/:id - Remove friend
-   */
   @Delete(":id")
+  @ApiOperation({ summary: "Remove a friend" })
+  @ApiResponse({ status: 200, description: "Friend removed successfully" })
+  @ApiResponse({ status: 404, description: "Friendship not found" })
   async removeFriend(@CurrentUser() user: any, @Param("id") friendId: string) {
     return this.friendsService.removeFriend(user.id, friendId);
   }

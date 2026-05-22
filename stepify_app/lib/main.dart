@@ -44,9 +44,12 @@ void main() {
 
         // Initialize PostHog
         try {
-          final config = PostHogConfig('phc_stepify_placeholder');
-          await Posthog().setup(config);
-          await Posthog().capture(eventName: 'app_opened');
+          final postHogKey = const String.fromEnvironment('POSTHOG_API_KEY', defaultValue: '');
+          if (postHogKey.isNotEmpty) {
+            final config = PostHogConfig(postHogKey);
+            await Posthog().setup(config);
+            await Posthog().capture(eventName: 'app_opened');
+          }
         } catch (e) {
           debugPrint('Failed to initialize PostHog: $e');
         }

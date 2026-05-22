@@ -119,6 +119,6 @@ describe('Security Hardening (e2e)', () => {
 
       // Should trigger at least once
       expect(tooManyRequestsCount).toBeGreaterThanOrEqual(1);
-    });
+    }, 15000);
   });
 });

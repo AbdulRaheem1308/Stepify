@@ -126,7 +126,7 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen>
                         border: Border.all(color: Colors.white, width: 2.5),
                         boxShadow: [
                           BoxShadow(
-                              color: Colors.black.withOpacity(0.25),
+                              color: Colors.black.withValues(alpha: 0.25),
                               blurRadius: 10,
                               offset: const Offset(0, 4)),
                         ],
@@ -150,15 +150,19 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen>
                   Positioned(
                     bottom: 0,
                     right: 0,
-                    child: GestureDetector(
-                      onTap: () => context.push(AppRoutes.editProfile),
-                      child: Container(
-                        padding: const EdgeInsets.all(5),
-                        decoration: const BoxDecoration(
-                            color: AppTheme.accentYellow,
-                            shape: BoxShape.circle),
-                        child: const Icon(Icons.edit,
-                            size: 12, color: AppTheme.primaryDark),
+                    child: Semantics(
+                      label: 'Edit profile photo',
+                      button: true,
+                      child: GestureDetector(
+                        onTap: () => context.push(AppRoutes.editProfile),
+                        child: Container(
+                          padding: const EdgeInsets.all(6),
+                          decoration: const BoxDecoration(
+                              color: AppTheme.accentYellow,
+                              shape: BoxShape.circle),
+                          child: const Icon(Icons.edit,
+                              size: 14, color: AppTheme.primaryDark),
+                        ),
                       ),
                     ),
                   ),
@@ -190,9 +194,14 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen>
                   ],
                 ),
               ),
-              IconButton(
-                onPressed: () => context.push(AppRoutes.settings),
-                icon: const Icon(Icons.settings_outlined, color: Colors.white),
+              Tooltip(
+                message: 'Open settings',
+                child: IconButton(
+                  onPressed: () => context.push(AppRoutes.settings),
+                  icon: const Icon(Icons.settings_outlined, color: Colors.white),
+                  tooltip: 'Open settings',
+                  style: IconButton.styleFrom(minimumSize: const Size(48, 48)),
+                ),
               ),
             ],
           ),
@@ -214,23 +223,28 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen>
   }
 
   Widget _headerStat(String value, String label, IconData icon) {
-    return Column(
-      children: [
-        Row(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            Icon(icon, color: Colors.white70, size: 15),
-            const SizedBox(width: 4),
-            Text(value,
-                style: const TextStyle(
-                    color: Colors.white,
-                    fontWeight: FontWeight.bold,
-                    fontSize: 18)),
-          ],
-        ),
-        Text(label,
-            style: const TextStyle(color: Colors.white60, fontSize: 11)),
-      ],
+    return Semantics(
+      label: '$label: $value',
+      child: Column(
+        children: [
+          Row(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              ExcludeSemantics(
+                child: Icon(icon, color: Colors.white70, size: 15),
+              ),
+              const SizedBox(width: 4),
+              Text(value,
+                  style: const TextStyle(
+                      color: Colors.white,
+                      fontWeight: FontWeight.bold,
+                      fontSize: 18)),
+            ],
+          ),
+          Text(label,
+              style: const TextStyle(color: Colors.white60, fontSize: 11)),
+        ],
+      ),
     );
   }
 
@@ -280,11 +294,11 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen>
     return Container(
       padding: const EdgeInsets.all(20),
       decoration: BoxDecoration(
-        color: Colors.white,
+        color: Theme.of(context).colorScheme.surface,
         borderRadius: BorderRadius.circular(20),
         boxShadow: [
           BoxShadow(
-              color: Colors.black.withOpacity(0.06),
+              color: Colors.black.withValues(alpha: 0.06),
               blurRadius: 14,
               offset: const Offset(0, 5)),
         ],
@@ -297,7 +311,7 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen>
               Container(
                 padding: const EdgeInsets.all(8),
                 decoration: BoxDecoration(
-                  color: AppTheme.primaryGreen.withOpacity(0.1),
+                  color: AppTheme.primaryGreen.withValues(alpha: 0.1),
                   borderRadius: BorderRadius.circular(10),
                 ),
                 child: const Icon(Icons.monitor_weight_outlined,
@@ -437,15 +451,15 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen>
       padding: const EdgeInsets.all(20),
       decoration: BoxDecoration(
         gradient: LinearGradient(
-          colors: [levelColor.withOpacity(0.08), Colors.white],
+          colors: [levelColor.withValues(alpha: 0.08), Theme.of(context).colorScheme.surface],
           begin: Alignment.topLeft,
           end: Alignment.bottomRight,
         ),
         borderRadius: BorderRadius.circular(20),
-        border: Border.all(color: levelColor.withOpacity(0.25)),
+        border: Border.all(color: levelColor.withValues(alpha: 0.25)),
         boxShadow: [
           BoxShadow(
-              color: levelColor.withOpacity(0.12),
+              color: levelColor.withValues(alpha: 0.12),
               blurRadius: 14,
               offset: const Offset(0, 5)),
         ],
@@ -497,7 +511,7 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen>
             child: LinearProgressIndicator(
               value: progress,
               minHeight: 10,
-              backgroundColor: levelColor.withOpacity(0.15),
+              backgroundColor: levelColor.withValues(alpha: 0.15),
               valueColor: AlwaysStoppedAnimation<Color>(levelColor),
             ),
           ).animate().scaleX(begin: 0, duration: 700.ms, curve: Curves.easeOut),
@@ -545,7 +559,7 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen>
         borderRadius: BorderRadius.circular(20),
         boxShadow: [
           BoxShadow(
-              color: Colors.black.withOpacity(0.05),
+              color: Colors.black.withValues(alpha: 0.05),
               blurRadius: 14,
               offset: const Offset(0, 4)),
         ],
@@ -562,7 +576,7 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen>
                 CircularProgressIndicator(
                   value: pct,
                   strokeWidth: 7,
-                  backgroundColor: AppTheme.neutral100,
+                  backgroundColor: Theme.of(context).dividerColor.withValues(alpha: 0.1),
                   valueColor: const AlwaysStoppedAnimation<Color>(
                       AppTheme.primaryGreen),
                 ),
@@ -587,8 +601,8 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen>
                 const SizedBox(height: 4),
                 Text(
                   '${_fmt(todaySteps)} / ${_fmt(goal)} steps',
-                  style: const TextStyle(
-                      fontWeight: FontWeight.bold, fontSize: 16),
+                  style: TextStyle(
+                      fontWeight: FontWeight.bold, fontSize: 16, color: Theme.of(context).textTheme.bodyLarge?.color),
                 ),
                 const SizedBox(height: 4),
                 Text(
@@ -619,11 +633,11 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen>
     return Container(
       padding: const EdgeInsets.all(20),
       decoration: BoxDecoration(
-        color: Colors.white,
+        color: Theme.of(context).colorScheme.surface,
         borderRadius: BorderRadius.circular(20),
         boxShadow: [
           BoxShadow(
-              color: Colors.black.withOpacity(0.05),
+              color: Colors.black.withValues(alpha: 0.05),
               blurRadius: 14,
               offset: const Offset(0, 4)),
         ],
@@ -675,13 +689,13 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen>
         Container(
           padding: const EdgeInsets.all(10),
           decoration: BoxDecoration(
-              color: color.withOpacity(0.1), shape: BoxShape.circle),
+              color: color.withValues(alpha: 0.1), shape: BoxShape.circle),
           child: Icon(icon, color: color, size: 20),
         ),
         const SizedBox(height: 8),
         Text(value,
             style:
-                const TextStyle(fontWeight: FontWeight.bold, fontSize: 17)),
+                TextStyle(fontWeight: FontWeight.bold, fontSize: 17, color: Theme.of(context).textTheme.bodyLarge?.color)),
         Text(label,
             style:
                 const TextStyle(color: AppTheme.neutral500, fontSize: 12)),
@@ -785,7 +799,7 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen>
                           ? [
                               BoxShadow(
                                   color: AppTheme.accentOrange
-                                      .withOpacity(0.35),
+                                      .withValues(alpha: 0.35),
                                   blurRadius: 10,
                                   offset: const Offset(0, 3))
                             ]
@@ -893,13 +907,13 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen>
                   boxShadow: isSelected
                       ? [
                           BoxShadow(
-                              color: AppTheme.primaryGreen.withOpacity(0.3),
+                              color: AppTheme.primaryGreen.withValues(alpha: 0.3),
                               blurRadius: 8,
                               offset: const Offset(0, 3))
                         ]
                       : [
                           BoxShadow(
-                              color: Colors.black.withOpacity(0.04),
+                              color: Colors.black.withValues(alpha: 0.04),
                               blurRadius: 6,
                               offset: const Offset(0, 2))
                         ],
@@ -943,7 +957,7 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen>
           Container(
             padding: const EdgeInsets.all(12),
             decoration: BoxDecoration(
-              color: AppTheme.error.withOpacity(0.08),
+              color: AppTheme.error.withValues(alpha: 0.08),
               borderRadius: BorderRadius.circular(10),
             ),
             child: Text(fitness.error!,
@@ -966,7 +980,7 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen>
                 label: Text(
                     '${act['emoji']} ${act['label']}',
                     style: const TextStyle(fontSize: 12)),
-                backgroundColor: AppTheme.primaryGreen.withOpacity(0.1),
+                backgroundColor: AppTheme.primaryGreen.withValues(alpha: 0.1),
                 deleteIcon: const Icon(Icons.close, size: 14),
                 onDeleted: () =>
                     ref.read(fitnessProvider.notifier).toggleActivity(id),
@@ -1015,7 +1029,7 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen>
         ListTile(
           shape:
               RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
-          tileColor: AppTheme.primaryGreen.withOpacity(0.05),
+          tileColor: AppTheme.primaryGreen.withValues(alpha: 0.05),
           leading: Container(
             padding: const EdgeInsets.all(8),
             decoration: const BoxDecoration(

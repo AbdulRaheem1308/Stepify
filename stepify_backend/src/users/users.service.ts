@@ -3,7 +3,6 @@ import { PrismaService } from "../prisma/prisma.service";
 import { RedisService } from "../redis/redis.service";
 import { CreateUserDto, UpdateUserDto } from "./dto/user.dto";
 import { TransactionType } from "@prisma/client";
-import { randomUUID } from "crypto";
 
 @Injectable()
 export class UsersService {
@@ -151,43 +150,45 @@ export class UsersService {
 
     const REFERRAL_BONUS = 100; // coins
 
-    // Update user with referral info
-    await this.prisma.user.update({
-      where: { id: userId },
-      data: { referredBy: referralCode },
-    });
+    await this.prisma.$transaction(async (tx) => {
+      // Update user with referral info
+      await tx.user.update({
+        where: { id: userId },
+        data: { referredBy: referralCode },
+      });
 
-    // Reward the referrer
-    await this.prisma.user.update({
-      where: { id: referrer.id },
-      data: {
-        referralCount: { increment: 1 },
-        referralCoinsEarned: { increment: REFERRAL_BONUS },
-      },
-    });
+      // Reward the referrer
+      await tx.user.update({
+        where: { id: referrer.id },
+        data: {
+          referralCount: { increment: 1 },
+          referralCoinsEarned: { increment: REFERRAL_BONUS },
+        },
+      });
 
-    // Credit referrer's wallet
-    await this.prisma.wallet.upsert({
-      where: { userId: referrer.id },
-      create: {
-        userId: referrer.id,
-        balance: REFERRAL_BONUS,
-        lifetimePoints: REFERRAL_BONUS,
-      },
-      update: {
-        balance: { increment: REFERRAL_BONUS },
-        lifetimePoints: { increment: REFERRAL_BONUS },
-      },
-    });
+      // Credit referrer's wallet
+      await tx.wallet.upsert({
+        where: { userId: referrer.id },
+        create: {
+          userId: referrer.id,
+          balance: REFERRAL_BONUS,
+          lifetimePoints: REFERRAL_BONUS,
+        },
+        update: {
+          balance: { increment: REFERRAL_BONUS },
+          lifetimePoints: { increment: REFERRAL_BONUS },
+        },
+      });
 
-    // Create transaction for referrer
-    await this.prisma.transaction.create({
-      data: {
-        userId: referrer.id,
-        type: TransactionType.REFERRAL,
-        points: REFERRAL_BONUS,
-        description: `Referral bonus for inviting ${user?.name || "a friend"}`,
-      },
+      // Create transaction for referrer
+      await tx.transaction.create({
+        data: {
+          userId: referrer.id,
+          type: TransactionType.REFERRAL,
+          points: REFERRAL_BONUS,
+          description: `Referral bonus for inviting ${user?.name || "a friend"}`,
+        },
+      });
     });
 
     return { success: true, bonus: REFERRAL_BONUS };
@@ -292,7 +293,7 @@ export class UsersService {
       fitnessLevel: fitnessLevel ?? undefined,
     };
 
-    return (this.prisma.user.update as any)({
+    return this.prisma.user.update({
       where: { id },
       data: updateData,
       include: {
@@ -341,7 +342,7 @@ export class UsersService {
 
     // Compute and persist fitness level
     const fitnessLevel = await this.computeFitnessLevel(id);
-    await (this.prisma.user.update as any)({
+    await this.prisma.user.update({
       where: { id },
       data: { fitnessLevel },
     });
@@ -447,7 +448,8 @@ export class UsersService {
    * Remove sensitive data from user object
    */
   sanitizeUser(user: any) {
-    const { refreshTokens, ...sanitizedUser } = user;
+    // eslint-disable-next-line @typescript-eslint/no-unused-vars
+    const { refreshTokens, fcmToken, ...sanitizedUser } = user as any;
     return sanitizedUser;
   }
   /**
@@ -487,7 +489,8 @@ export class UsersService {
     if (!user) throw new NotFoundException("User not found");
 
     // Sanitize sensitive backend data (like FCM tokens) from export
-    const { fcmToken, ...safeUser } = user;
+    // eslint-disable-next-line @typescript-eslint/no-unused-vars
+    const { refreshTokens, fcmToken, ...safeUser } = user as any;
 
     return {
       exportDate: new Date().toISOString(),
@@ -518,12 +521,12 @@ export class UsersService {
    * Get user settings
    */
   async getSettings(userId: string) {
-    let settings = await (this.prisma as any).userSettings.findUnique({
+    let settings = await this.prisma.userSettings.findUnique({
       where: { userId },
     });
 
     if (!settings) {
-      settings = await (this.prisma as any).userSettings.create({
+      settings = await this.prisma.userSettings.create({
         data: { userId },
       });
     }
@@ -535,9 +538,10 @@ export class UsersService {
    */
   async updateSettings(userId: string, data: any) {
     // Remove id and userId from data if present to avoid errors
+    // eslint-disable-next-line @typescript-eslint/no-unused-vars
     const { id, userId: uid, updatedAt, ...updateData } = data;
 
-    return (this.prisma as any).userSettings.upsert({
+    return this.prisma.userSettings.upsert({
       where: { userId },
       update: updateData,
       create: {

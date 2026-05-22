@@ -1,7 +1,9 @@
+import 'package:cached_network_image/cached_network_image.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 import 'package:flutter_animate/flutter_animate.dart';
+import 'package:stepify_app/l10n/app_localizations.dart';
 
 import '../../../../core/theme/app_theme.dart';
 import '../../../../core/router/app_router.dart';
@@ -138,8 +140,9 @@ class _CompleteProfileScreenState extends ConsumerState<CompleteProfileScreen> {
       }
     } catch (e) {
       if (mounted) {
+        final l10n = AppLocalizations.of(context);
         ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text('Error saving profile: $e')),
+          SnackBar(content: Text(l10n?.errorSavingProfile(e.toString()) ?? 'Error saving profile: $e')),
         );
       }
     } finally {
@@ -151,9 +154,10 @@ class _CompleteProfileScreenState extends ConsumerState<CompleteProfileScreen> {
 
   @override
   Widget build(BuildContext context) {
+    final l10n = AppLocalizations.of(context);
     return Scaffold(
       appBar: AppBar(
-        title: const Text('Complete Profile', style: TextStyle(fontWeight: FontWeight.bold)),
+        title: Text(l10n?.completeProfileTitle ?? 'Complete Profile', style: const TextStyle(fontWeight: FontWeight.bold)),
         centerTitle: true,
         elevation: 0,
       ),
@@ -169,7 +173,7 @@ class _CompleteProfileScreenState extends ConsumerState<CompleteProfileScreen> {
                     crossAxisAlignment: CrossAxisAlignment.stretch,
                     children: [
                       Text(
-                        "Tell us about yourself to personalize your experience.",
+                        l10n?.completeProfileSubtitle ?? "Tell us about yourself to personalize your experience.",
                         textAlign: TextAlign.center,
                         style: Theme.of(context).textTheme.bodyLarge?.copyWith(
                           color: AppTheme.neutral500,
@@ -179,13 +183,15 @@ class _CompleteProfileScreenState extends ConsumerState<CompleteProfileScreen> {
                       const SizedBox(height: 32),
                       
                       // 1. Name Input
-                      _buildLabel('Your Name'),
-                      TextFormField(
+                      _buildLabel(l10n?.yourName ?? 'Your Name'),
+                      Semantics(
+                        label: l10n?.yourName ?? 'Your Name',
+                        child: TextFormField(
                         controller: _nameController,
                         style: const TextStyle(fontSize: 16, fontWeight: FontWeight.bold),
-                        decoration: _buildInputDecoration('e.g. Alex Step', Icons.person_outline),
-                        validator: (v) => v == null || v.length < 2 ? 'Name must be at least 2 chars' : null,
-                      ).animate(delay: 100.ms).fadeIn(),
+                        decoration: _buildInputDecoration(l10n?.nameHint ?? 'e.g. Alex Step', Icons.person_outline),
+                        validator: (v) => v == null || v.length < 2 ? (l10n?.nameTooShort ?? 'Name must be at least 2 chars') : null,
+                      )).animate(delay: 100.ms).fadeIn(),
                       
                       const SizedBox(height: 24),
                       
@@ -196,18 +202,20 @@ class _CompleteProfileScreenState extends ConsumerState<CompleteProfileScreen> {
                             child: Column(
                               crossAxisAlignment: CrossAxisAlignment.start,
                               children: [
-                                _buildLabel('Email'),
-                                TextFormField(
+                                _buildLabel(l10n?.emailLabel ?? 'Email'),
+                                Semantics(
+                                  label: l10n?.emailLabel ?? 'Email',
+                                  child: TextFormField(
                                   controller: _emailController,
                                   readOnly: _isEmailReadOnly,
                                   style: TextStyle(color: _isEmailReadOnly ? AppTheme.neutral500 : AppTheme.neutral900),
-                                  decoration: _buildInputDecoration('email@example.com', Icons.email_outlined, isReadOnly: _isEmailReadOnly),
+                                  decoration: _buildInputDecoration(l10n?.emailHint ?? 'email@example.com', Icons.email_outlined, isReadOnly: _isEmailReadOnly),
                                   validator: (v) {
-                                    if (v == null || v.isEmpty) return 'Required';
-                                    if (!v.contains('@')) return 'Invalid email';
+                                    if (v == null || v.isEmpty) return l10n?.fieldRequired ?? 'Required';
+                                    if (!v.contains('@')) return l10n?.invalidEmail ?? 'Invalid email';
                                     return null;
                                   },
-                                ),
+                                )),
                               ],
                             ),
                           ),
@@ -220,14 +228,16 @@ class _CompleteProfileScreenState extends ConsumerState<CompleteProfileScreen> {
                             child: Column(
                               crossAxisAlignment: CrossAxisAlignment.start,
                               children: [
-                                _buildLabel('Phone'),
-                                TextFormField(
+                                _buildLabel(l10n?.phoneLabel ?? 'Phone'),
+                                Semantics(
+                                  label: l10n?.phoneLabel ?? 'Phone',
+                                  child: TextFormField(
                                   controller: _phoneController,
                                   readOnly: _isPhoneReadOnly,
                                   style: TextStyle(color: _isPhoneReadOnly ? AppTheme.neutral500 : AppTheme.neutral900),
                                   decoration: _buildInputDecoration('+1234567890', Icons.phone_outlined, isReadOnly: _isPhoneReadOnly),
-                                  validator: (v) => v == null || v.isEmpty ? 'Required' : null,
-                                ),
+                                  validator: (v) => v == null || v.isEmpty ? (l10n?.fieldRequired ?? 'Required') : null,
+                                )),
                               ],
                             ),
                           ),
@@ -243,13 +253,15 @@ class _CompleteProfileScreenState extends ConsumerState<CompleteProfileScreen> {
                             child: Column(
                               crossAxisAlignment: CrossAxisAlignment.start,
                               children: [
-                                _buildLabel('Age'),
-                                TextFormField(
+                                _buildLabel(l10n?.ageLabel ?? 'Age'),
+                                Semantics(
+                                  label: l10n?.ageLabel ?? 'Age',
+                                  child: TextFormField(
                                   controller: _ageController,
                                   keyboardType: TextInputType.number,
                                   decoration: _buildInputDecoration('25', null),
-                                  validator: (v) => v!.isEmpty ? 'Required' : null,
-                                ),
+                                  validator: (v) => v!.isEmpty ? (l10n?.fieldRequired ?? 'Required') : null,
+                                )),
                               ],
                             ),
                           ),
@@ -258,13 +270,15 @@ class _CompleteProfileScreenState extends ConsumerState<CompleteProfileScreen> {
                             child: Column(
                               crossAxisAlignment: CrossAxisAlignment.start,
                               children: [
-                                _buildLabel('Weight (kg)'),
-                                TextFormField(
+                                _buildLabel(l10n?.weightLabel ?? 'Weight (kg)'),
+                                Semantics(
+                                  label: l10n?.weightLabel ?? 'Weight (kg)',
+                                  child: TextFormField(
                                   controller: _weightController,
                                   keyboardType: TextInputType.number,
                                   decoration: _buildInputDecoration('70', null),
-                                  validator: (v) => v!.isEmpty ? 'Required' : null,
-                                ),
+                                  validator: (v) => v!.isEmpty ? (l10n?.fieldRequired ?? 'Required') : null,
+                                )),
                               ],
                             ),
                           ),
@@ -273,13 +287,15 @@ class _CompleteProfileScreenState extends ConsumerState<CompleteProfileScreen> {
                             child: Column(
                               crossAxisAlignment: CrossAxisAlignment.start,
                               children: [
-                                _buildLabel('Height (cm)'),
-                                TextFormField(
+                                _buildLabel(l10n?.heightLabel ?? 'Height (cm)'),
+                                Semantics(
+                                  label: l10n?.heightLabel ?? 'Height (cm)',
+                                  child: TextFormField(
                                   controller: _heightController,
                                   keyboardType: TextInputType.number,
                                   decoration: _buildInputDecoration('170', null),
-                                  validator: (v) => v!.isEmpty ? 'Required' : null,
-                                ),
+                                  validator: (v) => v!.isEmpty ? (l10n?.fieldRequired ?? 'Required') : null,
+                                )),
                               ],
                             ),
                           ),
@@ -289,7 +305,7 @@ class _CompleteProfileScreenState extends ConsumerState<CompleteProfileScreen> {
                       const SizedBox(height: 24),
                       
                       // 3. Avatar Carousel
-                      _buildLabel('Choose Avatar'),
+                      _buildLabel(l10n?.chooseAvatar ?? 'Choose Avatar'),
                       SizedBox(
                         height: 80,
                         child: ListView.separated(
@@ -313,7 +329,7 @@ class _CompleteProfileScreenState extends ConsumerState<CompleteProfileScreen> {
                               return Container(
                                 width: 50, height: 50,
                                 decoration: BoxDecoration(
-                                  color: Colors.grey.withOpacity(0.2),
+                                  color: Colors.grey.withAlpha(51),
                                   shape: BoxShape.circle,
                                 ),
                                 child: const Icon(Icons.person, color: Colors.grey),
@@ -341,13 +357,13 @@ class _CompleteProfileScreenState extends ConsumerState<CompleteProfileScreen> {
                                       width: 3,
                                     ),
                                     color: Colors.white,
-                                    boxShadow: isSelected ? [BoxShadow(color: AppTheme.primaryGreen.withOpacity(0.4), blurRadius: 8)] : null,
+                                    boxShadow: isSelected ? [BoxShadow(color: AppTheme.primaryGreen.withAlpha(102), blurRadius: 8)] : null,
                                   ),
                                   child: ClipOval(
-                                    child: Image.network(
+                                    child: CachedNetworkImage(imageUrl: 
                                       avatarUrl,
                                       fit: BoxFit.cover,
-                                      errorBuilder: (_, __, ___) => const Icon(Icons.person),
+                                      errorWidget: (context, url, error) => const Icon(Icons.person, size: 40, color: AppTheme.neutral400),
                                     ),
                                   ),
                                 ),
@@ -363,9 +379,9 @@ class _CompleteProfileScreenState extends ConsumerState<CompleteProfileScreen> {
                       Row(
                         mainAxisAlignment: MainAxisAlignment.spaceBetween,
                         children: [
-                          _buildLabel('Daily Step Goal'),
+                          _buildLabel(l10n?.dailyStepGoal ?? 'Daily Step Goal'),
                           Text(
-                            '${_stepGoal.toInt()} steps',
+                            l10n?.stepsCount(_stepGoal.toInt()) ?? '${_stepGoal.toInt()} steps',
                             style: const TextStyle(
                               color: AppTheme.primaryGreen,
                               fontWeight: FontWeight.bold,
@@ -375,12 +391,15 @@ class _CompleteProfileScreenState extends ConsumerState<CompleteProfileScreen> {
                         ],
                       ),
                       
-                      SliderTheme(
+                      Semantics(
+                        label: 'Daily Step Goal Slider',
+                        value: '${_stepGoal.toInt()} steps',
+                        child: SliderTheme(
                         data: SliderTheme.of(context).copyWith(
                           activeTrackColor: AppTheme.primaryGreen,
                           inactiveTrackColor: AppTheme.neutral200,
                           thumbColor: AppTheme.primaryGreen,
-                          overlayColor: AppTheme.primaryGreen.withOpacity(0.2),
+                          overlayColor: AppTheme.primaryGreen.withAlpha(51),
                           trackHeight: 6,
                         ),
                         child: Slider(
@@ -390,6 +409,7 @@ class _CompleteProfileScreenState extends ConsumerState<CompleteProfileScreen> {
                           divisions: 18,
                           onChanged: (value) => setState(() => _stepGoal = value),
                         ),
+                      ),
                       ).animate(delay: 400.ms).fadeIn(),
                     ],
                   ),
@@ -411,9 +431,9 @@ class _CompleteProfileScreenState extends ConsumerState<CompleteProfileScreen> {
                     ),
                     child: _isLoading 
                         ? const CircularProgressIndicator(color: Colors.white)
-                        : const Text(
-                            "Complete Setup",
-                            style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold, color: Colors.white),
+                        : Text(
+                            l10n?.completeSetupButton ?? "Complete Setup",
+                            style: const TextStyle(fontSize: 16, fontWeight: FontWeight.bold, color: Colors.white),
                           ),
                   ),
                 ),

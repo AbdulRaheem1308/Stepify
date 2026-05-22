@@ -11,6 +11,18 @@ class QuestListScreen extends ConsumerWidget {
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     final state = ref.watch(questsProvider);
+    
+    ref.listen<QuestsState>(questsProvider, (previous, next) {
+      if (next.error != null) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text(next.error!),
+            backgroundColor: AppTheme.error,
+          ),
+        );
+        ref.read(questsProvider.notifier).clearError();
+      }
+    });
 
     return Scaffold(
       appBar: AppBar(
@@ -24,8 +36,8 @@ class QuestListScreen extends ConsumerWidget {
             begin: Alignment.topCenter,
             end: Alignment.bottomCenter,
             colors: [
-              AppTheme.primaryGreen.withOpacity(0.1),
-              AppTheme.neutral50,
+              AppTheme.primaryGreen.withValues(alpha: 0.1),
+              Theme.of(context).scaffoldBackgroundColor,
             ],
           ),
         ),
@@ -36,18 +48,18 @@ class QuestListScreen extends ConsumerWidget {
               padding: const EdgeInsets.only(top: 100, left: 16, right: 16, bottom: 20),
               sliver: SliverList(
                 delegate: SliverChildListDelegate([
-                  const Text(
+                  Text(
                     'Your Journey Awaits',
                     style: TextStyle(
                       fontSize: 28,
                       fontWeight: FontWeight.bold,
-                      color: AppTheme.neutral900,
+                      color: Theme.of(context).textTheme.bodyLarge?.color,
                     ),
                   ),
                   const SizedBox(height: 8),
-                  const Text(
+                  Text(
                     'Complete quests to earn XP and rewards.',
-                    style: TextStyle(color: AppTheme.neutral600),
+                    style: TextStyle(color: Theme.of(context).textTheme.bodyMedium?.color?.withValues(alpha: 0.7)),
                   ),
                   const SizedBox(height: 24),
                 ]),
@@ -139,7 +151,10 @@ class _QuestCard extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return GestureDetector(
+    return Semantics(
+      label: '${quest.title}. Difficulty: ${quest.difficulty.name}. Reward: ${quest.rewardXp} XP. Status: ${isLocked ? 'Locked' : quest.status.name}.',
+      button: !isLocked,
+      child: GestureDetector(
       onTap: isLocked ? null : () => context.push('/quests/${quest.id}', extra: quest),
       child: Container(
         margin: const EdgeInsets.only(bottom: 16),
@@ -150,13 +165,13 @@ class _QuestCard extends StatelessWidget {
             image: NetworkImage(quest.imageUrl),
             fit: BoxFit.cover,
             colorFilter: ColorFilter.mode(
-              Colors.black.withOpacity(isLocked ? 0.7 : 0.3),
+              Colors.black.withValues(alpha: isLocked ? 0.7 : 0.3),
               BlendMode.darken,
             ),
           ),
           boxShadow: [
             BoxShadow(
-              color: Colors.black.withOpacity(0.1),
+              color: Colors.black.withValues(alpha: 0.1),
               blurRadius: 10,
               offset: const Offset(0, 4),
             ),
@@ -172,7 +187,7 @@ class _QuestCard extends StatelessWidget {
                 Container(
                   padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
                   decoration: BoxDecoration(
-                    color: Colors.black.withOpacity(0.6),
+                    color: Colors.black.withValues(alpha: 0.6),
                     borderRadius: BorderRadius.circular(20),
                   ),
                   child: Row(
@@ -220,6 +235,7 @@ class _QuestCard extends StatelessWidget {
           ),
         ),
       ),
+      ),
     );
   }
 }
@@ -256,7 +272,7 @@ class _DifficultyBadge extends StatelessWidget {
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
       decoration: BoxDecoration(
-        color: color.withOpacity(0.8),
+        color: color.withValues(alpha: 0.8),
         borderRadius: BorderRadius.circular(4),
       ),
       child: Text(

@@ -1,6 +1,14 @@
 name: Build Android APK
 
 on:
+  push:
+    branches: [ "main" ]
+    paths:
+      - 'stepify_app/**'
+  pull_request:
+    branches: [ "main" ]
+    paths:
+      - 'stepify_app/**'
   workflow_dispatch:
 
 jobs:

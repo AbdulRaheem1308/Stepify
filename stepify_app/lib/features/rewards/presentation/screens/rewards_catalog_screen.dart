@@ -75,7 +75,7 @@ class _RewardsCatalogScreenState extends ConsumerState<RewardsCatalogScreen>
             width: 80,
             height: 80,
             decoration: BoxDecoration(
-              color: AppTheme.primaryGreen.withOpacity(0.1),
+              color: AppTheme.primaryGreen.withValues(alpha: 0.1),
               shape: BoxShape.circle,
             ),
             child: const Icon(
@@ -107,7 +107,7 @@ class _RewardsCatalogScreenState extends ConsumerState<RewardsCatalogScreen>
           Container(
             padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 12),
             decoration: BoxDecoration(
-              color: AppTheme.accentYellow.withOpacity(0.1),
+              color: AppTheme.accentYellow.withValues(alpha: 0.1),
               borderRadius: BorderRadius.circular(16),
             ),
             child: Row(
@@ -331,7 +331,11 @@ class _RewardsCatalogScreenState extends ConsumerState<RewardsCatalogScreen>
               final category = rewardCategories[index];
               final isSelected = state.selectedCategory == category;
 
-              return GestureDetector(
+              return Semantics(
+                label: 'Category: $category',
+                button: true,
+                selected: isSelected,
+                child: GestureDetector(
                 onTap: () => ref.read(rewardsCatalogProvider.notifier).setCategory(category),
                 child: Container(
                   margin: const EdgeInsets.only(right: 8),
@@ -350,6 +354,7 @@ class _RewardsCatalogScreenState extends ConsumerState<RewardsCatalogScreen>
                     ),
                   ),
                 ),
+              ),
               );
             },
           ),
@@ -412,7 +417,9 @@ class _RewardsCatalogScreenState extends ConsumerState<RewardsCatalogScreen>
   }
 
   Widget _buildMyOfferCard(UserRedemption redemption) {
-    return Container(
+    return Semantics(
+      label: 'Offer: ${redemption.reward.title}. Code: ${redemption.voucherCode ?? 'N/A'}. Status: ${redemption.status}.',
+      child: Container(
       margin: const EdgeInsets.only(bottom: 12),
       padding: const EdgeInsets.all(16),
       decoration: BoxDecoration(
@@ -427,7 +434,7 @@ class _RewardsCatalogScreenState extends ConsumerState<RewardsCatalogScreen>
             width: 56,
             height: 56,
             decoration: BoxDecoration(
-              color: AppTheme.primaryGreen.withOpacity(0.1),
+              color: AppTheme.primaryGreen.withValues(alpha: 0.1),
               borderRadius: BorderRadius.circular(12),
             ),
             child: const Icon(Icons.card_giftcard, color: AppTheme.primaryGreen),
@@ -467,7 +474,7 @@ class _RewardsCatalogScreenState extends ConsumerState<RewardsCatalogScreen>
           Container(
             padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
             decoration: BoxDecoration(
-              color: _getStatusColor(redemption.status).withOpacity(0.1),
+              color: _getStatusColor(redemption.status).withValues(alpha: 0.1),
               borderRadius: BorderRadius.circular(12),
             ),
             child: Text(
@@ -480,6 +487,7 @@ class _RewardsCatalogScreenState extends ConsumerState<RewardsCatalogScreen>
             ),
           ),
         ],
+      ),
       ),
     );
   }

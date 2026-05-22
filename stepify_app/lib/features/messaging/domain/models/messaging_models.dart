@@ -19,13 +19,37 @@ class Message {
 
   factory Message.fromJson(Map<String, dynamic> json) {
     return Message(
-      id: json['id'],
-      conversationId: json['conversationId'],
-      senderId: json['senderId'],
-      content: json['content'],
-      timestamp: DateTime.parse(json['createdAt']),
-      isRead: false,
+      id: json['id'] ?? '',
+      conversationId: json['conversationId'] ?? '',
+      senderId: json['senderId'] ?? '',
+      content: json['content'] ?? '',
+      timestamp: json['createdAt'] != null 
+          ? DateTime.parse(json['createdAt']) 
+          : DateTime.now(),
+      isRead: json['isRead'] ?? false,
     );
+  }
+
+  @override
+  bool operator ==(Object other) {
+    if (identical(this, other)) return true;
+    return other is Message &&
+        other.id == id &&
+        other.conversationId == conversationId &&
+        other.senderId == senderId &&
+        other.content == content &&
+        other.timestamp.isAtSameMomentAs(timestamp) &&
+        other.isRead == isRead;
+  }
+
+  @override
+  int get hashCode {
+    return id.hashCode ^
+        conversationId.hashCode ^
+        senderId.hashCode ^
+        content.hashCode ^
+        timestamp.hashCode ^
+        isRead.hashCode;
   }
 }
 
@@ -43,36 +67,51 @@ class Conversation {
   });
 
   factory Conversation.fromJson(Map<String, dynamic> json) {
-    // Backend returns list of participants. Find the one that is NOT the current user? 
-    // Or backend formats it for us. 
-    // Let's assume the simplified backend response for listed conversations.
-    // Ideally backend should return "otherUser" object directly or we parse participants.
-    // For now, assuming backend 'participants' list.
-    
-    // Quick hack: pick first participant that has a user object
     final participants = (json['participants'] as List?) ?? [];
-    final otherUserJson = participants.isNotEmpty ? participants[0]['user'] : {};
-    
+    final otherUserJson = participants.isNotEmpty && participants[0] is Map
+        ? (participants[0]['user'] as Map?) ?? {}
+        : {};
+
     return Conversation(
-      id: json['id'],
-      otherUser: User.fromJson(otherUserJson),
-      lastMessage: json['messages'] != null && (json['messages'] as List).isNotEmpty 
-          ? Message.fromJson(json['messages'][0]) 
+      id: json['id'] ?? '',
+      otherUser: User.fromJson(Map<String, dynamic>.from(otherUserJson)),
+      lastMessage: json['messages'] != null && (json['messages'] as List).isNotEmpty
+          ? Message.fromJson(Map<String, dynamic>.from(json['messages'][0]))
           : null,
-      unreadCount: 0, // Need backend support for this
+      unreadCount: json['unreadCount'] ?? 0,
     );
+  }
+
+  @override
+  bool operator ==(Object other) {
+    if (identical(this, other)) return true;
+    return other is Conversation &&
+        other.id == id &&
+        other.otherUser == otherUser &&
+        other.lastMessage == lastMessage &&
+        other.unreadCount == unreadCount;
+  }
+
+  @override
+  int get hashCode {
+    return id.hashCode ^
+        otherUser.hashCode ^
+        lastMessage.hashCode ^
+        unreadCount.hashCode;
   }
 }
 
 extension MessageJson on Message {
   static Message fromJson(Map<String, dynamic> json) {
     return Message(
-      id: json['id'],
-      conversationId: json['conversationId'],
-      senderId: json['senderId'],
-      content: json['content'],
-      timestamp: DateTime.parse(json['createdAt']),
-      isRead: false,
+      id: json['id'] ?? '',
+      conversationId: json['conversationId'] ?? '',
+      senderId: json['senderId'] ?? '',
+      content: json['content'] ?? '',
+      timestamp: json['createdAt'] != null 
+          ? DateTime.parse(json['createdAt']) 
+          : DateTime.now(),
+      isRead: json['isRead'] ?? false,
     );
   }
 }

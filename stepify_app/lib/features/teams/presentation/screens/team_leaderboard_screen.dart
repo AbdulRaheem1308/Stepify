@@ -25,12 +25,27 @@ class _TeamLeaderboardScreenState extends ConsumerState<TeamLeaderboardScreen> {
   }
 
   Future<void> _loadLeaderboard() async {
+    if (!mounted) return;
     setState(() => _isLoading = true);
-    final data = await ref.read(teamsProvider.notifier).fetchTeamLeaderboard();
-    setState(() {
-      _leaderboard = data;
-      _isLoading = false;
-    });
+    try {
+      final data = await ref.read(teamsProvider.notifier).fetchTeamLeaderboard();
+      if (mounted) {
+        setState(() {
+          _leaderboard = data;
+          _isLoading = false;
+        });
+      }
+    } catch (e) {
+      if (mounted) {
+        setState(() => _isLoading = false);
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text(e.toString().replaceAll('Exception: ', '')),
+            backgroundColor: AppTheme.error,
+          ),
+        );
+      }
+    }
   }
 
   @override
@@ -192,7 +207,7 @@ class _TeamLeaderboardScreenState extends ConsumerState<TeamLeaderboardScreen> {
             gradient: LinearGradient(
               begin: Alignment.topCenter,
               end: Alignment.bottomCenter,
-              colors: [color, color.withOpacity(0.7)],
+              colors: [color, color.withValues(alpha: 0.7)],
             ),
             borderRadius: const BorderRadius.vertical(top: Radius.circular(8)),
           ),
@@ -219,7 +234,7 @@ class _TeamLeaderboardScreenState extends ConsumerState<TeamLeaderboardScreen> {
         borderRadius: BorderRadius.circular(12),
         boxShadow: [
           BoxShadow(
-            color: Colors.black.withOpacity(0.03),
+            color: Colors.black.withValues(alpha: 0.03),
             blurRadius: 8,
           ),
         ],

@@ -131,7 +131,7 @@ class RewardsCatalogState {
 }
 
 /// Rewards Catalog Provider
-final rewardsCatalogProvider = StateNotifierProvider<RewardsCatalogNotifier, RewardsCatalogState>((ref) {
+final rewardsCatalogProvider = StateNotifierProvider.autoDispose<RewardsCatalogNotifier, RewardsCatalogState>((ref) {
   return RewardsCatalogNotifier(ref.watch(apiServiceProvider));
 });
 

@@ -53,6 +53,18 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
     final l10n = AppLocalizations.of(context)!;
     final settings = ref.watch(settingsProvider);
 
+    ref.listen<AppSettings>(settingsProvider, (previous, next) {
+      if (next.error != null) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text(next.error!),
+            backgroundColor: AppTheme.error,
+          ),
+        );
+        ref.read(settingsProvider.notifier).clearError();
+      }
+    });
+
     return Scaffold(
       appBar: AppBar(
         title: Text(l10n.settings),
@@ -199,7 +211,7 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
                 leading: Container(
                   padding: const EdgeInsets.all(8),
                   decoration: BoxDecoration(
-                    color: AppTheme.error.withOpacity(0.1),
+                    color: AppTheme.error.withValues(alpha: 0.1),
                     borderRadius: BorderRadius.circular(8),
                   ),
                   child: const Icon(Icons.delete_forever_outlined, size: 20, color: AppTheme.error),
@@ -213,10 +225,17 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
 
           // Reset Button
           Center(
-            child: TextButton.icon(
-              onPressed: () => _showResetDialog(context, ref),
-              icon: const Icon(Icons.restore, color: AppTheme.error),
-              label: const Text('Reset to Defaults', style: TextStyle(color: AppTheme.error)),
+            child: Semantics(
+              label: 'Reset all settings to defaults',
+              button: true,
+              child: TextButton.icon(
+                onPressed: () => _showResetDialog(context, ref),
+                icon: const Icon(Icons.restore, color: AppTheme.error),
+                label: const Text('Reset to Defaults', style: TextStyle(color: AppTheme.error)),
+                style: TextButton.styleFrom(
+                  minimumSize: const Size(160, 48),
+                ),
+              ),
             ),
           ),
           const SizedBox(height: 40),
@@ -282,21 +301,31 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
     required bool value,
     required ValueChanged<bool> onChanged,
   }) {
-    return ListTile(
-      leading: Container(
-        padding: const EdgeInsets.all(8),
-        decoration: BoxDecoration(
-          color: AppTheme.neutral100,
-          borderRadius: BorderRadius.circular(8),
+    return Semantics(
+      label: '$title. $subtitle. Currently ${value ? 'enabled' : 'disabled'}.',
+      toggled: value,
+      child: ListTile(
+        leading: Container(
+          padding: const EdgeInsets.all(8),
+          decoration: BoxDecoration(
+            color: Theme.of(context).dividerColor.withValues(alpha: 0.05),
+            borderRadius: BorderRadius.circular(8),
+          ),
+          child: ExcludeSemantics(
+            child: Icon(icon, size: 20, color: Theme.of(context).iconTheme.color ?? AppTheme.neutral600),
+          ),
         ),
-        child: Icon(icon, size: 20, color: AppTheme.neutral600),
-      ),
-      title: Text(title, style: const TextStyle(fontWeight: FontWeight.w500, fontSize: 14)),
-      subtitle: Text(subtitle, style: TextStyle(color: AppTheme.neutral500, fontSize: 12)),
-      trailing: Switch.adaptive(
-        value: value,
-        onChanged: onChanged,
-        activeColor: AppTheme.primaryGreen,
+        title: Text(title, style: const TextStyle(fontWeight: FontWeight.w500, fontSize: 14)),
+        subtitle: Text(subtitle, style: TextStyle(color: AppTheme.neutral500, fontSize: 12)),
+        trailing: ExcludeSemantics(
+          child: Switch.adaptive(
+            value: value,
+            onChanged: onChanged,
+            activeColor: AppTheme.primaryGreen,
+          ),
+        ),
+        onTap: () => onChanged(!value),
+        minVerticalPadding: 12,
       ),
     );
   }
@@ -314,10 +343,10 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
       leading: Container(
         padding: const EdgeInsets.all(8),
         decoration: BoxDecoration(
-          color: AppTheme.neutral100,
+          color: Theme.of(context).dividerColor.withValues(alpha: 0.05),
           borderRadius: BorderRadius.circular(8),
         ),
-        child: const Icon(Icons.language, size: 20, color: AppTheme.neutral600),
+        child: Icon(Icons.language, size: 20, color: Theme.of(context).iconTheme.color ?? AppTheme.neutral600),
       ),
       title: const Text('Language', style: TextStyle(fontWeight: FontWeight.w500, fontSize: 14)),
       subtitle: Text(languages[settings.language] ?? 'English', style: TextStyle(color: AppTheme.neutral500, fontSize: 12)),
@@ -348,18 +377,27 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
     required IconData icon,
     required VoidCallback onTap,
   }) {
-    return ListTile(
-      leading: Container(
-        padding: const EdgeInsets.all(8),
-        decoration: BoxDecoration(
-          color: AppTheme.neutral100,
-          borderRadius: BorderRadius.circular(8),
+    return Semantics(
+      label: title,
+      button: true,
+      child: ListTile(
+        leading: Container(
+          padding: const EdgeInsets.all(8),
+          decoration: BoxDecoration(
+            color: Theme.of(context).dividerColor.withValues(alpha: 0.05),
+            borderRadius: BorderRadius.circular(8),
+          ),
+          child: ExcludeSemantics(
+            child: Icon(icon, size: 20, color: Theme.of(context).iconTheme.color ?? AppTheme.neutral600),
+          ),
         ),
-        child: Icon(icon, size: 20, color: AppTheme.neutral600),
+        title: Text(title, style: const TextStyle(fontWeight: FontWeight.w500, fontSize: 14)),
+        trailing: ExcludeSemantics(
+          child: const Icon(Icons.open_in_new, size: 18, color: AppTheme.neutral400),
+        ),
+        onTap: onTap,
+        minVerticalPadding: 12,
       ),
-      title: Text(title, style: const TextStyle(fontWeight: FontWeight.w500, fontSize: 14)),
-      trailing: const Icon(Icons.open_in_new, size: 18, color: AppTheme.neutral400),
-      onTap: onTap,
     );
   }
 
@@ -441,10 +479,10 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
       leading: Container(
         padding: const EdgeInsets.all(8),
         decoration: BoxDecoration(
-          color: AppTheme.neutral100,
+          color: Theme.of(context).dividerColor.withValues(alpha: 0.05),
           borderRadius: BorderRadius.circular(8),
         ),
-        child: Icon(icon, size: 20, color: AppTheme.neutral600),
+        child: Icon(icon, size: 20, color: Theme.of(context).iconTheme.color ?? AppTheme.neutral600),
       ),
       title: Text(title, style: const TextStyle(fontWeight: FontWeight.w500, fontSize: 14)),
       trailing: DropdownButton<String>(

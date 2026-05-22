@@ -96,6 +96,39 @@ class FitnessState {
     );
   }
 
+  @override
+  bool operator ==(Object other) {
+    if (identical(this, other)) return true;
+    return other is FitnessState &&
+        other.bmi == bmi &&
+        other.bmiCategory == bmiCategory &&
+        other.fitnessLevel == fitnessLevel &&
+        _listEquals(other.activityPreferences, activityPreferences) &&
+        other.dailyStepGoal == dailyStepGoal &&
+        other.isUpdating == isUpdating &&
+        other.error == error;
+  }
+
+  @override
+  int get hashCode {
+    return bmi.hashCode ^
+        bmiCategory.hashCode ^
+        fitnessLevel.hashCode ^
+        Object.hashAll(activityPreferences) ^
+        dailyStepGoal.hashCode ^
+        isUpdating.hashCode ^
+        error.hashCode;
+  }
+
+  bool _listEquals(List<String> a, List<String> b) {
+    if (identical(a, b)) return true;
+    if (a.length != b.length) return false;
+    for (int i = 0; i < a.length; i++) {
+      if (a[i] != b[i]) return false;
+    }
+    return true;
+  }
+
   /// Returns BMI needle position [0..1] clamped to the gauge arc.
   /// Gauge spans BMI 10 → 40 (full arc).
   double get bmiGaugePosition {
@@ -201,12 +234,17 @@ class FitnessNotifier extends StateNotifier<FitnessState> {
     if (bmi < 30.0) return 'Overweight';
     return 'Obese';
   }
+
+  // ---- Clear error --------------------------------------------------------
+  void clearError() {
+    state = state.copyWith(error: null);
+  }
 }
 
 // ---------------------------------------------------------------------------
 // Provider
 // ---------------------------------------------------------------------------
 final fitnessProvider =
-    StateNotifierProvider<FitnessNotifier, FitnessState>((ref) {
+    StateNotifierProvider.autoDispose<FitnessNotifier, FitnessState>((ref) {
   return FitnessNotifier(ref.watch(apiServiceProvider));
 });

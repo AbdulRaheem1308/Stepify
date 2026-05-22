@@ -120,7 +120,7 @@ class ChallengesState {
 }
 
 /// Challenges Provider
-final challengesProvider = StateNotifierProvider<ChallengesNotifier, ChallengesState>((ref) {
+final challengesProvider = StateNotifierProvider.autoDispose<ChallengesNotifier, ChallengesState>((ref) {
   return ChallengesNotifier(ref.watch(apiServiceProvider));
 });
 

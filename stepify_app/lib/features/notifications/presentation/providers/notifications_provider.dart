@@ -23,13 +23,23 @@ class AppNotification {
   });
 
   factory AppNotification.fromJson(Map<String, dynamic> json) {
+    DateTime parsedTimestamp;
+    try {
+      parsedTimestamp = json['createdAt'] != null
+          ? DateTime.parse(json['createdAt'])
+          : DateTime.now();
+    } catch (_) {
+      parsedTimestamp = DateTime.now();
+    }
+
     return AppNotification(
-      id: json['id'] ?? '',
-      type: _parseType(json['type']),
-      title: json['title'] ?? '',
-      description: json['message'] ?? '',
-      timestamp: DateTime.parse(json['createdAt'] ?? DateTime.now().toIso8601String()),
+      id: json['id']?.toString() ?? '',
+      type: _parseType(json['type']?.toString()),
+      title: json['title']?.toString() ?? '',
+      description: (json['message'] ?? json['description'])?.toString() ?? '',
+      timestamp: parsedTimestamp,
       isRead: json['isRead'] ?? false,
+      actionUrl: json['actionUrl']?.toString(),
     );
   }
 
@@ -37,8 +47,10 @@ class AppNotification {
     switch (type) {
       case 'achievement': return NotificationType.achievement;
       case 'steps': return NotificationType.steps;
-      case 'streak_bonus': return NotificationType.reward;
-      case 'referral': return NotificationType.social;
+      case 'streak_bonus':
+      case 'reward': return NotificationType.reward;
+      case 'referral':
+      case 'social': return NotificationType.social;
       case 'challenge': return NotificationType.challenge;
       default: return NotificationType.system;
     }
@@ -55,6 +67,29 @@ class AppNotification {
       actionUrl: actionUrl,
     );
   }
+
+  @override
+  bool operator ==(Object other) =>
+      identical(this, other) ||
+      other is AppNotification &&
+          runtimeType == other.runtimeType &&
+          id == other.id &&
+          type == other.type &&
+          title == other.title &&
+          description == other.description &&
+          timestamp == other.timestamp &&
+          isRead == other.isRead &&
+          actionUrl == other.actionUrl;
+
+  @override
+  int get hashCode =>
+      id.hashCode ^
+      type.hashCode ^
+      title.hashCode ^
+      description.hashCode ^
+      timestamp.hashCode ^
+      isRead.hashCode ^
+      actionUrl.hashCode;
 }
 
 class NotificationsState {
@@ -108,7 +143,11 @@ class NotificationsNotifier extends StateNotifier<NotificationsState> {
       state = state.copyWith(notifications: notifications, isLoading: false);
     } catch (e) {
       // Show empty state on error - no demo data
-      state = state.copyWith(notifications: [], isLoading: false, error: e.toString());
+      state = state.copyWith(
+        notifications: [],
+        isLoading: false,
+        error: ApiError.from(e).message,
+      );
     }
   }
 
@@ -135,9 +174,11 @@ class NotificationsNotifier extends StateNotifier<NotificationsState> {
     );
   }
   
-  // Demo data removed - notifications are fetched from API only
+  void clearError() {
+    state = state.copyWith(error: null);
+  }
 }
 
-final notificationsProvider = StateNotifierProvider<NotificationsNotifier, NotificationsState>((ref) {
+final notificationsProvider = StateNotifierProvider.autoDispose<NotificationsNotifier, NotificationsState>((ref) {
   return NotificationsNotifier(ref.watch(apiServiceProvider));
 });

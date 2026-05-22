@@ -46,9 +46,10 @@ class _FriendsScreenState extends ConsumerState<FriendsScreen> {
   Future<void> _sendBoost(Friend friend) async {
     final success = await ref.read(friendsProvider.notifier).sendBoost(friend.id);
     if (success && mounted) {
+      final l10n = AppLocalizations.of(context)!;
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(
-          content: Text('⚡ Boost sent to ${friend.name}!'),
+          content: Text(l10n.boostSent(friend.name)),
           backgroundColor: AppTheme.accentPurple,
         ),
       );
@@ -83,7 +84,7 @@ class _FriendsScreenState extends ConsumerState<FriendsScreen> {
                   controller: _searchController,
                   onChanged: _onSearchChanged,
                   decoration: InputDecoration(
-                    hintText: 'Search friends or users...',
+                    hintText: l10n.searchFriendsOrUsers,
                     prefixIcon: const Icon(Icons.search),
                     suffixIcon: _isSearching
                         ? IconButton(
@@ -127,7 +128,7 @@ class _FriendsScreenState extends ConsumerState<FriendsScreen> {
                                 onPressed: () async {
                                   await ref.read(friendsProvider.notifier).sendFriendRequest(user.id);
                                   ScaffoldMessenger.of(context).showSnackBar(
-                                    SnackBar(content: Text('Friend request sent to ${user.name}')),
+                                    SnackBar(content: Text(l10n.friendRequestSent(user.name))),
                                   );
                                 },
                                 style: ElevatedButton.styleFrom(
@@ -136,10 +137,10 @@ class _FriendsScreenState extends ConsumerState<FriendsScreen> {
                                   minimumSize: const Size(60, 36), // Compact button
                                   padding: const EdgeInsets.symmetric(horizontal: 16),
                                 ),
-                                child: const Text('Add'),
+                                child: Text(l10n.addFriend),
                               )
                             : Text(
-                                user.friendshipStatus == 'ACCEPTED' ? 'Friends' : 'Pending',
+                                user.friendshipStatus == 'ACCEPTED' ? l10n.statusFriends : l10n.statusPending,
                                 style: Theme.of(context).textTheme.bodySmall,
                               ),
                       );
@@ -161,13 +162,13 @@ class _FriendsScreenState extends ConsumerState<FriendsScreen> {
                         mainAxisAlignment: MainAxisAlignment.spaceBetween,
                         children: [
                           Text(
-                            '🏆 Friend Leaderboard',
+                            l10n.friendLeaderboard,
                             style: Theme.of(context).textTheme.titleMedium?.copyWith(
                               fontWeight: FontWeight.bold,
                             ),
                           ),
                           Text(
-                            'Top 5 Today',
+                            l10n.top5Today,
                             style: Theme.of(context).textTheme.bodySmall,
                           ),
                         ],
@@ -196,13 +197,13 @@ class _FriendsScreenState extends ConsumerState<FriendsScreen> {
                     mainAxisAlignment: MainAxisAlignment.spaceBetween,
                     children: [
                       Text(
-                        'All Friends',
+                        l10n.allFriends,
                         style: Theme.of(context).textTheme.titleMedium?.copyWith(
                           fontWeight: FontWeight.bold,
                         ),
                       ),
                       Text(
-                        '${state.friends.length} friends',
+                        l10n.friendsCount(state.friends.length),
                         style: Theme.of(context).textTheme.bodySmall,
                       ),
                     ],
@@ -218,7 +219,7 @@ class _FriendsScreenState extends ConsumerState<FriendsScreen> {
                     )
                   : state.friends.isEmpty
                       ? SliverFillRemaining(
-                          child: _buildEmptyState(),
+                          child: _buildEmptyState(l10n),
                         )
                       : SliverPadding(
                           padding: const EdgeInsets.symmetric(horizontal: 16),
@@ -243,7 +244,7 @@ class _FriendsScreenState extends ConsumerState<FriendsScreen> {
     );
   }
 
-  Widget _buildEmptyState() {
+  Widget _buildEmptyState(AppLocalizations l10n) {
     return Center(
       child: Column(
         mainAxisAlignment: MainAxisAlignment.center,
@@ -251,7 +252,7 @@ class _FriendsScreenState extends ConsumerState<FriendsScreen> {
           Icon(Icons.people_outline, size: 80, color: Theme.of(context).disabledColor),
           const SizedBox(height: 16),
           Text(
-            'No friends yet',
+            l10n.noFriendsYet,
             style: Theme.of(context).textTheme.titleLarge?.copyWith(
               fontWeight: FontWeight.bold,
               color: Theme.of(context).textTheme.bodyLarge?.color,
@@ -259,14 +260,14 @@ class _FriendsScreenState extends ConsumerState<FriendsScreen> {
           ),
           const SizedBox(height: 8),
           Text(
-            'Search for users or invite friends to join!',
+            l10n.searchOrInviteFriends,
             style: Theme.of(context).textTheme.bodyMedium,
           ),
           const SizedBox(height: 24),
           ElevatedButton.icon(
             onPressed: () => context.push(AppRoutes.referral),
             icon: const Icon(Icons.person_add),
-            label: const Text('Invite Friends'),
+            label: Text(l10n.inviteFriends),
             style: ElevatedButton.styleFrom(
               backgroundColor: AppTheme.primaryGreen,
               foregroundColor: Colors.white,

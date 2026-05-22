@@ -26,16 +26,41 @@ class Offer {
 
   factory Offer.fromJson(Map<String, dynamic> json) {
     return Offer(
-      id: json['id'] ?? '',
-      title: json['title'] ?? '',
-      providerName: json['providerName'] ?? '',
-      imageUrl: json['imageUrl'],
+      id: json['id']?.toString() ?? '',
+      title: json['title']?.toString() ?? '',
+      providerName: json['providerName']?.toString() ?? '',
+      imageUrl: json['imageUrl']?.toString(),
       rewardCoins: json['rewardCoins'] ?? 0,
-      type: _parseOfferType(json['offerType']),
-      description: json['description'] ?? '',
-      actionUrl: json['actionUrl'],
+      type: _parseOfferType(json['offerType']?.toString()),
+      description: json['description']?.toString() ?? '',
+      actionUrl: json['actionUrl']?.toString(),
     );
   }
+
+  @override
+  bool operator ==(Object other) =>
+      identical(this, other) ||
+      other is Offer &&
+          runtimeType == other.runtimeType &&
+          id == other.id &&
+          title == other.title &&
+          providerName == other.providerName &&
+          imageUrl == other.imageUrl &&
+          rewardCoins == other.rewardCoins &&
+          type == other.type &&
+          description == other.description &&
+          actionUrl == other.actionUrl;
+
+  @override
+  int get hashCode =>
+      id.hashCode ^
+      title.hashCode ^
+      providerName.hashCode ^
+      imageUrl.hashCode ^
+      rewardCoins.hashCode ^
+      type.hashCode ^
+      description.hashCode ^
+      actionUrl.hashCode;
 
   static OfferType _parseOfferType(String? type) {
     switch (type) {
@@ -65,14 +90,49 @@ class UserOffer {
   });
 
   factory UserOffer.fromJson(Map<String, dynamic> json) {
+    DateTime parsedStartedAt;
+    try {
+      parsedStartedAt = json['startedAt'] != null
+          ? DateTime.parse(json['startedAt'].toString())
+          : DateTime.now();
+    } catch (_) {
+      parsedStartedAt = DateTime.now();
+    }
+
+    DateTime? parsedCompletedAt;
+    if (json['completedAt'] != null) {
+      try {
+        parsedCompletedAt = DateTime.parse(json['completedAt'].toString());
+      } catch (_) {}
+    }
+
     return UserOffer(
-      id: json['id'] ?? '',
+      id: json['id']?.toString() ?? '',
       offer: Offer.fromJson(json['offer'] ?? {}),
-      status: json['status'] ?? 'STARTED',
-      startedAt: DateTime.parse(json['startedAt'] ?? DateTime.now().toIso8601String()),
-      completedAt: json['completedAt'] != null ? DateTime.parse(json['completedAt']) : null,
+      status: json['status']?.toString() ?? 'STARTED',
+      startedAt: parsedStartedAt,
+      completedAt: parsedCompletedAt,
     );
   }
+
+  @override
+  bool operator ==(Object other) =>
+      identical(this, other) ||
+      other is UserOffer &&
+          runtimeType == other.runtimeType &&
+          id == other.id &&
+          offer == other.offer &&
+          status == other.status &&
+          startedAt == other.startedAt &&
+          completedAt == other.completedAt;
+
+  @override
+  int get hashCode =>
+      id.hashCode ^
+      offer.hashCode ^
+      status.hashCode ^
+      startedAt.hashCode ^
+      completedAt.hashCode;
 }
 
 class OffersState {
@@ -149,7 +209,7 @@ class OffersNotifier extends StateNotifier<OffersState> {
       await _apiService.post('/offers/$offerId/start');
       await loadOffers();
     } catch (e) {
-      // Handle error
+      state = state.copyWith(error: ApiError.from(e).message);
     }
   }
 
@@ -159,13 +219,16 @@ class OffersNotifier extends StateNotifier<OffersState> {
       await loadOffers();
       return response.data['rewarded'] ?? 0;
     } catch (e) {
+      state = state.copyWith(error: ApiError.from(e).message);
       return 0;
     }
   }
-
-  // Removed _loadDemoData
+  
+  void clearError() {
+    state = state.copyWith(error: null);
+  }
 }
 
-final offersProvider = StateNotifierProvider<OffersNotifier, OffersState>((ref) {
+final offersProvider = StateNotifierProvider.autoDispose<OffersNotifier, OffersState>((ref) {
   return OffersNotifier(ref.watch(apiServiceProvider));
 });

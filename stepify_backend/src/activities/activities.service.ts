@@ -1,25 +1,33 @@
-import { Injectable, BadRequestException, Logger } from "@nestjs/common";
+import {
+  Injectable,
+  BadRequestException,
+  Logger,
+  ConflictException,
+} from "@nestjs/common";
 import { PrismaService } from "../prisma/prisma.service";
-import { LogActivityDto } from "./activities.controller";
-import { RewardsService } from "../rewards/rewards.service";
+import { LogActivityDto } from "./dto/log-activity.dto";
+import { GetActivitiesDto } from "./dto/get-activities.dto";
+import { TransactionType } from "@prisma/client";
+import {
+  ACTIVITIES_CONSTANTS,
+  ACTIVITY_SPEED_LIMITS,
+  ACTIVITY_POINT_MULTIPLIERS,
+} from "./constants/activities.constants";
 
 @Injectable()
 export class ActivitiesService {
   private readonly logger = new Logger(ActivitiesService.name);
 
-  constructor(
-    private prisma: PrismaService,
-    private rewardsService: RewardsService,
-  ) {}
+  constructor(private prisma: PrismaService) {}
 
   async logActivity(userId: string, dto: LogActivityDto) {
     // ── Server-Side Anti-Cheat & Speed Constraints ─────────────────────
-    if (dto.durationMinutes > 300) {
+    if (dto.durationMinutes > ACTIVITIES_CONSTANTS.MAX_DURATION_MINUTES) {
       this.logger.warn(
-        `User ${userId} attempted to log ${dto.durationMinutes} min. Max 300 allowed.`,
+        `User ${userId} attempted to log ${dto.durationMinutes} min. Max ${ACTIVITIES_CONSTANTS.MAX_DURATION_MINUTES} allowed.`,
       );
       throw new BadRequestException(
-        "Duration cannot exceed 5 hours per session.",
+        `Duration cannot exceed ${ACTIVITIES_CONSTANTS.MAX_DURATION_MINUTES / 60} hours per session.`,
       );
     }
 
@@ -36,84 +44,127 @@ export class ActivitiesService {
     }
     // ──────────────────────────────────────────────────────────────────
 
-    const multiplier = this.getPointsMultiplier(dto.type);
-    const rawPoints = Math.floor(dto.durationMinutes * multiplier);
-    const pointsEarned = Math.min(rawPoints, 900); // 900 max per session
-
-    // Bypass Prisma strict typings using `any` since schema just changed and dll is locked
-    const activity = await (this.prisma as any).activity.create({
-      data: {
+    // Idempotency / Double-submission check
+    const existingActivity = await this.prisma.activity.findFirst({
+      where: {
         userId,
         type: dto.type,
-        durationMinutes: dto.durationMinutes,
-        distanceKm: dto.distanceKm || 0,
-        caloriesBurned: dto.caloriesBurned,
-        pointsEarned,
         startTime: new Date(dto.startTime),
-        source: dto.source || "manual",
       },
     });
 
-    // Award points to user's wallet using RewardsService (assuming it has addPoints)
-    if (pointsEarned > 0) {
-      // Note: If addPoints doesn't exist on RewardsService, we may need to adjust this.
-      if ((this.rewardsService as any).addPoints) {
-        await (this.rewardsService as any).addPoints(
-          userId,
-          pointsEarned,
-          "ACTIVITY_LOG",
-        );
-      }
+    if (existingActivity) {
+      this.logger.warn(
+        `Idempotency caught duplicate activity log for user ${userId} at ${dto.startTime}`,
+      );
+      throw new ConflictException(
+        "An activity of this type is already logged at the specified start time.",
+      );
     }
 
-    return activity;
+    const multiplier = this.getPointsMultiplier(dto.type);
+    const rawPoints = Math.floor(dto.durationMinutes * multiplier);
+    const pointsEarned = Math.min(
+      rawPoints,
+      ACTIVITIES_CONSTANTS.MAX_POINTS_PER_SESSION,
+    );
+
+    // Atomic Transaction to guarantee data integrity between Activity and Wallet
+    try {
+      const activity = await this.prisma.$transaction(async (tx) => {
+        // 1. Create the activity record
+        const newActivity = await tx.activity.create({
+          data: {
+            userId,
+            type: dto.type,
+            durationMinutes: dto.durationMinutes,
+            distanceKm: dto.distanceKm || 0,
+            caloriesBurned: dto.caloriesBurned,
+            pointsEarned,
+            startTime: new Date(dto.startTime),
+            source: dto.source || "manual",
+          },
+        });
+
+        // 2. Award points atomically
+        if (pointsEarned > 0) {
+          await tx.transaction.create({
+            data: {
+              userId,
+              type: TransactionType.STEPS,
+              points: pointsEarned,
+              description: `Earned ${pointsEarned} points for ${dto.durationMinutes}m of ${dto.type}`,
+            },
+          });
+
+          await tx.wallet.upsert({
+            where: { userId },
+            update: {
+              balance: { increment: pointsEarned },
+              lifetimePoints: { increment: pointsEarned },
+              monthlyXp: { increment: pointsEarned },
+            },
+            create: {
+              userId,
+              balance: pointsEarned,
+              lifetimePoints: pointsEarned,
+              monthlyXp: pointsEarned,
+            },
+          });
+        }
+
+        return newActivity;
+      });
+
+      return activity;
+    } catch (error) {
+      this.logger.error(
+        `Failed to log activity for user ${userId}: ${error.message}`,
+        error.stack,
+      );
+      throw error; // Rethrow to let global filters handle it
+    }
   }
 
-  async getRecentActivities(userId: string) {
-    return (this.prisma as any).activity.findMany({
-      where: { userId },
-      orderBy: { startTime: "desc" },
-      take: 20,
-    });
+  async getRecentActivities(userId: string, query: GetActivitiesDto) {
+    const {
+      page = ACTIVITIES_CONSTANTS.DEFAULT_PAGE,
+      limit = ACTIVITIES_CONSTANTS.DEFAULT_LIMIT,
+    } = query;
+    const skip = (page - 1) * limit;
+
+    const [activities, total] = await Promise.all([
+      this.prisma.activity.findMany({
+        where: { userId },
+        orderBy: { startTime: "desc" },
+        take: limit,
+        skip,
+      }),
+      this.prisma.activity.count({ where: { userId } }),
+    ]);
+
+    return {
+      data: activities,
+      meta: {
+        total,
+        page,
+        limit,
+        totalPages: Math.ceil(total / limit),
+      },
+    };
   }
 
   private getMaxDistanceKm(type: string, minutes: number): number {
-    const t = type.toLowerCase();
-    switch (t) {
-      case "running":
-        return minutes * 0.35; // ~21 km/h elite
-      case "cycling":
-        return minutes * 0.9; // ~54 km/h sprint
-      case "walking":
-        return minutes * 0.12; // ~7.2 km/h fast walk
-      case "hiking":
-        return minutes * 0.1;
-      case "swimming":
-        return minutes * 0.05; // ~3 km/h
-      default:
-        return 999;
-    }
+    const limit =
+      ACTIVITY_SPEED_LIMITS[type as keyof typeof ACTIVITY_SPEED_LIMITS];
+    return limit !== undefined ? minutes * limit : 999;
   }
 
   private getPointsMultiplier(type: string): number {
-    const t = type.toLowerCase();
-    switch (t) {
-      case "running":
-        return 3.0;
-      case "swimming":
-        return 3.0;
-      case "cycling":
-        return 2.5;
-      case "gym":
-        return 2.5;
-      case "walking":
-        return 1.5;
-      case "hiking":
-        return 2.0;
-      case "yoga":
-        return 1.0;
-      default:
-        return 1.0;
-    }
+    const multiplier =
+      ACTIVITY_POINT_MULTIPLIERS[
+        type as keyof typeof ACTIVITY_POINT_MULTIPLIERS
+      ];
+    return multiplier !== undefined ? multiplier : 1.0;
   }
 }

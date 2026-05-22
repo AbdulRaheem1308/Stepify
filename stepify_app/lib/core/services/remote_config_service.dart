@@ -26,7 +26,6 @@ class RemoteConfigService {
       ));
 
       await _remoteConfig!.fetchAndActivate();
-      debugPrint("Remote Config Fetched & Activated");
     } catch (e) {
       debugPrint("Remote Config Init Failed: $e");
     }

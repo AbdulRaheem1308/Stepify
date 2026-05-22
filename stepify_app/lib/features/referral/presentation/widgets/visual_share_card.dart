@@ -12,10 +12,9 @@ class VisualShareCard extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    // Fixed size container for consistent image generation
     return Container(
       width: 400, 
-      height: 500,
+      height: 550, // Increased height to prevent overflow
       decoration: BoxDecoration(
         gradient: const LinearGradient(
           begin: Alignment.topLeft,
@@ -37,7 +36,7 @@ class VisualShareCard extends StatelessWidget {
               height: 200,
               decoration: BoxDecoration(
                 shape: BoxShape.circle,
-                color: Colors.white.withOpacity(0.1),
+                color: Colors.white.withValues(alpha: 0.1),
               ),
             ),
           ),
@@ -49,14 +48,14 @@ class VisualShareCard extends StatelessWidget {
               height: 300,
               decoration: BoxDecoration(
                 shape: BoxShape.circle,
-                color: Colors.white.withOpacity(0.1),
+                color: Colors.white.withValues(alpha: 0.1),
               ),
             ),
           ),
 
           // Content
           Padding(
-            padding: const EdgeInsets.all(32.0),
+            padding: const EdgeInsets.all(24.0),
             child: Column(
               mainAxisAlignment: MainAxisAlignment.center,
               children: [
@@ -68,7 +67,7 @@ class VisualShareCard extends StatelessWidget {
                     shape: BoxShape.circle,
                     boxShadow: [
                       BoxShadow(
-                        color: Colors.black.withOpacity(0.2),
+                        color: Colors.black.withValues(alpha: 0.2),
                         blurRadius: 20,
                         offset: const Offset(0, 10),
                       ),
@@ -81,7 +80,7 @@ class VisualShareCard extends StatelessWidget {
                   ),
                 ),
                 
-                const SizedBox(height: 32),
+                const SizedBox(height: 16),
                 
                 // Title
                 const Text(
@@ -102,7 +101,7 @@ class VisualShareCard extends StatelessWidget {
                   ),
                 ),
                 
-                const SizedBox(height: 12),
+                const SizedBox(height: 8),
                 
                 const Text(
                   'Walk, Track & Earn Rewards',
@@ -113,15 +112,15 @@ class VisualShareCard extends StatelessWidget {
                   ),
                 ),
                 
-                const SizedBox(height: 40),
+                const SizedBox(height: 24),
                 
                 // Invite Code Box
                 Container(
-                  padding: const EdgeInsets.symmetric(horizontal: 32, vertical: 16),
+                  padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 12),
                   decoration: BoxDecoration(
-                    color: Colors.white.withOpacity(0.2),
+                    color: Colors.white.withValues(alpha: 0.2),
                     borderRadius: BorderRadius.circular(20),
-                    border: Border.all(color: Colors.white.withOpacity(0.4), width: 2),
+                    border: Border.all(color: Colors.white.withValues(alpha: 0.4), width: 2),
                   ),
                   child: Column(
                     children: [

@@ -26,10 +26,10 @@ class WeeklyStepsChart extends StatelessWidget {
       decoration: BoxDecoration(
         color: Theme.of(context).cardColor,
         borderRadius: BorderRadius.circular(24),
-        border: Border.all(color: Theme.of(context).dividerColor.withOpacity(0.08)),
+        border: Border.all(color: Theme.of(context).dividerColor.withAlpha(20)),
         boxShadow: [
           BoxShadow(
-            color: Colors.black.withOpacity(isDark ? 0.2 : 0.03),
+            color: Colors.black.withValues(alpha: isDark ? 0.2 : 0.03),
             blurRadius: 12,
             offset: const Offset(0, 6),
           ),
@@ -106,7 +106,7 @@ class WeeklyStepsChart extends StatelessWidget {
                   drawVerticalLine: false,
                   horizontalInterval: maxY / 4,
                   getDrawingHorizontalLine: (value) => FlLine(
-                    color: Theme.of(context).dividerColor.withOpacity(0.2),
+                    color: Theme.of(context).dividerColor.withAlpha(51),
                     strokeWidth: 1,
                     dashArray: [4, 4],
                   ),
@@ -130,7 +130,7 @@ class WeeklyStepsChart extends StatelessWidget {
                                 end: Alignment.topCenter,
                               )
                             : LinearGradient(
-                                colors: [AppTheme.secondaryBlue.withOpacity(0.5), AppTheme.secondaryBlue.withOpacity(0.8)],
+                                colors: [AppTheme.secondaryBlue.withAlpha(128), AppTheme.secondaryBlue.withAlpha(204)],
                                 begin: Alignment.bottomCenter,
                                 end: Alignment.topCenter,
                               ),
@@ -139,7 +139,7 @@ class WeeklyStepsChart extends StatelessWidget {
                         backDrawRodData: BackgroundBarChartRodData(
                           show: true,
                           toY: maxY,
-                          color: isDark ? Colors.white.withOpacity(0.06) : AppTheme.neutral50.withOpacity(0.5),
+                          color: isDark ? Colors.white.withAlpha(15) : AppTheme.neutral50.withAlpha(128),
                         ),
                       ),
                     ],

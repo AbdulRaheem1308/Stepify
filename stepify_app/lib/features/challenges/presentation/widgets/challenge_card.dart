@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_animate/flutter_animate.dart';
 import '../../../../core/theme/app_theme.dart';
+import '../../../../l10n/app_localizations.dart';
 import '../providers/challenges_provider.dart';
 
 class ChallengeCard extends StatelessWidget {
@@ -36,7 +37,7 @@ class ChallengeCard extends StatelessWidget {
           border: Border.all(color: Theme.of(context).dividerColor, width: 1),
           boxShadow: [
             BoxShadow(
-              color: Colors.black.withOpacity(0.04),
+              color: Colors.black.withValues(alpha: 0.04),
               blurRadius: 8,
               offset: const Offset(0, 2),
             ),
@@ -66,7 +67,7 @@ class ChallengeCard extends StatelessWidget {
                             Container(
                               padding: const EdgeInsets.all(6),
                               decoration: BoxDecoration(
-                                color: accentColor.withOpacity(0.12),
+                                color: accentColor.withValues(alpha: 0.12),
                                 borderRadius: BorderRadius.circular(8),
                               ),
                               child: Icon(
@@ -109,7 +110,7 @@ class ChallengeCard extends StatelessWidget {
                         // Stats Row: Steps + Coins + Days
                         Row(
                           children: [
-                            _buildStatChip(Icons.directions_walk, _formatNumber(challenge.stepTarget), 'steps', AppTheme.secondaryBlue),
+                            _buildStatChip(Icons.directions_walk, _formatNumber(challenge.stepTarget), AppLocalizations.of(context)?.steps.toLowerCase() ?? 'steps', AppTheme.secondaryBlue),
                             const SizedBox(width: 10),
                             _buildStatChip(Icons.stars_rounded, '${challenge.rewardCoins}', 'coins', const Color(0xFFD4A017)),
                             const SizedBox(width: 10),
@@ -160,9 +161,9 @@ class ChallengeCard extends StatelessWidget {
                                 padding: const EdgeInsets.symmetric(vertical: 10),
                                 elevation: 0,
                               ),
-                              child: const Text(
-                                'Join Challenge',
-                                style: TextStyle(fontWeight: FontWeight.w600, fontSize: 13),
+                              child: Text(
+                                AppLocalizations.of(context)?.joinChallengeBtn ?? 'Join Challenge',
+                                style: const TextStyle(fontWeight: FontWeight.w600, fontSize: 13),
                               ),
                             ),
                           ),
@@ -173,7 +174,7 @@ class ChallengeCard extends StatelessWidget {
                             children: [
                               Icon(Icons.check_circle, color: AppTheme.success, size: 16),
                               const SizedBox(width: 4),
-                              Text('Completed!', style: TextStyle(color: AppTheme.success, fontWeight: FontWeight.bold, fontSize: 13)),
+                              Text(AppLocalizations.of(context)?.completedStatus ?? 'Completed!', style: const TextStyle(color: AppTheme.success, fontWeight: FontWeight.bold, fontSize: 13)),
                             ],
                           ),
                         ],
@@ -193,7 +194,7 @@ class ChallengeCard extends StatelessWidget {
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
       decoration: BoxDecoration(
-        color: color.withOpacity(0.12),
+        color: color.withValues(alpha: 0.12),
         borderRadius: BorderRadius.circular(4),
       ),
       child: Text(
@@ -212,7 +213,7 @@ class ChallengeCard extends StatelessWidget {
       child: Container(
         padding: const EdgeInsets.symmetric(vertical: 6, horizontal: 8),
         decoration: BoxDecoration(
-          color: color.withOpacity(0.08),
+          color: color.withValues(alpha: 0.08),
           borderRadius: BorderRadius.circular(8),
         ),
         child: Row(

@@ -1,5 +1,7 @@
+import 'package:cached_network_image/cached_network_image.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_animate/flutter_animate.dart';
+import 'package:stepify_app/l10n/app_localizations.dart';
 import '../../../../core/theme/app_theme.dart';
 import '../providers/friends_provider.dart';
 
@@ -18,6 +20,7 @@ class FriendCard extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final l10n = AppLocalizations.of(context)!;
     return GestureDetector(
       onTap: onTap,
       child: Container(
@@ -29,7 +32,7 @@ class FriendCard extends StatelessWidget {
           border: Border.all(color: Theme.of(context).dividerColor),
           boxShadow: [
             BoxShadow(
-              color: Colors.black.withOpacity(0.05),
+              color: Colors.black.withValues(alpha: 0.05),
               blurRadius: 6,
               offset: const Offset(0, 2),
             ),
@@ -52,7 +55,7 @@ class FriendCard extends StatelessWidget {
                   child: Center(
                     child: friend.avatarUrl != null
                         ? ClipOval(
-                            child: Image.network(
+                            child: CachedNetworkImage(imageUrl: 
                               friend.avatarUrl!,
                               width: 46,
                               height: 46,
@@ -134,7 +137,7 @@ class FriendCard extends StatelessWidget {
                       Icon(Icons.directions_walk, size: 16, color: AppTheme.primaryGreen),
                       const SizedBox(width: 4),
                       Text(
-                        '${_formatNumber(friend.dailyStepCount)} steps today',
+                        l10n.stepsToday(_formatNumber(friend.dailyStepCount)),
                         style: Theme.of(context).textTheme.bodySmall,
                       ),
                     ],
@@ -150,7 +153,7 @@ class FriendCard extends StatelessWidget {
                 padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
                 decoration: BoxDecoration(
                   color: friend.boostSentToday
-                      ? Theme.of(context).disabledColor.withOpacity(0.2)
+                      ? Theme.of(context).disabledColor.withValues(alpha: 0.2)
                       : AppTheme.accentPurple,
                   borderRadius: BorderRadius.circular(AppTheme.defaultRadius),
                 ),
@@ -164,7 +167,7 @@ class FriendCard extends StatelessWidget {
                     ),
                     const SizedBox(width: 4),
                       Text(
-                        friend.boostSentToday ? 'Sent' : 'Boost',
+                        friend.boostSentToday ? l10n.boostSentStatus : l10n.boostAction,
                         style: TextStyle(
                           color: friend.boostSentToday ? Theme.of(context).disabledColor : Colors.white,
                           fontWeight: FontWeight.bold,

@@ -1,3 +1,7 @@
+// Start OpenTelemetry SDK first
+import { otelSDK } from "./tracing";
+otelSDK.start();
+
 import { NestFactory, HttpAdapterHost } from "@nestjs/core";
 import { ValidationPipe } from "@nestjs/common";
 import { AppModule } from "./app.module";
@@ -18,11 +22,16 @@ Sentry.init({
   tracesSampleRate: 1.0,
 });
 
+import { Logger } from "@nestjs/common";
+
 async function bootstrap() {
   // Strip console logs in production for security and performance
   if (process.env.NODE_ENV === "production") {
+    // eslint-disable-next-line no-console
     console.log = function () {};
+    // eslint-disable-next-line no-console
     console.debug = function () {};
+    // eslint-disable-next-line no-console
     console.info = function () {};
   }
 
@@ -48,9 +57,12 @@ async function bootstrap() {
     logger: winstonLogger,
   });
 
+  const { I18nService } = await import("nestjs-i18n");
+  const i18nService = app.get(I18nService);
+
   // Global Sentry Exception Filter
   const { httpAdapter } = app.get(HttpAdapterHost);
-  app.useGlobalFilters(new SentryExceptionFilter(httpAdapter));
+  app.useGlobalFilters(new SentryExceptionFilter(httpAdapter, i18nService));
 
   // Global prefix for all routes
   app.setGlobalPrefix("api/v1");
@@ -67,7 +79,10 @@ async function bootstrap() {
   ];
 
   app.enableCors({
-    origin: (origin: string, callback: (err: Error | null, allow?: boolean) => void) => {
+    origin: (
+      origin: string,
+      callback: (err: Error | null, allow?: boolean) => void,
+    ) => {
       // Allow requests with no origin (like mobile apps) or specific allowed web origins
       if (!origin || allowedOrigins.includes(origin)) {
         callback(null, true);
@@ -105,9 +120,9 @@ async function bootstrap() {
   const port = process.env.PORT || 3000;
   await app.listen(port, "0.0.0.0");
 
-  console.log(`🚀 Stepify API running on: http://localhost:${port}`);
-  console.log(`📚 API Base URL: http://localhost:${port}/api/v1`);
-  console.log(`📖 Swagger API Docs: http://localhost:${port}/api/docs`);
+  Logger.log(`🚀 Stepify API running on: http://localhost:${port}`);
+  Logger.log(`📚 API Base URL: http://localhost:${port}/api/v1`);
+  Logger.log(`📖 Swagger API Docs: http://localhost:${port}/api/docs`);
 }
 
 bootstrap();

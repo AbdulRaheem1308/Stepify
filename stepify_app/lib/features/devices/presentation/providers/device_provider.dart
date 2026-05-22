@@ -215,8 +215,7 @@ class DeviceNotifier extends StateNotifier<DeviceState> {
       });
       await loadDevices();
     } catch (e) {
-      // Handle error
-      state = state.copyWith(error: e.toString());
+      state = state.copyWith(error: ApiError.from(e).message);
     }
   }
 
@@ -225,7 +224,7 @@ class DeviceNotifier extends StateNotifier<DeviceState> {
       await _apiService.delete('/devices/$id');
       await loadDevices();
     } catch (e) {
-      // Handle error
+      state = state.copyWith(error: ApiError.from(e).message);
     }
   }
 }

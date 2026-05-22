@@ -39,6 +39,18 @@ class _TeamsScreenState extends ConsumerState<TeamsScreen>
 
   @override
   Widget build(BuildContext context) {
+    ref.listen(teamsProvider, (previous, next) {
+      if (next.error != null) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text(next.error!),
+            backgroundColor: AppTheme.error,
+          ),
+        );
+        ref.read(teamsProvider.notifier).clearError();
+      }
+    });
+
     final state = ref.watch(teamsProvider);
 
     return Scaffold(

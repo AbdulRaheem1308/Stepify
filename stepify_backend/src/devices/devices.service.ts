@@ -1,9 +1,10 @@
 import { Injectable } from "@nestjs/common";
 import { PrismaService } from "../prisma/prisma.service";
+import { AddDeviceDto } from "./dto/device.dto";
 
 @Injectable()
 export class DevicesService {
-  constructor(private prisma: PrismaService) {}
+  constructor(private readonly prisma: PrismaService) {}
 
   // Get user's connected devices (Screen 15)
   async getUserDevices(userId: string) {
@@ -14,10 +15,7 @@ export class DevicesService {
   }
 
   // Add a new device
-  async addDevice(
-    userId: string,
-    data: { name: string; type: any; identifier?: string },
-  ) {
+  async addDevice(userId: string, data: AddDeviceDto) {
     return this.prisma.device.create({
       data: {
         userId,

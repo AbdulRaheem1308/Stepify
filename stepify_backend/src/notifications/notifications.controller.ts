@@ -11,24 +11,26 @@ import {
 } from "@nestjs/common";
 import { NotificationsService } from "./notifications.service";
 import { JwtAuthGuard } from "../auth/guards/jwt-auth.guard";
-import { IsString, IsNotEmpty } from "class-validator";
+import { RegisterFcmTokenDto } from "./dto/notification.dto";
+import {
+  ApiTags,
+  ApiOperation,
+  ApiResponse,
+  ApiBearerAuth,
+  ApiQuery,
+} from "@nestjs/swagger";
 
-class RegisterFcmTokenDto {
-  @IsString()
-  @IsNotEmpty()
-  token: string;
-}
-
+@ApiTags("Notifications")
+@ApiBearerAuth()
 @Controller("notifications")
 @UseGuards(JwtAuthGuard)
 export class NotificationsController {
   constructor(private readonly notificationsService: NotificationsService) {}
 
-  /**
-   * GET /api/v1/notifications
-   * Get in-app notifications for the current user
-   */
   @Get()
+  @ApiOperation({ summary: "Get in-app notifications for the current user" })
+  @ApiQuery({ name: "limit", required: false, type: Number })
+  @ApiResponse({ status: 200, description: "Returns list of notifications" })
   async getNotifications(@Request() req: any, @Query("limit") limit?: number) {
     return this.notificationsService.getUserNotifications(
       req.user.sub,
@@ -36,12 +38,9 @@ export class NotificationsController {
     );
   }
 
-  /**
-   * POST /api/v1/notifications/fcm-token
-   * Register or update FCM push token for the current device session.
-   * Call this on app launch, after login, and on FCM token refresh.
-   */
   @Post("fcm-token")
+  @ApiOperation({ summary: "Register or update FCM push token" })
+  @ApiResponse({ status: 201, description: "FCM token registered" })
   async registerFcmToken(
     @Request() req: any,
     @Body() dto: RegisterFcmTokenDto,
@@ -49,20 +48,16 @@ export class NotificationsController {
     return this.notificationsService.registerFcmToken(req.user.sub, dto.token);
   }
 
-  /**
-   * POST /api/v1/notifications/:id/read
-   * Mark a specific notification as read (pass 'all' to mark all)
-   */
   @Post(":id/read")
+  @ApiOperation({ summary: "Mark a notification as read" })
+  @ApiResponse({ status: 201, description: "Notification marked as read" })
   async markAsRead(@Request() req: any, @Param("id") id: string) {
     return this.notificationsService.markAsRead(req.user.sub, id);
   }
 
-  /**
-   * DELETE /api/v1/notifications/:id
-   * Delete a specific notification
-   */
   @Delete(":id")
+  @ApiOperation({ summary: "Delete a notification" })
+  @ApiResponse({ status: 200, description: "Notification deleted" })
   async deleteNotification(@Request() req: any, @Param("id") id: string) {
     return this.notificationsService.deleteNotification(req.user.sub, id);
   }

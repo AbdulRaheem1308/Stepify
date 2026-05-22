@@ -29,6 +29,15 @@ class _ReferralLeaderboardScreenState extends ConsumerState<ReferralLeaderboardS
     final currentUser = StorageService.getUser();
     final currentUserId = currentUser?['id'] ?? '';
 
+    ref.listen(referralProvider, (previous, next) {
+      if (next.error != null) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text(next.error!), backgroundColor: Colors.red),
+        );
+        ref.read(referralProvider.notifier).clearError();
+      }
+    });
+
     // Use leaderboard from provider
     final topReferrers = state.leaderboard;
 
@@ -98,16 +107,16 @@ class _ReferralLeaderboardScreenState extends ConsumerState<ReferralLeaderboardS
        child: Column(
          mainAxisAlignment: MainAxisAlignment.center,
          children: [
-           Icon(Icons.emoji_events_outlined, size: 64, color: AppTheme.neutral300),
+           Icon(Icons.emoji_events_outlined, size: 64, color: Theme.of(context).iconTheme.color?.withValues(alpha: 0.3)),
            const SizedBox(height: 16),
            Text(
              'No referrers yet',
-             style: Theme.of(context).textTheme.titleLarge?.copyWith(fontWeight: FontWeight.bold, color: AppTheme.neutral500),
+             style: Theme.of(context).textTheme.titleLarge?.copyWith(fontWeight: FontWeight.bold),
            ),
            const SizedBox(height: 8),
            Text(
              'Be the first to join the leaderboard!',
-             style: Theme.of(context).textTheme.bodyMedium?.copyWith(color: AppTheme.neutral400),
+             style: Theme.of(context).textTheme.bodyMedium?.copyWith(color: Theme.of(context).textTheme.bodySmall?.color),
            ),
          ],
        ),
@@ -120,21 +129,21 @@ class _ReferralLeaderboardScreenState extends ConsumerState<ReferralLeaderboardS
       child: Row(
         mainAxisAlignment: MainAxisAlignment.spaceEvenly,
         children: [
-           _buildStatBox('Rank', stats.rank > 0 ? '#${stats.rank}' : '-'),
-           Container(width: 1, height: 40, color: AppTheme.neutral200),
-           _buildStatBox('Invites', '${stats.invitesAccepted}'),
-           Container(width: 1, height: 40, color: AppTheme.neutral200),
-           _buildStatBox('Earned', '${stats.coinsEarned}'),
+           _buildStatBox(context, 'Rank', stats.rank > 0 ? '#${stats.rank}' : '-'),
+           Container(width: 1, height: 40, color: Theme.of(context).dividerColor),
+           _buildStatBox(context, 'Invites', '${stats.invitesAccepted}'),
+           Container(width: 1, height: 40, color: Theme.of(context).dividerColor),
+           _buildStatBox(context, 'Earned', '${stats.coinsEarned}'),
         ],
       ),
     ).animate().fadeIn().slideY();
   }
   
-  Widget _buildStatBox(String label, String value) {
+  Widget _buildStatBox(BuildContext context, String label, String value) {
     return Column(
       children: [
-        Text(label, style: const TextStyle(color: AppTheme.neutral500, fontSize: 13)),
-        Text(value, style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 20, color: AppTheme.primaryDark)),
+        Text(label, style: TextStyle(color: Theme.of(context).textTheme.bodySmall?.color, fontSize: 13)),
+        Text(value, style: TextStyle(fontWeight: FontWeight.bold, fontSize: 20, color: Theme.of(context).textTheme.bodyLarge?.color)),
       ],
     );
   }
@@ -145,7 +154,7 @@ class _ReferralLeaderboardScreenState extends ConsumerState<ReferralLeaderboardS
 
     return ListTile(
       contentPadding: const EdgeInsets.symmetric(vertical: 8),
-      tileColor: isMe ? AppTheme.primaryGreen.withOpacity(0.05) : null,
+      tileColor: isMe ? AppTheme.primaryGreen.withValues(alpha: 0.05) : null,
       shape: isMe ? RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)) : null,
       leading: SizedBox(
         width: 40,
@@ -159,8 +168,8 @@ class _ReferralLeaderboardScreenState extends ConsumerState<ReferralLeaderboardS
         children: [
           CircleAvatar(
              radius: 16,
-             backgroundColor: AppTheme.neutral200, 
-             child: Text(user.name.isNotEmpty ? user.name[0] : '?', style: const TextStyle(fontSize: 12, color: AppTheme.neutral600)),
+             backgroundColor: Theme.of(context).dividerColor, 
+             child: Text(user.name.isNotEmpty ? user.name[0] : '?', style: TextStyle(fontSize: 12, color: Theme.of(context).textTheme.bodyMedium?.color)),
           ),
           const SizedBox(width: 12),
           Text(user.name, style: TextStyle(fontWeight: isMe ? FontWeight.bold : FontWeight.w500)),
@@ -168,7 +177,7 @@ class _ReferralLeaderboardScreenState extends ConsumerState<ReferralLeaderboardS
             const SizedBox(width: 8),
             Container(
               padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
-              decoration: BoxDecoration(color: AppTheme.neutral200, borderRadius: BorderRadius.circular(4)),
+              decoration: BoxDecoration(color: Theme.of(context).dividerColor, borderRadius: BorderRadius.circular(4)),
               child: const Text('You', style: TextStyle(fontSize: 10)),
             ),
           ]
@@ -186,7 +195,7 @@ class _ReferralLeaderboardScreenState extends ConsumerState<ReferralLeaderboardS
               Text('$earnedCoins', style: const TextStyle(fontWeight: FontWeight.bold)),
             ],
           ),
-          Text('${user.referrals} active', style: const TextStyle(fontSize: 11, color: AppTheme.neutral400)),
+          Text('${user.referrals} active', style: TextStyle(fontSize: 11, color: Theme.of(context).textTheme.bodySmall?.color)),
         ],
       ),
     ).animate().fadeIn(delay: (30 * rank).ms);

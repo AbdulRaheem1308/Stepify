@@ -8,22 +8,26 @@ class MessagingState {
   final List<Conversation> conversations;
   final Map<String, List<Message>> messages; // conversationId -> messages
   final bool isLoading;
+  final String? error;
 
   MessagingState({
     this.conversations = const [],
     this.messages = const {},
     this.isLoading = false,
+    this.error,
   });
 
   MessagingState copyWith({
     List<Conversation>? conversations,
     Map<String, List<Message>>? messages,
     bool? isLoading,
+    String? error,
   }) {
     return MessagingState(
       conversations: conversations ?? this.conversations,
       messages: messages ?? this.messages,
       isLoading: isLoading ?? this.isLoading,
+      error: error,
     );
   }
 }
@@ -33,19 +37,19 @@ class MessagingNotifier extends StateNotifier<MessagingState> {
   final String? _userId;
 
   MessagingNotifier(this._service, this._userId) : super(MessagingState()) {
-    _loadConversations();
+    loadConversations();
   }
 
-  Future<void> _loadConversations() async {
+  Future<void> loadConversations() async {
     if (_userId == null) return;
     state = state.copyWith(isLoading: true);
     try {
-      final conversations = await _service.getConversations(_userId);
+      final conversations = await _service.getConversations();
       // Also pre-load messages for active convs if needed, or lazy load
       // For now just load convs
-      state = state.copyWith(isLoading: false, conversations: conversations);
+      state = state.copyWith(isLoading: false, conversations: conversations, error: null);
     } catch (e) {
-      state = state.copyWith(isLoading: false);
+      state = state.copyWith(isLoading: false, error: ApiError.from(e).message);
     }
   }
 
@@ -56,17 +60,18 @@ class MessagingNotifier extends StateNotifier<MessagingState> {
         messages: {
            ...state.messages,
            conversationId: messages
-        }
+        },
+        error: null,
       );
     } catch (e) {
-      print("Failed to load messages: $e");
+      state = state.copyWith(error: ApiError.from(e).message);
     }
   }
 
   Future<void> sendMessage(String conversationId, String content) async {
     if (_userId == null) return;
     try {
-      final newMessage = await _service.sendMessage(conversationId, _userId, content);
+      final newMessage = await _service.sendMessage(conversationId, content);
       
       final currentMsgs = state.messages[conversationId] ?? [];
       
@@ -78,18 +83,18 @@ class MessagingNotifier extends StateNotifier<MessagingState> {
       );
       
       // Ideally refresh conv list to update last message
-      _loadConversations();
+      loadConversations();
     } catch (e) {
-      print('Failed to send message: $e');
+      state = state.copyWith(error: ApiError.from(e).message);
     }
+  }
+
+  void clearError() {
+    state = state.copyWith(error: null);
   }
 }
 
-final messagingServiceProvider = Provider<MessagingService>((ref) {
-  return MessagingService(ref.watch(apiServiceProvider));
-});
-
-final messagingProvider = StateNotifierProvider<MessagingNotifier, MessagingState>((ref) {
+final messagingProvider = StateNotifierProvider.autoDispose<MessagingNotifier, MessagingState>((ref) {
   final user = ref.watch(currentUserProvider);
   return MessagingNotifier(ref.watch(messagingServiceProvider), user?.id);
 });

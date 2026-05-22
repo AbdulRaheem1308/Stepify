@@ -1,3 +1,4 @@
+import 'package:cached_network_image/cached_network_image.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
@@ -15,6 +16,19 @@ class QuestDetailScreen extends ConsumerWidget {
   Widget build(BuildContext context, WidgetRef ref) {
     // Find quest in state to ensure fresh data
     final state = ref.watch(questsProvider);
+    
+    ref.listen<QuestsState>(questsProvider, (previous, next) {
+      if (next.error != null) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text(next.error!),
+            backgroundColor: AppTheme.error,
+          ),
+        );
+        ref.read(questsProvider.notifier).clearError();
+      }
+    });
+
     final quest = state.quests.firstWhere(
       (q) => q.id == questId,
       orElse: () => initialQuest!, // Fallback to passed object if not found (or crash if neither)
@@ -49,7 +63,7 @@ class QuestDetailScreen extends ConsumerWidget {
               background: Stack(
                 fit: StackFit.expand,
                 children: [
-                  Image.network(
+                  CachedNetworkImage(imageUrl: 
                     quest.imageUrl,
                     fit: BoxFit.cover,
                   ),
@@ -59,10 +73,10 @@ class QuestDetailScreen extends ConsumerWidget {
                         begin: Alignment.topCenter,
                         end: Alignment.bottomCenter,
                         colors: [
-                          Colors.black.withOpacity(0.6), // Protection for top back button/status bar
+                          Colors.black.withValues(alpha: 0.6), // Protection for top back button/status bar
                           Colors.transparent,
                           Colors.transparent,
-                          Colors.black.withOpacity(0.7), // Protection for title
+                          Colors.black.withValues(alpha: 0.7), // Protection for title
                         ],
                         stops: const [0.0, 0.25, 0.6, 1.0],
                       ),
@@ -93,7 +107,7 @@ class QuestDetailScreen extends ConsumerWidget {
                 const SizedBox(height: 8),
                 Text(
                   quest.description,
-                  style: const TextStyle(fontSize: 16, color: AppTheme.neutral600, height: 1.5),
+                  style: TextStyle(fontSize: 16, color: Theme.of(context).textTheme.bodyMedium?.color?.withValues(alpha: 0.7), height: 1.5),
                 ),
                 const SizedBox(height: 32),
                  const Text(
@@ -178,7 +192,9 @@ class _StageTimelineTile extends StatelessWidget {
         break;
     }
 
-    return IntrinsicHeight(
+    return Semantics(
+      label: '${stage.title}. ${status == _StageStatus.completed ? "Completed" : status == _StageStatus.current ? "Current" : "Locked"}. Target: ${stage.targetSteps} steps.',
+      child: IntrinsicHeight(
       child: Row(
         crossAxisAlignment: CrossAxisAlignment.stretch,
         children: [
@@ -206,7 +222,7 @@ class _StageTimelineTile extends StatelessWidget {
               padding: const EdgeInsets.only(bottom: 24.0),
               child: Card(
                 elevation: status == _StageStatus.current ? 4 : 0,
-                color: status == _StageStatus.current ? Colors.white : AppTheme.neutral50,
+                color: status == _StageStatus.current ? Theme.of(context).colorScheme.surface : Theme.of(context).cardColor,
                 shape: RoundedRectangleBorder(
                   borderRadius: BorderRadius.circular(12),
                   side: status == _StageStatus.current 
@@ -223,13 +239,13 @@ class _StageTimelineTile extends StatelessWidget {
                         style: TextStyle(
                           fontWeight: FontWeight.bold,
                           fontSize: 16,
-                          color: status == _StageStatus.locked ? AppTheme.neutral500 : AppTheme.neutral900,
+                          color: status == _StageStatus.locked ? Theme.of(context).textTheme.bodyLarge?.color?.withValues(alpha: 0.5) : Theme.of(context).textTheme.bodyLarge?.color,
                         ),
                       ),
                       const SizedBox(height: 4),
                       Text(
                         stage.description,
-                        style: const TextStyle(color: AppTheme.neutral600),
+                        style: TextStyle(color: Theme.of(context).textTheme.bodyMedium?.color?.withValues(alpha: 0.7)),
                       ),
                       const SizedBox(height: 8),
                       Text(
@@ -248,6 +264,7 @@ class _StageTimelineTile extends StatelessWidget {
           ),
         ],
       ),
+    ),
     );
   }
 }
@@ -264,7 +281,7 @@ class _InfoChip extends StatelessWidget {
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
       decoration: BoxDecoration(
-        color: color.withOpacity(0.1),
+        color: color.withValues(alpha: 0.1),
         borderRadius: BorderRadius.circular(20),
       ),
       child: Row(

@@ -35,10 +35,10 @@ class CalorieTrendChart extends StatelessWidget {
       decoration: BoxDecoration(
         color: Theme.of(context).cardColor,
         borderRadius: BorderRadius.circular(24),
-        border: Border.all(color: Theme.of(context).dividerColor.withOpacity(0.08)),
+        border: Border.all(color: Theme.of(context).dividerColor.withAlpha(20)),
         boxShadow: [
           BoxShadow(
-            color: Colors.black.withOpacity(isDark ? 0.2 : 0.03),
+            color: Colors.black.withValues(alpha: isDark ? 0.2 : 0.03),
             blurRadius: 12,
             offset: const Offset(0, 6),
           ),
@@ -52,7 +52,7 @@ class CalorieTrendChart extends StatelessWidget {
               Container(
                 padding: const EdgeInsets.all(8),
                 decoration: BoxDecoration(
-                  color: const Color(0xFFFF6B6B).withOpacity(0.1),
+                  color: const Color(0xFFFF6B6B).withAlpha(26),
                   borderRadius: BorderRadius.circular(8),
                 ),
                 child: const Icon(Icons.local_fire_department_rounded, color: Color(0xFFFF6B6B), size: 20),
@@ -153,7 +153,7 @@ class CalorieTrendChart extends StatelessWidget {
                         backDrawRodData: BackgroundBarChartRodData(
                           show: true,
                           toY: maxY,
-                          color: isDark ? Colors.white.withOpacity(0.06) : AppTheme.neutral50.withOpacity(0.5),
+                          color: isDark ? Colors.white.withAlpha(15) : AppTheme.neutral50.withAlpha(128),
                         ),
                       ),
                     ],

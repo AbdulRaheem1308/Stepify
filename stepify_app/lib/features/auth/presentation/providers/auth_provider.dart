@@ -38,7 +38,10 @@ class AuthState {
 
 /// Auth Provider
 final authProvider = StateNotifierProvider<AuthNotifier, AuthState>((ref) {
-  return AuthNotifier(ref.watch(apiServiceProvider));
+  return AuthNotifier(
+    ref.watch(apiServiceProvider),
+    ref.watch(socialAuthServiceProvider),
+  );
 });
 
 /// Current User Provider
@@ -50,8 +53,9 @@ final currentUserProvider = Provider<User?>((ref) {
 
 class AuthNotifier extends StateNotifier<AuthState> {
   final ApiService _apiService;
+  final SocialAuthService _socialAuth;
 
-  AuthNotifier(this._apiService) : super(AuthState()) {
+  AuthNotifier(this._apiService, this._socialAuth) : super(AuthState()) {
     _apiService.onAuthFailure = logout;
     _checkAuth();
   }
@@ -134,17 +138,9 @@ class AuthNotifier extends StateNotifier<AuthState> {
     state = state.copyWith(isLoading: true, error: null);
 
     try {
-      debugPrint('🟢 [loginWithSocial] Starting API call to backend...');
-      debugPrint('🟢 [loginWithSocial] Endpoint: /auth/social-login');
-      final stopwatch = Stopwatch()..start();
-      
       final response = await _apiService.post('/auth/social-login', data: {
         'idToken': idToken,
       });
-
-      stopwatch.stop();
-      debugPrint('🟢 [loginWithSocial] API call completed in ${stopwatch.elapsedMilliseconds}ms');
-      debugPrint('🟢 [loginWithSocial] Response status: ${response.statusCode}');
 
       final data = response.data;
       
@@ -165,7 +161,6 @@ class AuthNotifier extends StateNotifier<AuthState> {
       
       return data['isNewUser'] == true;
     } catch (e) {
-      debugPrint('🔴 [loginWithSocial] API call failed: $e');
       final error = ApiError.from(e);
       state = state.copyWith(isLoading: false, error: error.message);
       throw error;
@@ -187,11 +182,10 @@ class AuthNotifier extends StateNotifier<AuthState> {
 
     // Sign out from social logins (Google Sign-In SDK & Firebase Auth)
     try {
-      final socialAuth = SocialAuthService();
-      await socialAuth.signOut();
+      await _socialAuth.signOut();
     } catch (e) {
-      // Ignore social sign out errors
-      print('Social Sign-out error: $e');
+      // Avoid printing directly in production, but capture if logging system exists
+      debugPrint('Social Sign-out error: $e');
     }
     
     await StorageService.clearTokens();

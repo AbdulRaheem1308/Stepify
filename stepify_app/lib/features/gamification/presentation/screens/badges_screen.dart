@@ -32,14 +32,14 @@ class BadgesScreen extends ConsumerWidget {
       body: Column(
         children: [
           // Filter Tabs
-          _buildFilterTabs(context, ref, state.activeFilter),
+          _buildFilterTabs(context, ref, state.activeFilter, l10n),
           
           const SizedBox(height: 16),
           
           // Badge Grid
           Expanded(
             child: filteredBadges.isEmpty
-                ? _buildEmptyState()
+                ? _buildEmptyState(l10n)
                 : GridView.builder(
                     padding: const EdgeInsets.all(16),
                     gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
@@ -51,7 +51,7 @@ class BadgesScreen extends ConsumerWidget {
                     itemCount: filteredBadges.length,
                     itemBuilder: (context, index) {
                       final badge = filteredBadges[index];
-                      return _buildBadgeItem(context, badge, index);
+                      return _buildBadgeItem(context, badge, index, l10n);
                     },
                   ),
           ),
@@ -60,18 +60,26 @@ class BadgesScreen extends ConsumerWidget {
     );
   }
 
-  Widget _buildFilterTabs(BuildContext context, WidgetRef ref, String activeFilter) {
-    final filters = ['All', 'Unlocked', 'Locked', 'Fitness', 'Social'];
+  Widget _buildFilterTabs(BuildContext context, WidgetRef ref, String activeFilter, AppLocalizations l10n) {
+    final filters = [
+      {'key': 'All', 'label': l10n.filterAll},
+      {'key': 'Unlocked', 'label': l10n.filterUnlocked},
+      {'key': 'Locked', 'label': l10n.filterLocked},
+      {'key': 'Fitness', 'label': l10n.categoryFitness},
+      {'key': 'Social', 'label': l10n.categorySocial},
+    ];
     return SingleChildScrollView(
       scrollDirection: Axis.horizontal,
       padding: const EdgeInsets.symmetric(horizontal: 16),
       child: Row(
-        children: filters.map((filter) {
+        children: filters.map((filterObj) {
+          final filter = filterObj['key']!;
+          final label = filterObj['label']!;
           final isSelected = activeFilter == filter;
           return Padding(
             padding: const EdgeInsets.only(right: 12),
             child: ChoiceChip(
-              label: Text(filter),
+              label: Text(label),
               selected: isSelected,
               onSelected: (selected) {
                 if (selected) {
@@ -79,7 +87,7 @@ class BadgesScreen extends ConsumerWidget {
                 }
               },
               backgroundColor: AppTheme.neutral100,
-              selectedColor: AppTheme.primaryGreen.withOpacity(0.2),
+              selectedColor: AppTheme.primaryGreen.withValues(alpha: 0.2),
               labelStyle: TextStyle(
                 color: isSelected ? AppTheme.primaryGreen : AppTheme.neutral600,
                 fontWeight: isSelected ? FontWeight.bold : FontWeight.normal,
@@ -98,12 +106,15 @@ class BadgesScreen extends ConsumerWidget {
     );
   }
 
-  Widget _buildBadgeItem(BuildContext context, Badge badge, int index) {
+  Widget _buildBadgeItem(BuildContext context, Badge badge, int index, AppLocalizations l10n) {
     final isLocked = badge.status == BadgeStatus.locked;
     final inProgress = badge.status == BadgeStatus.inProgress;
 
-    return GestureDetector(
-      onTap: () => _showBadgeDetails(context, badge),
+    return Semantics(
+      label: '${badge.title}. ${isLocked ? l10n.filterLocked : inProgress ? l10n.statusInProgress : l10n.filterUnlocked}.',
+      button: true,
+      child: GestureDetector(
+      onTap: () => _showBadgeDetails(context, badge, l10n),
       child: Column(
         children: [
           Expanded(
@@ -118,7 +129,7 @@ class BadgesScreen extends ConsumerWidget {
                         ? []
                         : [
                             BoxShadow(
-                              color: _getCategoryColor(badge.category).withOpacity(0.4),
+                              color: _getCategoryColor(badge.category).withValues(alpha: 0.4),
                               blurRadius: 12,
                               offset: const Offset(0, 4),
                             ),
@@ -126,7 +137,7 @@ class BadgesScreen extends ConsumerWidget {
                   ),
                   child: CircleAvatar(
                     radius: 40,
-                    backgroundColor: isLocked ? AppTheme.neutral200 : Colors.white,
+                    backgroundColor: isLocked ? AppTheme.neutral200 : Theme.of(context).colorScheme.surface,
                     child: isLocked
                         ? const Icon(Icons.lock, size: 32, color: AppTheme.neutral400)
                         : Icon(
@@ -166,18 +177,19 @@ class BadgesScreen extends ConsumerWidget {
           const SizedBox(height: 4),
         ],
       ),
+      ),
     );
   }
   
-  void _showBadgeDetails(BuildContext context, Badge badge) {
+  void _showBadgeDetails(BuildContext context, Badge badge, AppLocalizations l10n) {
     showModalBottomSheet(
       context: context,
       backgroundColor: Colors.transparent,
       builder: (context) => Container(
         padding: const EdgeInsets.all(24),
-        decoration: const BoxDecoration(
-          color: Colors.white,
-          borderRadius: BorderRadius.vertical(top: Radius.circular(24)),
+        decoration: BoxDecoration(
+          color: Theme.of(context).colorScheme.surface,
+          borderRadius: const BorderRadius.vertical(top: Radius.circular(24)),
         ),
         child: Column(
           mainAxisSize: MainAxisSize.min,
@@ -198,11 +210,11 @@ class BadgesScreen extends ConsumerWidget {
             Container(
               padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 4),
               decoration: BoxDecoration(
-                color: _getStatusColor(badge.status).withOpacity(0.1),
+                color: _getStatusColor(badge.status).withValues(alpha: 0.1),
                 borderRadius: BorderRadius.circular(12),
               ),
               child: Text(
-                _getStatusLabel(badge.status),
+                _getStatusLabel(badge.status, l10n),
                 style: TextStyle(
                   color: _getStatusColor(badge.status),
                   fontWeight: FontWeight.bold,
@@ -220,7 +232,7 @@ class BadgesScreen extends ConsumerWidget {
               const SizedBox(height: 16),
               const Divider(),
               const SizedBox(height: 16),
-              const Text('Unlock Criteria:'),
+              Text(l10n.unlockCriteria),
               Text(
                 badge.unlockCriteria,
                 style: const TextStyle(fontWeight: FontWeight.w500),
@@ -233,7 +245,7 @@ class BadgesScreen extends ConsumerWidget {
                    color: AppTheme.accentYellow,
                  ),
                  const SizedBox(height: 4),
-                 Text('${(badge.progress * 100).toInt()}% completed'),
+                 Text(l10n.percentCompleted((badge.progress * 100).toInt())),
               ]
             ],
             const SizedBox(height: 24),
@@ -241,10 +253,10 @@ class BadgesScreen extends ConsumerWidget {
               ElevatedButton.icon(
                 onPressed: () { 
                    Navigator.pop(context);
-                   ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Sharing badge...')));
+                   ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(l10n.sharingBadge)));
                 },
                 icon: const Icon(Icons.share),
-                label: const Text('Share Achievement'),
+                label: Text(l10n.shareAchievement),
               ),
             const SizedBox(height: 16),
           ],
@@ -253,14 +265,14 @@ class BadgesScreen extends ConsumerWidget {
     );
   }
 
-  Widget _buildEmptyState() {
+  Widget _buildEmptyState(AppLocalizations l10n) {
     return Center(
       child: Column(
         mainAxisAlignment: MainAxisAlignment.center,
         children: [
           const Icon(Icons.stars, size: 64, color: AppTheme.neutral300),
           const SizedBox(height: 16),
-          const Text('No badges found', style: TextStyle(color: AppTheme.neutral500)),
+          Text(l10n.noBadgesFound, style: const TextStyle(color: AppTheme.neutral500)),
         ],
       ),
     );
@@ -292,11 +304,11 @@ class BadgesScreen extends ConsumerWidget {
     }
   }
   
-  String _getStatusLabel(BadgeStatus status) {
+  String _getStatusLabel(BadgeStatus status, AppLocalizations l10n) {
     switch (status) {
-      case BadgeStatus.unlocked: return 'Unlocked';
-      case BadgeStatus.inProgress: return 'In Progress';
-      case BadgeStatus.locked: return 'Locked';
+      case BadgeStatus.unlocked: return l10n.filterUnlocked;
+      case BadgeStatus.inProgress: return l10n.statusInProgress;
+      case BadgeStatus.locked: return l10n.filterLocked;
     }
   }
 }

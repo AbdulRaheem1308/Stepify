@@ -50,13 +50,13 @@ class CommunityScreen extends ConsumerWidget {
                       Text(state.error!),
                       TextButton(
                         onPressed: () => ref.read(communityProvider.notifier).loadFeed(),
-                        child: const Text('Retry'),
+                        child: Text(l10n.retry),
                       )
                     ],
                   ),
                 )
               : state.posts.isEmpty
-                  ? _buildEmptyState()
+                  ? _buildEmptyState(l10n)
               : RefreshIndicator(
                   onRefresh: () => ref.read(communityProvider.notifier).loadFeed(),
                   child: ListView.builder(
@@ -78,23 +78,23 @@ class CommunityScreen extends ConsumerWidget {
                 ),
       floatingActionButton: FloatingActionButton.extended(
         onPressed: () => _showCreatePostDialog(context, ref),
-        label: const Text('Share Milestone'),
+        label: Text(l10n.shareMilestone),
         icon: const Icon(Icons.add),
         backgroundColor: AppTheme.primaryGreen,
       ),
     );
   }
 
-  Widget _buildEmptyState() {
+  Widget _buildEmptyState(AppLocalizations l10n) {
     return Center(
       child: Column(
         mainAxisAlignment: MainAxisAlignment.center,
         children: [
           Icon(Icons.people_outline, size: 80, color: AppTheme.neutral300),
           const SizedBox(height: 16),
-          Text('No posts yet', style: TextStyle(fontSize: 18, color: AppTheme.neutral500)),
+          Text(l10n.noPostsYet, style: TextStyle(fontSize: 18, color: AppTheme.neutral500)),
           const SizedBox(height: 8),
-          Text('Be the first to share!', style: TextStyle(color: AppTheme.neutral400)),
+          Text(l10n.beFirstToShare, style: TextStyle(color: AppTheme.neutral400)),
         ],
       ),
     );
@@ -105,17 +105,17 @@ class CommunityScreen extends ConsumerWidget {
     showDialog(
       context: context,
       builder: (ctx) => AlertDialog(
-        title: const Text('Share with Community'),
+        title: Text(AppLocalizations.of(context)?.shareWithCommunity ?? 'Share with Community'),
         content: TextField(
           controller: controller,
           maxLines: 3,
-          decoration: const InputDecoration(
-            hintText: 'What would you like to share?',
-            border: OutlineInputBorder(),
+          decoration: InputDecoration(
+            hintText: AppLocalizations.of(context)?.whatToShare ?? 'What would you like to share?',
+            border: const OutlineInputBorder(),
           ),
         ),
         actions: [
-          TextButton(onPressed: () => Navigator.pop(ctx), child: const Text('Cancel')),
+          TextButton(onPressed: () => Navigator.pop(ctx), child: Text(AppLocalizations.of(context)?.cancel ?? 'Cancel')),
           ElevatedButton(
             onPressed: () {
               if (controller.text.isNotEmpty) {
@@ -123,7 +123,7 @@ class CommunityScreen extends ConsumerWidget {
                 Navigator.pop(ctx);
               }
             },
-            child: const Text('Post'),
+            child: Text(AppLocalizations.of(context)?.postBtn ?? 'Post'),
           ),
         ],
       ),
@@ -147,7 +147,7 @@ class CommunityScreen extends ConsumerWidget {
             children: [
               CircleAvatar(
                 radius: 20,
-                backgroundColor: AppTheme.primaryGreen.withOpacity(0.2),
+                backgroundColor: AppTheme.primaryGreen.withValues(alpha: 0.2),
                 child: Text(
                   post.displayAvatar,
                   style: TextStyle(fontWeight: FontWeight.bold, color: AppTheme.primaryGreen),
@@ -181,7 +181,7 @@ class CommunityScreen extends ConsumerWidget {
             width: double.infinity,
             decoration: BoxDecoration(
               gradient: LinearGradient(
-                colors: [AppTheme.primaryGreen.withOpacity(0.1), AppTheme.secondaryBlue.withOpacity(0.1)],
+                colors: [AppTheme.primaryGreen.withValues(alpha: 0.1), AppTheme.secondaryBlue.withValues(alpha: 0.1)],
                 begin: Alignment.topLeft,
                 end: Alignment.bottomRight,
               ),
@@ -191,7 +191,7 @@ class CommunityScreen extends ConsumerWidget {
               child: Icon(
                 _getTypeIcon(post.type),
                 size: 48,
-                color: AppTheme.primaryGreen.withOpacity(0.5),
+                color: AppTheme.primaryGreen.withValues(alpha: 0.5),
               ),
             ),
           ),
@@ -200,14 +200,29 @@ class CommunityScreen extends ConsumerWidget {
           // Actions
           Row(
             children: [
-              InkWell(
+              Semantics(
+                label: AppLocalizations.of(context)?.likePostSemantics ?? 'Like post',
+                button: true,
+                child: InkWell(
                 onTap: () => ref.read(communityProvider.notifier).reactToPost(post.id),
                 child: _buildActionButton(Icons.thumb_up_alt_outlined, '${post.likes}'),
+                ),
               ),
               const SizedBox(width: 24),
-              _buildActionButton(Icons.comment_outlined, '${post.comments}'),
+              Semantics(
+                label: AppLocalizations.of(context)?.commentPostSemantics ?? 'Comment on post',
+                button: true,
+                child: InkWell(
+                  onTap: () {}, // To be implemented
+                  child: _buildActionButton(Icons.comment_outlined, '${post.comments}'),
+                ),
+              ),
               const Spacer(),
-              IconButton(onPressed: () {}, icon: const Icon(Icons.share_outlined, color: AppTheme.neutral500)),
+              Semantics(
+                label: AppLocalizations.of(context)?.sharePostSemantics ?? 'Share post',
+                button: true,
+                child: IconButton(onPressed: () {}, icon: const Icon(Icons.share_outlined, color: AppTheme.neutral500)),
+              ),
             ],
           ),
         ],

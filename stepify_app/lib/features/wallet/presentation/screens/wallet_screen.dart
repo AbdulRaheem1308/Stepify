@@ -1,11 +1,12 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_animate/flutter_animate.dart';
+import 'package:intl/intl.dart';
 
 import '../../../../core/theme/app_theme.dart';
 import '../providers/wallet_provider.dart';
 
-/// My Wallet Screen (Screen 6)
+/// My Wallet Screen
 class WalletScreen extends ConsumerStatefulWidget {
   const WalletScreen({super.key});
 
@@ -16,16 +17,28 @@ class WalletScreen extends ConsumerStatefulWidget {
 class _WalletScreenState extends ConsumerState<WalletScreen>
     with SingleTickerProviderStateMixin {
   late TabController _tabController;
-  final List<String> _filters = ['ALL', 'EARNED', 'REDEEMED'];
+
+  static const List<String> _filters = [
+    TransactionFilter.all,
+    TransactionFilter.earned,
+    TransactionFilter.redeemed,
+  ];
+
+  static const List<String> _filterLabels = ['All', 'Earned', 'Redeemed'];
+
+  // Cache previous balance for smooth counter animation
+  int _previousBalance = 0;
 
   @override
   void initState() {
     super.initState();
-    _tabController = TabController(length: 3, vsync: this);
+    _tabController = TabController(length: _filters.length, vsync: this);
     _tabController.addListener(_onTabChanged);
-    
+
     Future.microtask(() {
-      ref.read(walletProvider.notifier).fetchWalletData();
+      if (mounted) {
+        ref.read(walletProvider.notifier).fetchWalletData();
+      }
     });
   }
 
@@ -44,26 +57,51 @@ class _WalletScreenState extends ConsumerState<WalletScreen>
 
   @override
   Widget build(BuildContext context) {
-    final state = ref.watch(walletProvider);
+    final walletState = ref.watch(walletProvider);
+
+    // Show error via SnackBar reactively
+    ref.listen<WalletState>(walletProvider, (previous, next) {
+      if (next.error != null && next.error != previous?.error) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text(next.error!),
+            backgroundColor: AppTheme.error,
+            behavior: SnackBarBehavior.floating,
+            action: SnackBarAction(
+              label: 'Retry',
+              textColor: Colors.white,
+              onPressed: () {
+                ref.read(walletProvider.notifier).fetchWalletData();
+              },
+            ),
+          ),
+        );
+        ref.read(walletProvider.notifier).clearError();
+      }
+    });
 
     return Scaffold(
       body: RefreshIndicator(
         onRefresh: () => ref.read(walletProvider.notifier).fetchWalletData(),
         child: CustomScrollView(
+          physics: const AlwaysScrollableScrollPhysics(),
           slivers: [
-            // Custom App Bar with Balance
+            // ── App Bar with Balance ──
             SliverAppBar(
               expandedHeight: 200,
               pinned: true,
               backgroundColor: AppTheme.primaryGreen,
               flexibleSpace: FlexibleSpaceBar(
-                background: _buildBalanceBanner(state),
+                background: _buildBalanceBanner(walletState),
               ),
-              title: const Text('My Wallet'),
+              title: const Text(
+                'My Wallet',
+                style: TextStyle(color: Colors.white),
+              ),
               centerTitle: true,
             ),
 
-            // Filter Tabs
+            // ── Filter Tabs ──
             SliverPersistentHeader(
               pinned: true,
               delegate: _TabBarDelegate(
@@ -73,55 +111,66 @@ class _WalletScreenState extends ConsumerState<WalletScreen>
                   unselectedLabelColor: AppTheme.neutral500,
                   indicatorColor: AppTheme.primaryGreen,
                   indicatorWeight: 3,
-                  tabs: const [
-                    Tab(text: 'All'),
-                    Tab(text: 'Earned'),
-                    Tab(text: 'Redeemed'),
-                  ],
+                  tabs: _filterLabels
+                      .map((label) => Tab(text: label))
+                      .toList(),
                 ),
               ),
             ),
 
-            // Stats Summary
+            // ── Stats Summary ──
             SliverToBoxAdapter(
-              child: _buildStatsSummary(state),
+              child: _buildStatsSummary(walletState),
             ),
 
-            // Transaction List
-            state.isLoading
-                ? const SliverFillRemaining(
-                    child: Center(child: CircularProgressIndicator()),
-                  )
-                : state.filteredTransactions.isEmpty
-                    ? SliverFillRemaining(
-                        child: _buildEmptyState(),
-                      )
-                    : SliverPadding(
-                        padding: const EdgeInsets.fromLTRB(16, 0, 16, 16),
-                        sliver: SliverList(
-                          delegate: SliverChildBuilderDelegate(
-                            (context, index) {
-                              final tx = state.filteredTransactions[index];
-                              return _buildTransactionCard(tx, index);
-                            },
-                            childCount: state.filteredTransactions.length,
-                          ),
-                        ),
-                      ),
+            // ── Transaction List / Loading / Empty ──
+            if (walletState.isLoading)
+              const SliverFillRemaining(
+                child: Center(
+                  child: CircularProgressIndicator(
+                    semanticsLabel: 'Loading transactions',
+                  ),
+                ),
+              )
+            else if (walletState.filteredTransactions.isEmpty)
+              SliverFillRemaining(
+                child: _buildEmptyState(walletState.selectedFilter),
+              )
+            else
+              SliverPadding(
+                padding: const EdgeInsets.fromLTRB(16, 0, 16, 24),
+                sliver: SliverList(
+                  delegate: SliverChildBuilderDelegate(
+                    (context, index) {
+                      final tx = walletState.filteredTransactions[index];
+                      return _buildTransactionCard(tx, index);
+                    },
+                    childCount: walletState.filteredTransactions.length,
+                  ),
+                ),
+              ),
           ],
         ),
       ),
     );
   }
 
+  /// ── Balance Banner ──
+
   Widget _buildBalanceBanner(WalletState state) {
+    // Preserve previous balance so counter animates from the last value, not 0
+    final previousBalance = _previousBalance;
+    _previousBalance = state.balance;
+
+    final formattedLifetime = _formatNumber(state.lifetimePoints);
+
     return Container(
       decoration: const BoxDecoration(
         gradient: AppTheme.primaryGradient,
       ),
       child: SafeArea(
         child: Padding(
-          padding: const EdgeInsets.fromLTRB(24, 60, 24, 24),
+          padding: const EdgeInsets.fromLTRB(24, 56, 24, 24),
           child: Column(
             mainAxisAlignment: MainAxisAlignment.center,
             children: [
@@ -130,36 +179,54 @@ class _WalletScreenState extends ConsumerState<WalletScreen>
                 style: TextStyle(color: Colors.white70, fontSize: 14),
               ),
               const SizedBox(height: 8),
-              Row(
-                mainAxisAlignment: MainAxisAlignment.center,
-                children: [
-                  const Icon(Icons.stars_rounded, color: Colors.amber, size: 36),
-                  const SizedBox(width: 8),
-                  TweenAnimationBuilder<int>(
-                    tween: IntTween(begin: 0, end: state.balance),
-                    duration: const Duration(milliseconds: 1200),
-                    builder: (context, value, child) {
-                      return Text(
-                        '$value',
-                        style: const TextStyle(
-                          color: Colors.white,
-                          fontSize: 42,
-                          fontWeight: FontWeight.bold,
-                        ),
-                      );
-                    },
-                  ),
-                  const SizedBox(width: 4),
-                  const Text(
-                    'coins',
-                    style: TextStyle(color: Colors.white70, fontSize: 16),
-                  ),
-                ],
+              Semantics(
+                label: 'Current balance: ${state.balance} coins',
+                child: Row(
+                  mainAxisAlignment: MainAxisAlignment.center,
+                  crossAxisAlignment: CrossAxisAlignment.end,
+                  children: [
+                    const Icon(
+                      Icons.stars_rounded,
+                      color: Colors.amber,
+                      size: 36,
+                      semanticLabel: 'Coin icon',
+                    ),
+                    const SizedBox(width: 8),
+                    TweenAnimationBuilder<int>(
+                      key: ValueKey(state.balance), // Reset only when balance changes
+                      tween: IntTween(begin: previousBalance, end: state.balance),
+                      duration: const Duration(milliseconds: 1200),
+                      curve: Curves.easeOut,
+                      builder: (context, value, _) {
+                        return Text(
+                          _formatNumber(value),
+                          style: const TextStyle(
+                            color: Colors.white,
+                            fontSize: 42,
+                            fontWeight: FontWeight.bold,
+                            letterSpacing: -1,
+                          ),
+                        );
+                      },
+                    ),
+                    const SizedBox(width: 8),
+                    const Padding(
+                      padding: EdgeInsets.only(bottom: 8),
+                      child: Text(
+                        'coins',
+                        style: TextStyle(color: Colors.white70, fontSize: 16),
+                      ),
+                    ),
+                  ],
+                ),
               ),
               const SizedBox(height: 8),
-              Text(
-                'Lifetime: ${state.lifetimePoints.toString().replaceAllMapped(RegExp(r'(\d{1,3})(?=(\d{3})+(?!\d))'), (m) => '${m[1]},')} coins earned',
-                style: const TextStyle(color: Colors.white54, fontSize: 12),
+              Semantics(
+                label: 'Lifetime earned: $formattedLifetime coins',
+                child: Text(
+                  'Lifetime: $formattedLifetime coins earned',
+                  style: const TextStyle(color: Colors.white54, fontSize: 12),
+                ),
               ),
             ],
           ),
@@ -168,10 +235,9 @@ class _WalletScreenState extends ConsumerState<WalletScreen>
     );
   }
 
-  Widget _buildStatsSummary(WalletState state) {
-    final earned = state.transactions.where((t) => t.isEarning).fold<int>(0, (sum, t) => sum + t.points);
-    final spent = state.transactions.where((t) => t.isRedemption).fold<int>(0, (sum, t) => sum + t.points.abs());
+  /// ── Stats Summary Row ──
 
+  Widget _buildStatsSummary(WalletState state) {
     return Padding(
       padding: const EdgeInsets.all(16),
       child: Row(
@@ -181,8 +247,9 @@ class _WalletScreenState extends ConsumerState<WalletScreen>
               icon: Icons.arrow_upward,
               iconColor: AppTheme.success,
               label: 'Total Earned',
-              value: '+$earned',
-              color: AppTheme.success,
+              value: '+${_formatNumber(state.totalEarned)}',
+              valueColor: AppTheme.success,
+              semanticLabel: 'Total earned: ${state.totalEarned} coins',
             ),
           ),
           const SizedBox(width: 12),
@@ -191,8 +258,9 @@ class _WalletScreenState extends ConsumerState<WalletScreen>
               icon: Icons.arrow_downward,
               iconColor: AppTheme.error,
               label: 'Total Spent',
-              value: '-$spent',
-              color: AppTheme.error,
+              value: '-${_formatNumber(state.totalSpent)}',
+              valueColor: AppTheme.error,
+              semanticLabel: 'Total spent: ${state.totalSpent} coins',
             ),
           ),
         ],
@@ -205,145 +273,168 @@ class _WalletScreenState extends ConsumerState<WalletScreen>
     required Color iconColor,
     required String label,
     required String value,
-    required Color color,
+    required Color valueColor,
+    required String semanticLabel,
   }) {
-    return Container(
-      padding: const EdgeInsets.all(16),
-      decoration: BoxDecoration(
-        color: Theme.of(context).colorScheme.surface,
-        borderRadius: BorderRadius.circular(16),
-        border: Border.all(color: AppTheme.neutral200),
-      ),
-      child: Row(
-        children: [
-          Container(
-            padding: const EdgeInsets.all(8),
-            decoration: BoxDecoration(
-              color: iconColor.withOpacity(0.1),
-              shape: BoxShape.circle,
+    return Semantics(
+      label: semanticLabel,
+      child: Container(
+        padding: const EdgeInsets.all(16),
+        decoration: BoxDecoration(
+          color: Theme.of(context).colorScheme.surface,
+          borderRadius: BorderRadius.circular(16),
+          border: Border.all(color: AppTheme.neutral200),
+        ),
+        child: Row(
+          children: [
+            Container(
+              padding: const EdgeInsets.all(8),
+              decoration: BoxDecoration(
+                color: iconColor.withAlpha(26), // ~0.1 opacity
+                shape: BoxShape.circle,
+              ),
+              child: Icon(icon, color: iconColor, size: 20, semanticLabel: null),
             ),
-            child: Icon(icon, color: iconColor, size: 20),
-          ),
-          const SizedBox(width: 12),
-          Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              Text(
-                label,
-                style: TextStyle(color: AppTheme.neutral500, fontSize: 11),
+            const SizedBox(width: 12),
+            Flexible(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(
+                    label,
+                    style: TextStyle(color: AppTheme.neutral500, fontSize: 11),
+                    maxLines: 1,
+                    overflow: TextOverflow.ellipsis,
+                  ),
+                  Text(
+                    value,
+                    style: TextStyle(
+                      color: valueColor,
+                      fontWeight: FontWeight.bold,
+                      fontSize: 16,
+                    ),
+                  ),
+                ],
               ),
-              Text(
-                value,
-                style: TextStyle(
-                  color: color,
-                  fontWeight: FontWeight.bold,
-                  fontSize: 16,
-                ),
-              ),
-            ],
-          ),
-        ],
+            ),
+          ],
+        ),
       ),
     );
   }
 
+  /// ── Transaction Card ──
+
   Widget _buildTransactionCard(WalletTransaction tx, int index) {
-    return Container(
-      margin: const EdgeInsets.only(bottom: 10),
-      padding: const EdgeInsets.all(16),
-      decoration: BoxDecoration(
-        color: Theme.of(context).colorScheme.surface,
-        borderRadius: BorderRadius.circular(16),
-        border: Border.all(color: AppTheme.neutral200),
-      ),
-      child: Row(
-        children: [
-          // Icon
-          Container(
-            width: 48,
-            height: 48,
-            decoration: BoxDecoration(
-              color: _getTypeColor(tx.type).withOpacity(0.1),
-              borderRadius: BorderRadius.circular(12),
-            ),
-            child: Icon(
-              _getTypeIcon(tx.type),
-              color: _getTypeColor(tx.type),
-              size: 24,
-            ),
-          ),
-          const SizedBox(width: 12),
+    final typeColor = _getTypeColor(tx.type);
+    final typeIcon = _getTypeIcon(tx.type);
+    final label = tx.description ?? _getTypeLabel(tx.type);
+    final amountStr = tx.isEarning ? '+${tx.points}' : '${tx.points}';
+    final amountColor = tx.isEarning ? AppTheme.success : AppTheme.error;
+    final formattedDate = _formatDate(tx.createdAt);
 
-          // Description
-          Expanded(
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Text(
-                  tx.description ?? _getTypeLabel(tx.type),
-                  style: const TextStyle(fontWeight: FontWeight.w600, fontSize: 14),
-                  maxLines: 1,
-                  overflow: TextOverflow.ellipsis,
-                ),
-                const SizedBox(height: 4),
-                Text(
-                  _formatDate(tx.createdAt),
-                  style: TextStyle(color: AppTheme.neutral500, fontSize: 12),
-                ),
-              ],
-            ),
-          ),
-
-          // Amount
-          Column(
-            crossAxisAlignment: CrossAxisAlignment.end,
-            children: [
-              Text(
-                tx.isEarning ? '+${tx.points}' : '${tx.points}',
-                style: TextStyle(
-                  fontWeight: FontWeight.bold,
-                  fontSize: 16,
-                  color: tx.isEarning ? AppTheme.success : AppTheme.error,
-                ),
+    return Semantics(
+      label: '$label, $amountStr coins, $formattedDate',
+      child: Container(
+        margin: const EdgeInsets.only(bottom: 10),
+        padding: const EdgeInsets.all(16),
+        decoration: BoxDecoration(
+          color: Theme.of(context).colorScheme.surface,
+          borderRadius: BorderRadius.circular(16),
+          border: Border.all(color: AppTheme.neutral200),
+        ),
+        child: Row(
+          children: [
+            // Type icon
+            Container(
+              width: 48,
+              height: 48,
+              decoration: BoxDecoration(
+                color: typeColor.withAlpha(26),
+                borderRadius: BorderRadius.circular(12),
               ),
-              const SizedBox(height: 2),
-              Row(
-                mainAxisSize: MainAxisSize.min,
+              child: Icon(typeIcon, color: typeColor, size: 24, semanticLabel: null),
+            ),
+            const SizedBox(width: 12),
+
+            // Description + date
+            Expanded(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  Icon(
-                    Icons.stars_rounded,
-                    size: 12,
-                    color: AppTheme.accentYellow,
-                  ),
-                  const SizedBox(width: 2),
                   Text(
-                    'coins',
-                    style: TextStyle(color: AppTheme.neutral500, fontSize: 10),
+                    label,
+                    style: const TextStyle(
+                      fontWeight: FontWeight.w600,
+                      fontSize: 14,
+                    ),
+                    maxLines: 1,
+                    overflow: TextOverflow.ellipsis,
+                  ),
+                  const SizedBox(height: 4),
+                  Text(
+                    formattedDate,
+                    style: TextStyle(color: AppTheme.neutral500, fontSize: 12),
                   ),
                 ],
               ),
-            ],
-          ),
-        ],
+            ),
+
+            // Amount
+            Column(
+              crossAxisAlignment: CrossAxisAlignment.end,
+              children: [
+                Text(
+                  amountStr,
+                  style: TextStyle(
+                    fontWeight: FontWeight.bold,
+                    fontSize: 16,
+                    color: amountColor,
+                  ),
+                ),
+                const SizedBox(height: 2),
+                Row(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    Icon(
+                      Icons.stars_rounded,
+                      size: 12,
+                      color: AppTheme.accentYellow,
+                      semanticLabel: null,
+                    ),
+                    const SizedBox(width: 2),
+                    Text(
+                      'coins',
+                      style: TextStyle(color: AppTheme.neutral500, fontSize: 10),
+                    ),
+                  ],
+                ),
+              ],
+            ),
+          ],
+        ),
       ),
-    ).animate(delay: (index * 50).ms)
+    )
+        .animate(delay: (index * 50).ms)
         .fadeIn(duration: 300.ms)
         .slideX(begin: 0.05, end: 0);
   }
 
+  // ── Helpers ──
+
   IconData _getTypeIcon(String type) {
     switch (type) {
-      case 'STEPS':
+      case TransactionType.steps:
         return Icons.directions_walk;
-      case 'STREAK_BONUS':
+      case TransactionType.streakBonus:
         return Icons.local_fire_department;
-      case 'MILESTONE':
+      case TransactionType.milestone:
         return Icons.emoji_events;
-      case 'AD_REWARD':
+      case TransactionType.adReward:
         return Icons.play_circle_filled;
-      case 'REFERRAL':
+      case TransactionType.referral:
         return Icons.people;
-      case 'REDEMPTION':
+      case TransactionType.redemption:
         return Icons.card_giftcard;
       default:
         return Icons.stars_rounded;
@@ -352,17 +443,17 @@ class _WalletScreenState extends ConsumerState<WalletScreen>
 
   Color _getTypeColor(String type) {
     switch (type) {
-      case 'STEPS':
+      case TransactionType.steps:
         return AppTheme.primaryGreen;
-      case 'STREAK_BONUS':
+      case TransactionType.streakBonus:
         return AppTheme.accentOrange;
-      case 'MILESTONE':
+      case TransactionType.milestone:
         return AppTheme.accentPurple;
-      case 'AD_REWARD':
+      case TransactionType.adReward:
         return AppTheme.secondaryBlue;
-      case 'REFERRAL':
+      case TransactionType.referral:
         return AppTheme.accentPink;
-      case 'REDEMPTION':
+      case TransactionType.redemption:
         return AppTheme.error;
       default:
         return AppTheme.neutral500;
@@ -371,85 +462,115 @@ class _WalletScreenState extends ConsumerState<WalletScreen>
 
   String _getTypeLabel(String type) {
     switch (type) {
-      case 'STEPS':
+      case TransactionType.steps:
         return 'Steps Reward';
-      case 'STREAK_BONUS':
+      case TransactionType.streakBonus:
         return 'Streak Bonus';
-      case 'MILESTONE':
+      case TransactionType.milestone:
         return 'Achievement';
-      case 'AD_REWARD':
+      case TransactionType.adReward:
         return 'Watch & Earn';
-      case 'REFERRAL':
+      case TransactionType.referral:
         return 'Friend Bonus';
-      case 'REDEMPTION':
+      case TransactionType.redemption:
         return 'Redemption';
       default:
         return 'Transaction';
     }
   }
 
+  /// Safe relative date format. Returns positive diff only — handles clock skew.
   String _formatDate(DateTime date) {
     final now = DateTime.now();
     final diff = now.difference(date);
-    
-    if (diff.inDays == 0) {
-      if (diff.inHours == 0) {
-        return '${diff.inMinutes} min ago';
-      }
-      return '${diff.inHours}h ago';
-    } else if (diff.inDays == 1) {
-      return 'Yesterday';
-    } else if (diff.inDays < 7) {
-      return '${diff.inDays} days ago';
-    } else {
-      return '${date.day}/${date.month}/${date.year}';
+
+    if (diff.isNegative) {
+      // Future date — likely clock skew; show absolute date
+      return DateFormat('dd/MM/yyyy').format(date);
     }
+
+    if (diff.inMinutes < 1) return 'Just now';
+    if (diff.inHours < 1) return '${diff.inMinutes} min ago';
+    if (diff.inDays == 0) return '${diff.inHours}h ago';
+    if (diff.inDays == 1) return 'Yesterday';
+    if (diff.inDays < 7) return '${diff.inDays} days ago';
+
+    return DateFormat('dd/MM/yyyy').format(date);
   }
 
-  Widget _buildEmptyState() {
+  /// Format a number with comma separators (e.g. 10000 → 10,000)
+  String _formatNumber(int number) {
+    return NumberFormat('#,##0').format(number);
+  }
+
+  Widget _buildEmptyState(String filter) {
+    final messages = {
+      TransactionFilter.earned: ('No earnings yet', 'Start walking to earn coins!'),
+      TransactionFilter.redeemed: ('No redemptions yet', 'Spend your coins on great rewards!'),
+    };
+
+    final (title, subtitle) = messages[filter] ??
+        ('No transactions yet', 'Start walking to earn coins!');
+
     return Center(
-      child: Column(
-        mainAxisAlignment: MainAxisAlignment.center,
-        children: [
-          Icon(Icons.receipt_long_outlined, size: 80, color: AppTheme.neutral300),
-          const SizedBox(height: 16),
-          Text(
-            'No transactions yet',
-            style: Theme.of(context).textTheme.titleLarge?.copyWith(
-              fontWeight: FontWeight.bold,
-              color: AppTheme.neutral600,
+      child: Padding(
+        padding: const EdgeInsets.all(32),
+        child: Column(
+          mainAxisAlignment: MainAxisAlignment.center,
+          children: [
+            Icon(
+              Icons.receipt_long_outlined,
+              size: 80,
+              color: AppTheme.neutral300,
+              semanticLabel: null,
             ),
-          ),
-          const SizedBox(height: 8),
-          Text(
-            'Start walking to earn coins!',
-            style: TextStyle(color: AppTheme.neutral500),
-          ),
-        ],
+            const SizedBox(height: 16),
+            Text(
+              title,
+              style: Theme.of(context).textTheme.titleLarge?.copyWith(
+                    fontWeight: FontWeight.bold,
+                    color: AppTheme.neutral600,
+                  ),
+              textAlign: TextAlign.center,
+            ),
+            const SizedBox(height: 8),
+            Text(
+              subtitle,
+              style: TextStyle(color: AppTheme.neutral500),
+              textAlign: TextAlign.center,
+            ),
+          ],
+        ),
       ),
     );
   }
 }
 
-/// Tab Bar Delegate for sticky tabs
+/// Sticky tab bar delegate for [SliverPersistentHeader]
 class _TabBarDelegate extends SliverPersistentHeaderDelegate {
   final TabBar tabBar;
 
-  _TabBarDelegate(this.tabBar);
+  const _TabBarDelegate(this.tabBar);
 
   @override
   double get minExtent => tabBar.preferredSize.height;
+
   @override
   double get maxExtent => tabBar.preferredSize.height;
 
   @override
-  Widget build(BuildContext context, double shrinkOffset, bool overlapsContent) {
-    return Container(
+  Widget build(
+    BuildContext context,
+    double shrinkOffset,
+    bool overlapsContent,
+  ) {
+    return ColoredBox(
       color: Theme.of(context).scaffoldBackgroundColor,
       child: tabBar,
     );
   }
 
   @override
-  bool shouldRebuild(_TabBarDelegate oldDelegate) => false;
+  bool shouldRebuild(_TabBarDelegate oldDelegate) =>
+      oldDelegate.tabBar != tabBar;
 }

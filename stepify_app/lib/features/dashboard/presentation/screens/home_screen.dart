@@ -6,7 +6,8 @@ import 'package:confetti/confetti.dart';
 
 import '../../../../core/theme/app_theme.dart';
 import '../../../../core/router/app_router.dart';
-import '../../../notifications/presentation/providers/notification_provider.dart';
+import '../../../notifications/presentation/providers/notifications_provider.dart';
+import 'package:stepify_app/l10n/app_localizations.dart';
 import '../providers/dashboard_provider.dart';
 
 // New Widgets
@@ -99,18 +100,18 @@ class _HomeScreenState extends ConsumerState<HomeScreen> with SingleTickerProvid
             children: [
               Icon(Icons.error_outline, size: 48, color: Colors.red[300]),
               const SizedBox(height: 16),
-              const Padding(
-                padding: EdgeInsets.symmetric(horizontal: 32.0),
+              Padding(
+                padding: const EdgeInsets.symmetric(horizontal: 32.0),
                 child: Text(
-                  'Something went wrong. Please check your internet connection and try again.',
+                  AppLocalizations.of(context)?.dashboardError ?? 'Something went wrong. Please check your internet connection and try again.',
                   textAlign: TextAlign.center,
-                  style: TextStyle(color: Colors.grey),
+                  style: const TextStyle(color: Colors.grey),
                 ),
               ),
               const SizedBox(height: 16),
               ElevatedButton(
                 onPressed: () => ref.read(dashboardProvider.notifier).fetchTodayData(),
-                child: const Text('Retry'),
+                child: Text(AppLocalizations.of(context)?.retry ?? 'Retry'),
               ),
             ],
           ),
@@ -151,7 +152,7 @@ class _HomeScreenState extends ConsumerState<HomeScreen> with SingleTickerProvid
                     // 1. Header
                     DashboardHeader(
                       user: dashboard.user,
-                      unreadCount: ref.watch(notificationProvider).unreadCount,
+                      unreadCount: ref.watch(notificationsProvider).unreadCount,
                       onNotificationTap: () => context.push(AppRoutes.notifications),
                       onSettingsTap: () => context.push(AppRoutes.settings),
                       onProfileTap: () => context.push(AppRoutes.profile),
@@ -256,19 +257,19 @@ class _HomeScreenState extends ConsumerState<HomeScreen> with SingleTickerProvid
     showDialog(
       context: context,
       builder: (context) => AlertDialog(
-        title: const Text('Set Daily Goal'),
+        title: Text(AppLocalizations.of(context)?.setDailyGoal ?? 'Set Daily Goal'),
         content: Column(
           mainAxisSize: MainAxisSize.min,
           children: [
-            const Text('Enter your new target for daily steps:'),
+            Text(AppLocalizations.of(context)?.enterNewTarget ?? 'Enter your new target for daily steps:'),
             const SizedBox(height: 16),
             TextField(
               controller: goalController,
               keyboardType: TextInputType.number,
-              decoration: const InputDecoration(
-                labelText: 'Steps Goal',
-                border: OutlineInputBorder(),
-                suffixText: 'steps',
+              decoration: InputDecoration(
+                labelText: AppLocalizations.of(context)?.stepsGoal ?? 'Steps Goal',
+                border: const OutlineInputBorder(),
+                suffixText: AppLocalizations.of(context)?.steps ?? 'steps',
               ),
               autofocus: true,
             ),
@@ -289,7 +290,7 @@ class _HomeScreenState extends ConsumerState<HomeScreen> with SingleTickerProvid
                     side: BorderSide(color: Colors.grey.shade300),
                     shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
                   ),
-                  child: const Text('Cancel', style: TextStyle(color: Colors.grey)),
+                  child: Text(AppLocalizations.of(context)?.cancel ?? 'Cancel', style: const TextStyle(color: Colors.grey)),
                 ),
               ),
               const SizedBox(width: 12),
@@ -303,7 +304,7 @@ class _HomeScreenState extends ConsumerState<HomeScreen> with SingleTickerProvid
                       ref.read(dashboardProvider.notifier).updateDailyGoal(newGoal);
                       Navigator.pop(context);
                       ScaffoldMessenger.of(context).showSnackBar(
-                        SnackBar(content: Text('Goal updated to $newGoal steps!')),
+                        SnackBar(content: Text(AppLocalizations.of(context)?.goalUpdated(newGoal) ?? 'Goal updated to $newGoal steps!')),
                       );
                     }
                   },
@@ -314,7 +315,7 @@ class _HomeScreenState extends ConsumerState<HomeScreen> with SingleTickerProvid
                     shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
                     elevation: 0,
                   ),
-                  child: const Text('Save Goal', style: TextStyle(fontWeight: FontWeight.bold)),
+                  child: Text(AppLocalizations.of(context)?.saveGoal ?? 'Save Goal', style: const TextStyle(fontWeight: FontWeight.bold)),
                 ),
               ),
             ],

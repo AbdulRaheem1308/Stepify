@@ -66,12 +66,29 @@ export class MessagingService implements OnModuleInit {
   }
 
   async sendMessage(conversationId: string, senderId: string, content: string) {
-    return this.prisma.message.create({
-      data: {
-        conversationId,
-        senderId,
-        content,
-      },
+    // Defense in Depth: Verify participant
+    const isParticipant = await this.isParticipant(conversationId, senderId);
+    if (!isParticipant) {
+      throw new Error("Sender is not a participant of this conversation");
+    }
+
+    // Atomic insert and conversation update
+    return this.prisma.$transaction(async (tx) => {
+      const message = await tx.message.create({
+        data: {
+          conversationId,
+          senderId,
+          content,
+        },
+      });
+
+      // Update conversation timestamp
+      await tx.conversation.update({
+        where: { id: conversationId },
+        data: { updatedAt: new Date() },
+      });
+
+      return message;
     });
   }
 

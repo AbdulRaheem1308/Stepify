@@ -5,11 +5,17 @@ import {
   OnGatewayConnection,
   OnGatewayDisconnect,
   ConnectedSocket,
-  MessageBody,
 } from "@nestjs/websockets";
 import { Server, Socket } from "socket.io";
 import { Logger } from "@nestjs/common";
 import { PrismaService } from "../prisma/prisma.service";
+import { JwtService } from "@nestjs/jwt";
+import { ConfigService } from "@nestjs/config";
+
+// Extend socket to store user object
+interface AuthenticatedSocket extends Socket {
+  user?: any;
+}
 
 @WebSocketGateway({
   cors: { origin: "*" },
@@ -23,25 +29,60 @@ export class LeaderboardGateway
 
   private readonly logger = new Logger(LeaderboardGateway.name);
 
-  constructor(private prisma: PrismaService) {}
+  constructor(
+    private readonly prisma: PrismaService,
+    private readonly jwtService: JwtService,
+    private readonly configService: ConfigService,
+  ) {}
 
-  handleConnection(client: Socket) {
-    this.logger.log(`Client connected to leaderboard: ${client.id}`);
+  async handleConnection(client: AuthenticatedSocket) {
+    try {
+      // Extract JWT from authorization header or handshake auth payload
+      const authHeader = client.handshake.headers.authorization;
+      const token = authHeader
+        ? authHeader.split(" ")[1]
+        : client.handshake.auth?.token;
+
+      if (!token) {
+        throw new Error("No token provided");
+      }
+
+      // Verify the JWT
+      const payload = this.jwtService.verify(token, {
+        secret: this.configService.get("JWT_SECRET"),
+      });
+
+      // Attach user payload to the socket context
+      client.user = payload;
+      this.logger.log(
+        `Client authenticated and connected to leaderboard: ${client.id} (User: ${payload.sub})`,
+      );
+    } catch (err) {
+      this.logger.warn(
+        `Unauthorized WebSocket connection attempt: ${client.id}. Disconnecting.`,
+      );
+      client.disconnect();
+    }
   }
 
-  handleDisconnect(client: Socket) {
+  handleDisconnect(client: AuthenticatedSocket) {
     this.logger.log(`Client disconnected from leaderboard: ${client.id}`);
   }
 
   @SubscribeMessage("join_leaderboard")
-  async handleJoinLeaderboard(
-    @ConnectedSocket() client: Socket,
-    @MessageBody() data: { userId: string },
-  ) {
+  async handleJoinLeaderboard(@ConnectedSocket() client: AuthenticatedSocket) {
+    // Rely exclusively on the authenticated user ID from the JWT payload
+    const userId = client.user?.sub;
+
+    if (!userId) {
+      this.logger.warn(
+        "Unauthenticated user attempted to join leaderboard. Rejecting.",
+      );
+      return;
+    }
+
     client.join("global_leaderboard");
-    this.logger.log(
-      `User ${data.userId} joined the global leaderboard channel`,
-    );
+    this.logger.log(`User ${userId} joined the global leaderboard channel`);
 
     // Immediately emit current top 10
     const currentLeaders = await this.getTopUsers();

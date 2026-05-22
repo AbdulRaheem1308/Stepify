@@ -123,6 +123,6 @@ class CommunityNotifier extends StateNotifier<CommunityState> {
 
 }
 
-final communityProvider = StateNotifierProvider<CommunityNotifier, CommunityState>((ref) {
+final communityProvider = StateNotifierProvider.autoDispose<CommunityNotifier, CommunityState>((ref) {
   return CommunityNotifier(ref.watch(apiServiceProvider));
 });

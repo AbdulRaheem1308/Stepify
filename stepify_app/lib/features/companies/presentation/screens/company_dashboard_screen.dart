@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:stepify_app/l10n/app_localizations.dart';
 import 'package:stepify_app/core/theme/app_theme.dart';
 import '../providers/company_provider.dart';
 
@@ -17,7 +18,7 @@ class CompanyDashboardScreen extends ConsumerWidget {
 
     if (member == null) {
       // Should redirect or show error, but for safety:
-      return const Scaffold(body: Center(child: Text('Not a member of any company')));
+      return Scaffold(body: Center(child: Text(AppLocalizations.of(context)?.notACompanyMember ?? 'Not a member of any company')));
     }
 
     // Since we don't have the Company Name in CompanyMember directly (it is in userMetadata or we need to add it to model),
@@ -31,7 +32,7 @@ class CompanyDashboardScreen extends ConsumerWidget {
     
     return Scaffold(
       appBar: AppBar(
-        title: const Text('Corporate Wellness'),
+        title: Text(AppLocalizations.of(context)?.corporateWellness ?? 'Corporate Wellness'),
         backgroundColor: AppTheme.primaryGreen,
         foregroundColor: Colors.white,
       ),
@@ -49,15 +50,15 @@ class CompanyDashboardScreen extends ConsumerWidget {
                      child: Icon(Icons.business, size: 40, color: AppTheme.primaryGreen),
                    ),
                    const SizedBox(height: 16),
-                   Text(
-                     'Employee #${member.userId.substring(0, 5)}', // Mock name
-                     style: const TextStyle(color: Colors.white, fontSize: 18, fontWeight: FontWeight.bold),
-                   ),
+                     Text(
+                       AppLocalizations.of(context)?.employeeId(member.userId.substring(0, 5)) ?? 'Employee #${member.userId.substring(0, 5)}', // Mock name
+                       style: const TextStyle(color: Colors.white, fontSize: 18, fontWeight: FontWeight.bold),
+                     ),
                    const SizedBox(height: 8),
                    Container(
                      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 4),
                      decoration: BoxDecoration(
-                       color: Colors.white.withOpacity(0.2),
+                       color: Colors.white.withValues(alpha: 0.2),
                        borderRadius: BorderRadius.circular(20),
                      ),
                      child: Text(
@@ -70,10 +71,10 @@ class CompanyDashboardScreen extends ConsumerWidget {
             ),
           ),
           
-          const SliverPadding(
-            padding: EdgeInsets.all(20),
+          SliverPadding(
+            padding: const EdgeInsets.all(20),
             sliver: SliverToBoxAdapter(
-              child: Text('Leaderboard', style: TextStyle(fontSize: 20, fontWeight: FontWeight.bold)),
+              child: Text(AppLocalizations.of(context)?.leaderboardTitle ?? 'Leaderboard', style: const TextStyle(fontSize: 20, fontWeight: FontWeight.bold)),
             ),
           ),
           
@@ -85,7 +86,7 @@ class CompanyDashboardScreen extends ConsumerWidget {
                   final m = state.leaderboard[index];
                   final isMe = m.userId == member.userId;
                   return Card(
-                    color: isMe ? AppTheme.primaryGreen.withOpacity(0.1) : Colors.white,
+                    color: isMe ? AppTheme.primaryGreen.withValues(alpha: 0.1) : Colors.white,
                     margin: const EdgeInsets.only(bottom: 12),
                     child: ListTile(
                       leading: CircleAvatar(
@@ -93,7 +94,7 @@ class CompanyDashboardScreen extends ConsumerWidget {
                         child: Text('${index + 1}'),
                       ),
                       title: Text(m.userMetadata?['name'] ?? 'User ${m.userId.substring(0,4)}'),
-                      subtitle: Text(isMe ? 'You' : 'Colleague'),
+                      subtitle: Text(isMe ? (AppLocalizations.of(context)?.you ?? 'You') : (AppLocalizations.of(context)?.colleague ?? 'Colleague')),
                       trailing: Text(
                         '${m.totalSteps} steps',
                         style: const TextStyle(fontWeight: FontWeight.bold, color: AppTheme.primaryGreen),

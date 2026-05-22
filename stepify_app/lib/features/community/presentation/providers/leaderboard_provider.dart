@@ -52,7 +52,6 @@ class LeaderboardNotifier extends StateNotifier<List<LeaderboardUser>> {
         .build());
 
     _socket?.onConnect((_) {
-      print('Connected to Leaderboard Socket');
       _socket?.emit('join_leaderboard', {'userId': 'current_user_id'}); // Ideally pass actual user ID
     });
 
@@ -75,7 +74,7 @@ class LeaderboardNotifier extends StateNotifier<List<LeaderboardUser>> {
   }
 }
 
-final leaderboardProvider = StateNotifierProvider<LeaderboardNotifier, List<LeaderboardUser>>((ref) {
+final leaderboardProvider = StateNotifierProvider.autoDispose<LeaderboardNotifier, List<LeaderboardUser>>((ref) {
   return LeaderboardNotifier();
 });
 

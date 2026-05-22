@@ -3,6 +3,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
+import 'package:stepify_app/l10n/app_localizations.dart';
 
 import '../../../../core/theme/app_theme.dart';
 import '../../../../core/router/app_router.dart';
@@ -70,7 +71,8 @@ class _OtpScreenState extends ConsumerState<OtpScreen> {
   Future<void> _verifyOtp() async {
     final otp = _otp;
     if (otp.length != 6) {
-      _showError('Please enter the complete OTP');
+      final l10n = AppLocalizations.of(context);
+      _showError(l10n?.enterCompleteOtp ?? 'Please enter the complete OTP');
       return;
     }
 
@@ -113,8 +115,8 @@ class _OtpScreenState extends ConsumerState<OtpScreen> {
         email: widget.email,
       );
       
-      _startResendTimer();
-      _showSuccess('OTP sent successfully');
+      final l10n = AppLocalizations.of(context);
+      _showSuccess(l10n?.otpSentSuccess ?? 'OTP sent successfully');
     } catch (e) {
       _showError(e.toString());
     }
@@ -149,8 +151,8 @@ class _OtpScreenState extends ConsumerState<OtpScreen> {
     }
   }
 
-  void _onKeyPressed(int index, RawKeyEvent event) {
-    if (event is RawKeyDownEvent &&
+  void _onKeyPressed(int index, KeyEvent event) {
+    if (event is KeyDownEvent &&
         event.logicalKey == LogicalKeyboardKey.backspace &&
         _controllers[index].text.isEmpty &&
         index > 0) {
@@ -179,7 +181,7 @@ class _OtpScreenState extends ConsumerState<OtpScreen> {
               
               // Title
               Text(
-                'Verify OTP',
+                AppLocalizations.of(context)?.verifyOtpTitle ?? 'Verify OTP',
                 style: Theme.of(context).textTheme.headlineMedium?.copyWith(
                   fontWeight: FontWeight.bold,
                 ),
@@ -188,7 +190,7 @@ class _OtpScreenState extends ConsumerState<OtpScreen> {
               const SizedBox(height: 8),
               
               Text(
-                'Enter the 6-digit code sent to\n$identifier',
+                AppLocalizations.of(context)?.enterOtpSentTo(identifier) ?? 'Enter the 6-digit code sent to\n$identifier',
                 style: Theme.of(context).textTheme.bodyLarge?.copyWith(
                   color: AppTheme.neutral600,
                 ),
@@ -223,7 +225,7 @@ class _OtpScreenState extends ConsumerState<OtpScreen> {
                           color: Colors.white,
                         ),
                       )
-                    : const Text('Verify'),
+                    : Text(AppLocalizations.of(context)?.verifyButton ?? 'Verify'),
               ),
               
               const SizedBox(height: 24),
@@ -233,15 +235,15 @@ class _OtpScreenState extends ConsumerState<OtpScreen> {
                 mainAxisAlignment: MainAxisAlignment.center,
                 children: [
                   Text(
-                    "Didn't receive the code? ",
+                    AppLocalizations.of(context)?.didNotReceiveCode ?? "Didn't receive the code? ",
                     style: TextStyle(color: AppTheme.neutral600),
                   ),
                   TextButton(
                     onPressed: _resendTimer > 0 ? null : _resendOtp,
                     child: Text(
                       _resendTimer > 0 
-                          ? 'Resend in ${_resendTimer}s'
-                          : 'Resend',
+                          ? (AppLocalizations.of(context)?.resendInSeconds(_resendTimer) ?? 'Resend in ${_resendTimer}s')
+                          : (AppLocalizations.of(context)?.resendButton ?? 'Resend'),
                     ),
                   ),
                 ],
@@ -253,7 +255,7 @@ class _OtpScreenState extends ConsumerState<OtpScreen> {
               Container(
                 padding: const EdgeInsets.all(16),
                 decoration: BoxDecoration(
-                  color: AppTheme.info.withOpacity(0.1),
+                  color: AppTheme.info.withAlpha(26),
                   borderRadius: BorderRadius.circular(12),
                 ),
                 child: Row(
@@ -262,7 +264,7 @@ class _OtpScreenState extends ConsumerState<OtpScreen> {
                     const SizedBox(width: 12),
                     Expanded(
                       child: Text(
-                        'Dev Mode: Check console for OTP if Twilio is not configured',
+                        AppLocalizations.of(context)?.devModeOtp ?? 'Dev Mode: Check console for OTP if Twilio is not configured',
                         style: TextStyle(
                           color: AppTheme.info,
                           fontSize: 13,
@@ -280,13 +282,15 @@ class _OtpScreenState extends ConsumerState<OtpScreen> {
   }
 
   Widget _buildOtpField(int index) {
-    return SizedBox(
-      width: 48,
-      height: 56,
-      child: RawKeyboardListener(
-        focusNode: FocusNode(),
-        onKey: (event) => _onKeyPressed(index, event),
-        child: TextField(
+    return Semantics(
+      label: 'OTP digit ${index + 1}',
+      child: SizedBox(
+        width: 48,
+        height: 56,
+        child: KeyboardListener(
+          focusNode: FocusNode(),
+          onKeyEvent: (event) => _onKeyPressed(index, event),
+          child: TextField(
           controller: _controllers[index],
           focusNode: _focusNodes[index],
           textAlign: TextAlign.center,
@@ -319,6 +323,7 @@ class _OtpScreenState extends ConsumerState<OtpScreen> {
           onChanged: (value) => _onOtpChanged(index, value),
         ),
       ),
+    ),
     );
   }
 }

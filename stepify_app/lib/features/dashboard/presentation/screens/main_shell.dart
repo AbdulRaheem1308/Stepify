@@ -91,9 +91,9 @@ class _MainShellState extends ConsumerState<MainShell> {
               now.difference(_currentBackPressTime!) > const Duration(seconds: 2)) {
             _currentBackPressTime = now;
             ScaffoldMessenger.of(context).showSnackBar(
-              const SnackBar(
-                content: Text('Press back again to exit'),
-                duration: Duration(seconds: 2),
+              SnackBar(
+                content: Text(l10n.pressBackToExit),
+                duration: const Duration(seconds: 2),
                 behavior: SnackBarBehavior.floating,
               ),
             );
@@ -110,7 +110,7 @@ class _MainShellState extends ConsumerState<MainShell> {
             color: Theme.of(context).colorScheme.surface,
             boxShadow: [
               BoxShadow(
-                color: Colors.black.withOpacity(0.05),
+                color: Colors.black.withValues(alpha: 0.05),
                 blurRadius: 20,
                 offset: const Offset(0, -5),
               ),
@@ -169,7 +169,7 @@ class _MainShellState extends ConsumerState<MainShell> {
           padding: const EdgeInsets.symmetric(vertical: 6, horizontal: 4),
           decoration: BoxDecoration(
             color: isSelected 
-                ? AppTheme.primaryGreen.withOpacity(0.08) 
+                ? AppTheme.primaryGreen.withValues(alpha: 0.08) 
                 : Colors.transparent,
             borderRadius: BorderRadius.circular(12),
           ),

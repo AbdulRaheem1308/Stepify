@@ -2,18 +2,17 @@ import 'dart:async';
 import 'dart:math' as math;
 import 'package:flutter/material.dart';
 import 'package:geolocator/geolocator.dart' hide ActivityType;
+import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../../../core/theme/app_theme.dart';
 import '../../../../services/location_service.dart';
-
 import '../../domain/models/activity_model.dart';
 import '../providers/activity_provider.dart';
-import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:stepify_app/l10n/app_localizations.dart';
 
 /// GPS Route Tracking Screen
 /// Shows a live-drawn route path, elapsed time, distance, and calories.
-/// Uses CustomPainter to project latitude/longitude onto screen coordinates —
-/// no external map SDK or API key required.
+/// Uses CustomPainter to project latitude/longitude onto screen coordinates.
 class RouteTrackingScreen extends ConsumerStatefulWidget {
   const RouteTrackingScreen({super.key});
 
@@ -29,7 +28,11 @@ class _RouteTrackingScreenState extends ConsumerState<RouteTrackingScreen>
   bool _isPaused = false;
   Position? _currentPosition;
   double _totalDistanceMetres = 0;
-  int _elapsedSeconds = 0;
+  
+  // Robust time tracking
+  DateTime? _trackingStartTime;
+  int _accumulatedSeconds = 0;
+  int _currentSessionSeconds = 0;
   Timer? _timer;
 
   // Animation for the pulsing current-position dot
@@ -37,6 +40,8 @@ class _RouteTrackingScreenState extends ConsumerState<RouteTrackingScreen>
   late Animation<double> _pulseAnimation;
 
   static const double _caloriesPerMetre = 0.06; // ~60 kcal/km walking
+
+  int get _totalElapsedSeconds => _accumulatedSeconds + _currentSessionSeconds;
 
   @override
   void initState() {
@@ -64,7 +69,9 @@ class _RouteTrackingScreenState extends ConsumerState<RouteTrackingScreen>
       _isTracking = true;
       _isPaused = false;
       _totalDistanceMetres = 0;
-      _elapsedSeconds = 0;
+      _accumulatedSeconds = 0;
+      _currentSessionSeconds = 0;
+      _trackingStartTime = DateTime.now();
     });
 
     final started = await _locationService.startRouteTracking(
@@ -81,7 +88,7 @@ class _RouteTrackingScreenState extends ConsumerState<RouteTrackingScreen>
           ScaffoldMessenger.of(context).showSnackBar(
             SnackBar(content: Text('GPS error: $error'), backgroundColor: AppTheme.error),
           );
-          _stopTracking();
+          _stopTracking(AppLocalizations.of(context)!);
         }
       },
     );
@@ -91,16 +98,31 @@ class _RouteTrackingScreenState extends ConsumerState<RouteTrackingScreen>
       return;
     }
 
+    _startTimer();
+  }
+
+  void _startTimer() {
+    _timer?.cancel();
+    _trackingStartTime = DateTime.now();
+    // Update UI every second using the robust absolute time diff
     _timer = Timer.periodic(const Duration(seconds: 1), (_) {
-      if (!_isPaused && mounted) {
-        setState(() => _elapsedSeconds++);
+      if (mounted && _trackingStartTime != null && !_isPaused) {
+        setState(() {
+          _currentSessionSeconds = DateTime.now().difference(_trackingStartTime!).inSeconds;
+        });
       }
     });
   }
 
   void _pauseTracking() {
+    if (_trackingStartTime != null) {
+      _accumulatedSeconds += DateTime.now().difference(_trackingStartTime!).inSeconds;
+      _currentSessionSeconds = 0;
+      _trackingStartTime = null;
+    }
     setState(() => _isPaused = true);
     _locationService.stopRouteTracking();
+    _timer?.cancel();
   }
 
   Future<void> _resumeTracking() async {
@@ -115,42 +137,45 @@ class _RouteTrackingScreenState extends ConsumerState<RouteTrackingScreen>
         }
       },
     );
+    _startTimer();
   }
 
-  void _stopTracking() {
+  void _stopTracking(AppLocalizations l10n) {
     _pauseTracking();
 
-    if (_totalDistanceMetres < 50 || _elapsedSeconds < 30) {
-      // Too short to save
+    if (_totalDistanceMetres < 50 || _totalElapsedSeconds < 30) {
       ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('Route too short to save.')),
+        SnackBar(content: Text(l10n.routeTooShort)),
       );
       _endSession();
       return;
     }
 
     // Show save dialog
+    final distanceStr = (_totalDistanceMetres / 1000).toStringAsFixed(2);
+    final durationStr = _formatDuration(_totalElapsedSeconds);
+
     showDialog(
       context: context,
       barrierDismissible: false,
       builder: (ctx) => AlertDialog(
-        title: const Text('Save Workout?'),
-        content: Text('You travelled ${(_totalDistanceMetres / 1000).toStringAsFixed(2)} km in ${_formatDuration(_elapsedSeconds)}.\n\nSave this route to earn points?'),
+        title: Text(l10n.saveWorkoutTitle),
+        content: Text(l10n.saveWorkoutDesc(distanceStr, durationStr)),
         actions: [
           TextButton(
             onPressed: () {
               Navigator.pop(ctx);
               _endSession();
             },
-            child: const Text('Discard', style: TextStyle(color: AppTheme.error)),
+            child: Text(l10n.discard, style: const TextStyle(color: AppTheme.error)),
           ),
           ElevatedButton(
             onPressed: () async {
               Navigator.pop(ctx);
-              await _saveRouteToBackend();
+              await _saveRouteToBackend(l10n);
             },
             style: ElevatedButton.styleFrom(backgroundColor: AppTheme.primaryGreen, foregroundColor: Colors.white),
-            child: const Text('Save Route'),
+            child: Text(l10n.saveRoute),
           ),
         ],
       ),
@@ -164,12 +189,13 @@ class _RouteTrackingScreenState extends ConsumerState<RouteTrackingScreen>
       _isTracking = false;
       _isPaused = false;
       _totalDistanceMetres = 0;
-      _elapsedSeconds = 0;
+      _accumulatedSeconds = 0;
+      _currentSessionSeconds = 0;
+      _trackingStartTime = null;
     });
   }
 
-  Future<void> _saveRouteToBackend() async {
-    // Show loading
+  Future<void> _saveRouteToBackend(AppLocalizations l10n) async {
     showDialog(
       context: context,
       barrierDismissible: false,
@@ -178,7 +204,7 @@ class _RouteTrackingScreenState extends ConsumerState<RouteTrackingScreen>
 
     final error = await ref.read(activityProvider.notifier).logActivity(
       type: ActivityType.running, // Defaulting GPS routes to running for now
-      duration: Duration(seconds: _elapsedSeconds),
+      duration: Duration(seconds: _totalElapsedSeconds),
       distanceKm: _totalDistanceMetres / 1000.0,
     );
 
@@ -188,9 +214,8 @@ class _RouteTrackingScreenState extends ConsumerState<RouteTrackingScreen>
       ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(error), backgroundColor: AppTheme.error));
       _endSession();
     } else if (mounted) {
-      ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('GPS Route saved securely!'), backgroundColor: AppTheme.success));
+      ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(l10n.done), backgroundColor: AppTheme.success));
       _endSession();
-      // Optionally pop back to activities list
     }
   }
 
@@ -203,26 +228,43 @@ class _RouteTrackingScreenState extends ConsumerState<RouteTrackingScreen>
   }
 
   double get _estimatedCalories => _totalDistanceMetres * _caloriesPerMetre;
+  
   double get _paceMinPerKm {
-    if (_totalDistanceMetres < 10 || _elapsedSeconds < 5) return 0;
-    return (_elapsedSeconds / 60) / (_totalDistanceMetres / 1000);
+    if (_totalDistanceMetres < 10 || _totalElapsedSeconds < 5) return 0;
+    return (_totalElapsedSeconds / 60) / (_totalDistanceMetres / 1000);
   }
 
   @override
   Widget build(BuildContext context) {
+    final l10n = AppLocalizations.of(context)!;
     final points = _locationService.routePoints;
+    
     return Scaffold(
       backgroundColor: Colors.black,
       appBar: AppBar(
         backgroundColor: Colors.black,
         foregroundColor: Colors.white,
-        title: const Text('GPS Route Tracker'),
+        title: Text(l10n.gpsRouteTracker),
         centerTitle: true,
+        leading: Tooltip(
+          message: l10n.back,
+          child: IconButton(
+            icon: const Icon(Icons.arrow_back_ios_new, size: 20, color: Colors.white),
+            onPressed: () => Navigator.of(context).maybePop(),
+            tooltip: l10n.back,
+            style: IconButton.styleFrom(minimumSize: const Size(48, 48)),
+          ),
+        ),
         actions: [
           if (_isTracking)
-            TextButton(
-              onPressed: _stopTracking,
-              child: const Text('End', style: TextStyle(color: AppTheme.error, fontWeight: FontWeight.bold)),
+            Semantics(
+              label: l10n.endTracking,
+              button: true,
+              child: TextButton(
+                onPressed: () => _stopTracking(l10n),
+                style: TextButton.styleFrom(minimumSize: const Size(64, 48)),
+                child: Text(l10n.endTracking, style: const TextStyle(color: AppTheme.error, fontWeight: FontWeight.bold)),
+              ),
             ),
         ],
       ),
@@ -233,7 +275,6 @@ class _RouteTrackingScreenState extends ConsumerState<RouteTrackingScreen>
             flex: 3,
             child: Stack(
               children: [
-                // Route drawing canvas
                 Container(
                   width: double.infinity,
                   color: const Color(0xFF0D1117),
@@ -245,14 +286,12 @@ class _RouteTrackingScreenState extends ConsumerState<RouteTrackingScreen>
                               Icon(
                                 Icons.location_on_outlined,
                                 size: 64,
-                                color: AppTheme.primaryGreen.withOpacity(0.4),
+                                color: AppTheme.primaryGreen.withValues(alpha: 0.4),
                               ),
                               const SizedBox(height: 16),
                               Text(
-                                _isTracking
-                                    ? 'Acquiring GPS signal...'
-                                    : 'Tap Start to begin tracking your route',
-                                style: TextStyle(color: Colors.white54, fontSize: 15),
+                                _isTracking ? l10n.acquiringGps : l10n.tapStartToTrack,
+                                style: const TextStyle(color: Colors.white54, fontSize: 15),
                                 textAlign: TextAlign.center,
                               ),
                             ],
@@ -268,7 +307,7 @@ class _RouteTrackingScreenState extends ConsumerState<RouteTrackingScreen>
                         ),
                 ),
 
-                // Pulsing GPS dot overlay (top-right status)
+                // Pulsing GPS dot overlay
                 if (_isTracking)
                   Positioned(
                     top: 16,
@@ -285,7 +324,7 @@ class _RouteTrackingScreenState extends ConsumerState<RouteTrackingScreen>
                             shape: BoxShape.circle,
                             boxShadow: [
                               BoxShadow(
-                                color: (_isPaused ? Colors.orange : AppTheme.primaryGreen).withOpacity(0.6),
+                                color: (_isPaused ? Colors.orange : AppTheme.primaryGreen).withValues(alpha: 0.6),
                                 blurRadius: 8,
                                 spreadRadius: 4,
                               ),
@@ -301,22 +340,27 @@ class _RouteTrackingScreenState extends ConsumerState<RouteTrackingScreen>
                   Positioned(
                     top: 12,
                     left: 12,
-                    child: Container(
-                      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
-                      decoration: BoxDecoration(
-                        color: Colors.black54,
-                        borderRadius: BorderRadius.circular(8),
-                      ),
-                      child: Row(
-                        mainAxisSize: MainAxisSize.min,
-                        children: [
-                          const Icon(Icons.gps_fixed, size: 12, color: AppTheme.primaryGreen),
-                          const SizedBox(width: 4),
-                          Text(
-                            '±${_currentPosition!.accuracy.toStringAsFixed(0)}m',
-                            style: const TextStyle(color: Colors.white70, fontSize: 11),
-                          ),
-                        ],
+                    child: Semantics(
+                      label: 'GPS accuracy: ±${_currentPosition!.accuracy.toStringAsFixed(0)} metres',
+                      child: Container(
+                        padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                        decoration: BoxDecoration(
+                          color: Colors.black54,
+                          borderRadius: BorderRadius.circular(8),
+                        ),
+                        child: Row(
+                          mainAxisSize: MainAxisSize.min,
+                          children: [
+                            const ExcludeSemantics(
+                              child: Icon(Icons.gps_fixed, size: 12, color: AppTheme.primaryGreen),
+                            ),
+                            const SizedBox(width: 4),
+                            Text(
+                              '±${_currentPosition!.accuracy.toStringAsFixed(0)}m',
+                              style: const TextStyle(color: Colors.white70, fontSize: 11),
+                            ),
+                          ],
+                        ),
                       ),
                     ),
                   ),
@@ -330,24 +374,23 @@ class _RouteTrackingScreenState extends ConsumerState<RouteTrackingScreen>
             padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 20),
             child: Column(
               children: [
-                // Top stats row
                 Row(
                   mainAxisAlignment: MainAxisAlignment.spaceAround,
                   children: [
                     _buildStat(
-                      label: 'Distance',
+                      label: l10n.distance,
                       value: _totalDistanceMetres >= 1000
                           ? '${(_totalDistanceMetres / 1000).toStringAsFixed(2)} km'
                           : '${_totalDistanceMetres.toStringAsFixed(0)} m',
                       icon: Icons.straighten,
                     ),
                     _buildStat(
-                      label: 'Time',
-                      value: _formatDuration(_elapsedSeconds),
+                      label: l10n.activeMinutes,
+                      value: _formatDuration(_totalElapsedSeconds),
                       icon: Icons.timer_outlined,
                     ),
                     _buildStat(
-                      label: 'Calories',
+                      label: l10n.calories,
                       value: '${_estimatedCalories.toStringAsFixed(0)} kcal',
                       icon: Icons.local_fire_department_outlined,
                     ),
@@ -355,16 +398,14 @@ class _RouteTrackingScreenState extends ConsumerState<RouteTrackingScreen>
                 ),
                 const SizedBox(height: 12),
 
-                // Pace
                 if (_paceMinPerKm > 0)
                   Text(
                     'Pace: ${_paceMinPerKm.toStringAsFixed(1)} min/km',
-                    style: TextStyle(color: Colors.white54, fontSize: 13),
+                    style: const TextStyle(color: Colors.white54, fontSize: 13),
                   ),
 
                 const SizedBox(height: 20),
 
-                // Controls
                 if (!_isTracking)
                   _buildControlButton(
                     label: 'Start',
@@ -389,7 +430,7 @@ class _RouteTrackingScreenState extends ConsumerState<RouteTrackingScreen>
                           label: 'Stop',
                           icon: Icons.stop_rounded,
                           color: AppTheme.error,
-                          onTap: _stopTracking,
+                          onTap: () => _stopTracking(l10n),
                         ),
                       ),
                     ],
@@ -403,16 +444,21 @@ class _RouteTrackingScreenState extends ConsumerState<RouteTrackingScreen>
   }
 
   Widget _buildStat({required String label, required String value, required IconData icon}) {
-    return Column(
-      children: [
-        Icon(icon, size: 18, color: AppTheme.primaryGreen),
-        const SizedBox(height: 4),
-        Text(
-          value,
-          style: const TextStyle(color: Colors.white, fontWeight: FontWeight.bold, fontSize: 16),
-        ),
-        Text(label, style: const TextStyle(color: Colors.white54, fontSize: 11)),
-      ],
+    return Semantics(
+      label: '$label: $value',
+      child: Column(
+        children: [
+          ExcludeSemantics(
+            child: Icon(icon, size: 18, color: AppTheme.primaryGreen),
+          ),
+          const SizedBox(height: 4),
+          Text(
+            value,
+            style: const TextStyle(color: Colors.white, fontWeight: FontWeight.bold, fontSize: 16),
+          ),
+          Text(label, style: const TextStyle(color: Colors.white54, fontSize: 11)),
+        ],
+      ),
     );
   }
 
@@ -422,22 +468,28 @@ class _RouteTrackingScreenState extends ConsumerState<RouteTrackingScreen>
     required Color color,
     required VoidCallback onTap,
   }) {
-    return GestureDetector(
-      onTap: onTap,
-      child: Container(
-        padding: const EdgeInsets.symmetric(vertical: 14),
-        decoration: BoxDecoration(
-          color: color.withOpacity(0.15),
-          borderRadius: BorderRadius.circular(12),
-          border: Border.all(color: color.withOpacity(0.5)),
-        ),
-        child: Row(
-          mainAxisAlignment: MainAxisAlignment.center,
-          children: [
-            Icon(icon, color: color, size: 22),
-            const SizedBox(width: 8),
-            Text(label, style: TextStyle(color: color, fontWeight: FontWeight.bold, fontSize: 15)),
-          ],
+    return Semantics(
+      label: label,
+      button: true,
+      child: GestureDetector(
+        onTap: onTap,
+        child: Container(
+          padding: const EdgeInsets.symmetric(vertical: 16),
+          decoration: BoxDecoration(
+            color: color.withValues(alpha: 0.15),
+            borderRadius: BorderRadius.circular(12),
+            border: Border.all(color: color.withValues(alpha: 0.5)),
+          ),
+          child: Row(
+            mainAxisAlignment: MainAxisAlignment.center,
+            children: [
+              ExcludeSemantics(
+                child: Icon(icon, color: color, size: 22),
+              ),
+              const SizedBox(width: 8),
+              Text(label, style: TextStyle(color: color, fontWeight: FontWeight.bold, fontSize: 15)),
+            ],
+          ),
         ),
       ),
     );
@@ -461,7 +513,6 @@ class _RoutePainter extends CustomPainter {
   void paint(Canvas canvas, Size size) {
     if (points.length < 2) return;
 
-    // Find bounding box of all GPS points
     double minLat = points.first.latitude;
     double maxLat = points.first.latitude;
     double minLng = points.first.longitude;
@@ -474,7 +525,6 @@ class _RoutePainter extends CustomPainter {
       maxLng = math.max(maxLng, p.longitude);
     }
 
-    // Add padding (10% of range)
     final latRange = (maxLat - minLat).clamp(0.0001, double.infinity);
     final lngRange = (maxLng - minLng).clamp(0.0001, double.infinity);
     final latPad = latRange * 0.15;
@@ -483,17 +533,14 @@ class _RoutePainter extends CustomPainter {
     minLat -= latPad; maxLat += latPad;
     minLng -= lngPad; maxLng += lngPad;
 
-    // Project lat/lng → screen offset
     Offset project(Position pos) {
       final x = (pos.longitude - minLng) / (maxLng - minLng) * size.width;
-      // Invert Y because latitude increases upwards
       final y = (1 - (pos.latitude - minLat) / (maxLat - minLat)) * size.height;
       return Offset(x, y);
     }
 
-    // Draw route shadow (glow effect)
     final glowPaint = Paint()
-      ..color = routeColor.withOpacity(0.25)
+      ..color = routeColor.withValues(alpha: 0.25)
       ..strokeWidth = 10
       ..style = PaintingStyle.stroke
       ..strokeCap = StrokeCap.round
@@ -507,7 +554,6 @@ class _RoutePainter extends CustomPainter {
     }
     canvas.drawPath(path, glowPaint);
 
-    // Draw main route line
     final routePaint = Paint()
       ..color = routeColor
       ..strokeWidth = 4
@@ -516,14 +562,12 @@ class _RoutePainter extends CustomPainter {
       ..strokeJoin = StrokeJoin.round;
     canvas.drawPath(path, routePaint);
 
-    // Draw start dot
     final startOffset = project(points.first);
     canvas.drawCircle(startOffset, 8, Paint()..color = Colors.white);
     canvas.drawCircle(startOffset, 5, Paint()..color = routeColor);
 
-    // Draw current position dot
     final endOffset = project(points.last);
-    canvas.drawCircle(endOffset, 10, Paint()..color = routeColor.withOpacity(0.3));
+    canvas.drawCircle(endOffset, 10, Paint()..color = routeColor.withValues(alpha: 0.3));
     canvas.drawCircle(endOffset, 6, Paint()..color = Colors.white);
     canvas.drawCircle(endOffset, 3, Paint()..color = routeColor);
   }

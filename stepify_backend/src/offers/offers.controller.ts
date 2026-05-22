@@ -5,37 +5,67 @@ import {
   Param,
   Query,
   UseGuards,
-  Request,
+  Body,
 } from "@nestjs/common";
 import { OffersService } from "./offers.service";
 import { JwtAuthGuard } from "../auth/guards/jwt-auth.guard";
+import { CurrentUser } from "../auth/decorators/current-user.decorator";
+import { CreateOfferDto } from "./dto/offer.dto";
+import {
+  ApiTags,
+  ApiOperation,
+  ApiResponse,
+  ApiBearerAuth,
+  ApiQuery,
+} from "@nestjs/swagger";
 
+@ApiTags("Offers")
+@ApiBearerAuth()
 @Controller("offers")
 @UseGuards(JwtAuthGuard)
 export class OffersController {
   constructor(private readonly offersService: OffersService) {}
 
-  // GET /api/v1/offers - List all active offers
   @Get()
+  @ApiOperation({ summary: "List all active offers" })
+  @ApiResponse({ status: 200, description: "Returns active offers" })
   async findAll() {
     return this.offersService.findAllActive();
   }
 
-  // GET /api/v1/offers/my - Get user's offers (Screen 17)
   @Get("my")
-  async getMyOffers(@Request() req: any, @Query("status") status?: string) {
-    return this.offersService.getUserOffers(req.user.sub, status);
+  @ApiOperation({ summary: "Get user's offers history" })
+  @ApiQuery({
+    name: "status",
+    required: false,
+    description: "Filter by status",
+  })
+  @ApiResponse({ status: 200, description: "Returns user offers" })
+  async getMyOffers(
+    @CurrentUser() user: any,
+    @Query("status") status?: string,
+  ) {
+    return this.offersService.getUserOffers(user.id, status);
   }
 
-  // POST /api/v1/offers/:id/start - Start tracking an offer
   @Post(":id/start")
-  async startOffer(@Request() req: any, @Param("id") offerId: string) {
-    return this.offersService.startOffer(req.user.sub, offerId);
+  @ApiOperation({ summary: "Start tracking an offer" })
+  @ApiResponse({ status: 201, description: "Offer started" })
+  async startOffer(@CurrentUser() user: any, @Param("id") offerId: string) {
+    return this.offersService.startOffer(user.id, offerId);
   }
 
-  // POST /api/v1/offers/:id/complete - Complete an offer and claim reward
   @Post(":id/complete")
-  async completeOffer(@Request() req: any, @Param("id") offerId: string) {
-    return this.offersService.completeOffer(req.user.sub, offerId);
+  @ApiOperation({ summary: "Complete an offer and claim reward" })
+  @ApiResponse({ status: 201, description: "Reward claimed" })
+  async completeOffer(@CurrentUser() user: any, @Param("id") offerId: string) {
+    return this.offersService.completeOffer(user.id, offerId);
+  }
+
+  @Post()
+  @ApiOperation({ summary: "Create a new offer (Admin)" })
+  @ApiResponse({ status: 201, description: "Offer created" })
+  async createOffer(@Body() dto: CreateOfferDto) {
+    return this.offersService.createOffer(dto);
   }
 }

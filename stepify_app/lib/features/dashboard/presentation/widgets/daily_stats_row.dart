@@ -69,12 +69,12 @@ class DailyStatsRow extends StatelessWidget {
         color: isDark ? const Color(0xFF1E293B) : Colors.white,
         borderRadius: BorderRadius.circular(20),
         border: Border.all(
-          color: color.withOpacity(isDark ? 0.15 : 0.08),
+          color: color.withValues(alpha: isDark ? 0.15 : 0.08),
           width: 1.5,
         ),
         boxShadow: [
           BoxShadow(
-            color: color.withOpacity(isDark ? 0.02 : 0.04),
+            color: color.withValues(alpha: isDark ? 0.02 : 0.04),
             blurRadius: 20,
             offset: const Offset(0, 8),
           ),
@@ -87,7 +87,7 @@ class DailyStatsRow extends StatelessWidget {
           Container(
             padding: const EdgeInsets.all(8),
             decoration: BoxDecoration(
-              color: color.withOpacity(isDark ? 0.12 : 0.08),
+              color: color.withValues(alpha: isDark ? 0.12 : 0.08),
               shape: BoxShape.circle,
             ),
             child: Icon(icon, color: color, size: 20),

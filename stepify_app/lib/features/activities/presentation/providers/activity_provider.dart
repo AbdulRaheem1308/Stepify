@@ -6,7 +6,7 @@ class ActivityState {
   final List<Activity> recentActivities;
   final bool isLoading;
 
-  ActivityState({this.recentActivities = const [], this.isLoading = false});
+  const ActivityState({this.recentActivities = const [], this.isLoading = false});
   
   ActivityState copyWith({List<Activity>? recentActivities, bool? isLoading}) {
     return ActivityState(
@@ -16,17 +16,15 @@ class ActivityState {
   }
 }
 
-// Security constants for activity validation
-const int _kMaxDurationMinutes = 300;  // 5 hours max per session
-const int _kMinDurationMinutes = 1;    // at least 1 minute
-const int _kMaxPointsPerSession = 900; // 300 min * 3.0 max multiplier
-
 class ActivityNotifier extends StateNotifier<ActivityState> {
   final ApiService _api;
 
-  ActivityNotifier(this._api) : super(ActivityState()) {
-    // No mock data loaded in production
-  }
+  // Security constants for activity validation
+  static const int _maxDurationMinutes = 300;  // 5 hours max per session
+  static const int _minDurationMinutes = 1;    // at least 1 minute
+  static const int _maxPointsPerSession = 900; // 300 min * 3.0 max multiplier
+
+  ActivityNotifier(this._api) : super(const ActivityState());
 
   /// Fetch real activity history from backend
   Future<void> fetchActivities() async {
@@ -34,26 +32,30 @@ class ActivityNotifier extends StateNotifier<ActivityState> {
     try {
       final response = await _api.get('/activities');
       final list = (response.data as List)
-          .map<Activity>((e) => Activity.fromJson(e as Map<String, dynamic>))
+          .map<Activity>((e) => Activity.fromJson(Map<String, dynamic>.from(e as Map)))
           .toList();
       state = state.copyWith(recentActivities: list, isLoading: false);
-    } catch (_) {
+    } catch (e) {
+      // On failure, keep previous list but stop loading.
+      // In a more complex app, we might store the error string in the state.
       state = state.copyWith(isLoading: false);
     }
   }
   
+  /// Logs an activity to the backend. Returns an error message if failed, or null on success.
   Future<String?> logActivity({
     required ActivityType type,
     required Duration duration,
     double? distanceKm,
   }) async {
-    // ── Security validation (Fix #1 & #2) ──────────────────────────────
-    if (duration.inMinutes < _kMinDurationMinutes) {
-      return 'Duration must be at least $_kMinDurationMinutes minute.';
+    // ── Security validation ──────────────────────────────────────────────
+    if (duration.inMinutes < _minDurationMinutes) {
+      return 'Duration must be at least $_minDurationMinutes minute.';
     }
-    if (duration.inMinutes > _kMaxDurationMinutes) {
-      return 'Duration cannot exceed $_kMaxDurationMinutes minutes (5 hours) per session.';
+    if (duration.inMinutes > _maxDurationMinutes) {
+      return 'Duration cannot exceed $_maxDurationMinutes minutes (5 hours) per session.';
     }
+    
     // Distance sanity: max realistic distance per activity type
     if (distanceKm != null) {
       final maxKm = _maxDistanceKm(type, duration.inMinutes);
@@ -65,47 +67,56 @@ class ActivityNotifier extends StateNotifier<ActivityState> {
 
     state = state.copyWith(isLoading: true);
 
-    // Calculate stats server-side formula (client shows preview only)
     final multiplier = Activity.getPointsMultiplier(type);
-    // Cap points to prevent overflow — backend must re-validate
     final rawPoints = (duration.inMinutes * multiplier).toInt();
-    final points = rawPoints.clamp(0, _kMaxPointsPerSession);
-
-    double calsPerMin = 5;
-    if (type == ActivityType.running || type == ActivityType.swimming) calsPerMin = 10;
-    if (type == ActivityType.cycling || type == ActivityType.gym) calsPerMin = 7;
-    if (type == ActivityType.yoga) calsPerMin = 3;
-
-    final calories = duration.inMinutes * calsPerMin;
+    final points = rawPoints.clamp(0, _maxPointsPerSession);
+    final calories = _calculateCalories(type, duration.inMinutes);
 
     try {
-      // POST to backend — backend is the source of truth for points
-      await _api.post('/activities', data: {
+      // POST to backend — backend is the source of truth for points and ID
+      final response = await _api.post('/activities', data: {
         'type': type.name,
         'durationMinutes': duration.inMinutes,
         'distanceKm': distanceKm ?? 0,
         'caloriesBurned': calories,
         'startTime': DateTime.now().toUtc().toIso8601String(),
       });
-    } catch (_) {
-      // Fall through: show local optimistic result even if offline
+      
+      // If the backend returns the newly created activity, we use it.
+      // Otherwise we fall back to a local representation.
+      Activity newActivity;
+      if (response.data != null && response.data is Map) {
+        newActivity = Activity.fromJson(Map<String, dynamic>.from(response.data as Map));
+      } else {
+        newActivity = Activity(
+          id: DateTime.now().toIso8601String(),
+          type: type,
+          startTime: DateTime.now(),
+          duration: duration,
+          caloriesBurned: calories,
+          distanceKm: distanceKm ?? 0,
+          pointsEarned: points,
+        );
+      }
+
+      state = state.copyWith(
+        recentActivities: [newActivity, ...state.recentActivities],
+        isLoading: false,
+      );
+      return null; // Success
+    } catch (e) {
+      state = state.copyWith(isLoading: false);
+      final apiError = ApiError.from(e);
+      return apiError.message;
     }
+  }
 
-    final newActivity = Activity(
-      id: DateTime.now().toIso8601String(),
-      type: type,
-      startTime: DateTime.now(),
-      duration: duration,
-      caloriesBurned: calories,
-      distanceKm: distanceKm ?? 0,
-      pointsEarned: points,
-    );
-
-    state = state.copyWith(
-      recentActivities: [newActivity, ...state.recentActivities],
-      isLoading: false,
-    );
-    return null; // null = success
+  double _calculateCalories(ActivityType type, int minutes) {
+    double calsPerMin = 5;
+    if (type == ActivityType.running || type == ActivityType.swimming) calsPerMin = 10;
+    if (type == ActivityType.cycling || type == ActivityType.gym) calsPerMin = 7;
+    if (type == ActivityType.yoga) calsPerMin = 3;
+    return minutes * calsPerMin;
   }
 
   /// Max realistic distance (km) for given activity type and duration
@@ -121,6 +132,6 @@ class ActivityNotifier extends StateNotifier<ActivityState> {
   }
 }
 
-final activityProvider = StateNotifierProvider<ActivityNotifier, ActivityState>((ref) {
+final activityProvider = StateNotifierProvider.autoDispose<ActivityNotifier, ActivityState>((ref) {
   return ActivityNotifier(ref.read(apiServiceProvider));
 });

@@ -110,5 +110,365 @@
   "backgroundSyncSubtitle": "Sync steps when app is closed",
   "syncOverCellular": "Sync Over Cellular",
   "syncOverCellularSubtitle": "Use mobile data for syncing",
-  "connectedDevices": "Connected Devices"
+  "connectedDevices": "Connected Devices",
+  
+  "activityHistory": "Activity History",
+  "noActivitiesYet": "No activities yet",
+  "logFirstWorkout": "Log your first workout to see it here!",
+  "logWorkout": "Log Workout",
+  "whatDidYouDoToday": "What did you do today?",
+  "activityType": "Activity Type",
+  "durationMinutes": "Duration (minutes)",
+  "distanceKm": "Distance (km)",
+  "earnPointsMultiplier": "Earn {multiplier}x points for this activity!",
+  "@earnPointsMultiplier": {
+    "placeholders": {
+      "multiplier": { "type": "String" }
+    }
+  },
+  "logWorkoutAndEarn": "Log Workout & Earn Points",
+  "gpsRouteTracker": "GPS Route Tracker",
+  "endTracking": "End",
+  "acquiringGps": "Acquiring GPS signal...",
+  "tapStartToTrack": "Tap Start to begin tracking your route",
+  "saveWorkoutTitle": "Save Workout?",
+  "saveWorkoutDesc": "You travelled {distance} km in {duration}.\n\nSave this route to earn points?",
+  "@saveWorkoutDesc": {
+    "placeholders": {
+      "distance": { "type": "String" },
+      "duration": { "type": "String" }
+    }
+  },
+  "discard": "Discard",
+  "saveRoute": "Save Route",
+  "routeTooShort": "Route too short to save.",
+  "durationMustBeAtLeast": "Duration must be at least {minutes} minute.",
+  "@durationMustBeAtLeast": {
+    "placeholders": {
+      "minutes": { "type": "int" }
+    }
+  },
+  "durationExceedsMax": "Duration cannot exceed {minutes} minutes.",
+  "@durationExceedsMax": {
+    "placeholders": {
+      "minutes": { "type": "int" }
+    }
+  },
+  "distanceUnrealistic": "Distance entered ({distance} km) is unrealistic for {minutes} minutes of {activityName}.",
+  "@distanceUnrealistic": {
+    "placeholders": {
+      "distance": { "type": "String" },
+      "minutes": { "type": "int" },
+      "activityName": { "type": "String" }
+    }
+  },
+  
+  "aiInsights": "AI Insights",
+  
+  "appTagline": "Walk • Track • Earn",
+  "loginSubtitle": "Walk more. Earn more.\nJoin the movement safely.",
+  "continueWithGoogle": "Continue with Google",
+  "continueWithApple": "Continue with Apple",
+  "termsAndPrivacy": "By continuing, you agree to our Terms & Privacy Policy",
+  "signInFailed": "Failed to sign in with {providerName}: {error}",
+  "@signInFailed": {
+    "placeholders": {
+      "providerName": { "type": "String" },
+      "error": { "type": "String" }
+    }
+  },
+  
+  "verifyOtpTitle": "Verify OTP",
+  "enterOtpSentTo": "Enter the 6-digit code sent to\n{identifier}",
+  "@enterOtpSentTo": {
+    "placeholders": {
+      "identifier": { "type": "String" }
+    }
+  },
+  "verifyButton": "Verify",
+  "didNotReceiveCode": "Didn't receive the code? ",
+  "resendInSeconds": "Resend in {seconds}s",
+  "@resendInSeconds": {
+    "placeholders": {
+      "seconds": { "type": "int" }
+    }
+  },
+  "resendButton": "Resend",
+  "devModeOtp": "Dev Mode: Check console for OTP if Twilio is not configured",
+  "enterCompleteOtp": "Please enter the complete OTP",
+  "otpSentSuccess": "OTP sent successfully",
+  
+  "completeProfileTitle": "Complete Profile",
+  "completeSetupButton": "Complete Setup",
+  "completeProfileSubtitle": "Tell us about yourself to personalize your experience.",
+  "yourName": "Your Name",
+  "nameHint": "e.g. Alex Step",
+  "nameTooShort": "Name must be at least 2 chars",
+  "emailLabel": "Email",
+  "emailHint": "email@example.com",
+  "invalidEmail": "Invalid email",
+  "phoneLabel": "Phone",
+  "ageLabel": "Age",
+  "weightLabel": "Weight (kg)",
+  "heightLabel": "Height (cm)",
+  "chooseAvatar": "Choose Avatar",
+  "dailyStepGoal": "Daily Step Goal",
+  "stepsCount": "{steps} steps",
+  "@stepsCount": {
+    "placeholders": {
+      "steps": { "type": "int" }
+    }
+  },
+  "fieldRequired": "Required",
+  "errorSavingProfile": "Error saving profile: {error}",
+  "@errorSavingProfile": {
+    "placeholders": {
+      "error": { "type": "String" }
+    }
+  },
+  
+  "joinChallengeBtn": "Join Challenge",
+  "joinNowBtn": "Join Now! 🚀",
+  "completedStatus": "Completed!",
+  "filterChallenges": "Filter Challenges",
+  "difficulty": "Difficulty",
+  "challengeTypeLabel": "Challenge Type",
+  "applyBtn": "Apply",
+  "resetBtn": "Reset",
+  "termsAndConditions": "Terms & Conditions",
+  "iAgreeToTerms": "I agree to the challenge Terms & Conditions",
+  "searchChallenges": "Search challenges...",
+  "noNewChallenges": "No new challenges",
+  "noOngoingChallenges": "No ongoing challenges",
+  "noCompletedChallenges": "No completed challenges",
+  "noMatchingChallenges": "No matching challenges",
+  "checkBackLater": "Check back later for new challenges!",
+  "joinChallengeToStart": "Join a challenge to get started!",
+  "completeChallengesToSee": "Complete challenges to see them here!",
+  "tryAdjustingFilters": "Try adjusting your search or filters",
+  "joinedChallengeSuccess": "🎉 Joined \"{challengeTitle}\"!",
+  "@joinedChallengeSuccess": {
+    "placeholders": {
+      "challengeTitle": { "type": "String" }
+    }
+  },
+  "joinChallengeTitle": "Join Challenge?",
+  "stepsInDays": "🎯 {steps} steps in {days} days",
+  "@stepsInDays": {
+    "placeholders": {
+      "steps": { "type": "int" },
+      "days": { "type": "int" }
+    }
+  },
+  "shareMilestone": "Share Milestone",
+  "noPostsYet": "No posts yet",
+  "beFirstToShare": "Be the first to share!",
+  "shareWithCommunity": "Share with Community",
+  "whatToShare": "What would you like to share?",
+  "postBtn": "Post",
+  "likePostSemantics": "Like post",
+  "commentPostSemantics": "Comment on post",
+  "sharePostSemantics": "Share post",
+  "corporateWellness": "Corporate Wellness",
+  "employeeId": "Employee #{id}",
+  "@employeeId": {
+    "placeholders": {
+      "id": { "type": "String" }
+    }
+  },
+  "leaderboardTitle": "Leaderboard",
+  "you": "You",
+  "colleague": "Colleague",
+  "notACompanyMember": "Not a member of any company",
+  "joinCompanyTitle": "Join Company",
+  "enterCompanyCode": "Enter Company Code",
+  "companyCodeSubtitle": "Get your unique code from your HR or wellness administrator to join your colleagues.",
+  "inviteCodeLabel": "Invite Code",
+  "inviteCodeHint": "e.g. CORP2024",
+  "failedToJoin": "Failed to join",
+  "invalidCodeOrJoined": "Invalid code or already joined",
+  "dashboardError": "Something went wrong. Please check your internet connection and try again.",
+  "setDailyGoal": "Set Daily Goal",
+  "enterNewTarget": "Enter your new target for daily steps:",
+  "stepsGoal": "Steps Goal",
+  "steps": "steps",
+  "goalUpdated": "Goal updated to {newGoal} steps!",
+  "@goalUpdated": {
+    "placeholders": {
+      "newGoal": { "type": "int" }
+    }
+  },
+  "saveGoal": "Save Goal",
+  "pressBackToExit": "Press back again to exit",
+  "deviceManagement": "Device Management",
+  "connectedDevices": "Connected Devices",
+  "noDevicesConnected": "No devices connected",
+  "connectWearablePrompt": "Connect your wearable to sync steps",
+  "connectHealthApp": "Connect Health App",
+  "syncSteps": "Sync steps",
+  "disconnectDeviceTitle": "Disconnect Device?",
+  "disconnectDeviceConfirm": "Are you sure you want to disconnect \"{deviceName}\"?",
+  "@disconnectDeviceConfirm": {
+    "placeholders": {
+      "deviceName": { "type": "String" }
+    }
+  },
+  "disconnect": "Disconnect",
+  "deviceDisconnectedSuccess": "\"{deviceName}\" disconnected successfully",
+  "@deviceDisconnectedSuccess": {
+    "placeholders": {
+      "deviceName": { "type": "String" }
+    }
+  },
+  "disconnectDeviceTooltip": "Disconnect device",
+  "stepsLabel": "Steps",
+  "lastSyncLabel": "Last Sync",
+  "statusConnected": "Connected",
+  "statusSyncing": "Syncing...",
+  "statusSyncError": "Sync Error",
+  "statusDisconnected": "Disconnected",
+  "never": "Never",
+  "friends": "Friends",
+  "friendLeaderboard": "🏆 Friend Leaderboard",
+  "top5Today": "Top 5 Today",
+  "allFriends": "All Friends",
+  "friendsCount": "{count, plural, =1{1 friend} other{{count} friends}}",
+  "@friendsCount": {
+    "placeholders": {
+      "count": { "type": "int" }
+    }
+  },
+  "noFriendsYet": "No friends yet",
+  "searchOrInviteFriends": "Search for users or invite friends to join!",
+  "inviteFriends": "Invite Friends",
+  "friendRequestSent": "Friend request sent to {name}",
+  "@friendRequestSent": {
+    "placeholders": {
+      "name": { "type": "String" }
+    }
+  },
+  "addFriend": "Add",
+  "statusFriends": "Friends",
+  "statusPending": "Pending",
+  "boostSent": "⚡ Boost sent to {name}!",
+  "@boostSent": {
+    "placeholders": {
+      "name": { "type": "String" }
+    }
+  },
+  "searchFriendsOrUsers": "Search friends or users...",
+  "stepsToday": "{steps} steps today",
+  "@stepsToday": {
+    "placeholders": {
+      "steps": { "type": "String" }
+    }
+  },
+  "boostSentStatus": "Sent",
+  "boostAction": "Boost",
+  "filterAll": "All",
+  "filterUnlocked": "Unlocked",
+  "filterLocked": "Locked",
+  "categoryFitness": "Fitness",
+  "categorySocial": "Social",
+  "unlockCriteria": "Unlock Criteria:",
+  "percentCompleted": "{progress}% completed",
+  "@percentCompleted": {
+    "placeholders": {
+      "progress": { "type": "int" }
+    }
+  },
+  "shareAchievement": "Share Achievement",
+  "sharingBadge": "Sharing badge...",
+  "noBadgesFound": "No badges found",
+  "statusInProgress": "In Progress",
+  "yourJourney": "Your Journey",
+  "levelTitle": "LEVEL",
+  "xpText": "XP",
+  "globalRank": "Global Rank",
+  "adventureQuests": "Adventure Quests",
+  "adventureQuestsDesc": "Embark on story-driven journeys",
+  "recentActivity": "Recent Activity",
+  "noActivityYet": "No activity yet",
+  "startWalkingXp": "Start walking to earn XP and see your progress!",
+  "global": "Global",
+  "corporate": "Corporate",
+  "leaderboardEmpty": "Leaderboard is empty",
+  "startWalkingLeaderboard": "Start walking to appear here!",
+  "timeDaily": "Today",
+  "timeWeekly": "This Week",
+  "timeMonthly": "This Month",
+  "timeAllTime": "All Time",
+  "onFire": "On Fire!",
+  "yourRank": "Your Rank",
+  "streakHistory": "Streak History",
+  "bestStreak": "Best: {longest} days",
+  "@bestStreak": {
+    "placeholders": {
+      "longest": { "type": "int" }
+    }
+  },
+  "thisWeeksActivity": "This Week's Activity",
+  "activity": "Activity",
+  "streakAchievements": "Streak Achievements",
+  "noStreakAchievements": "No streak achievements yet",
+  "keepWalkingStreak": "Keep walking daily to unlock streak badges!",
+  "activeDays": "{count} active",
+  "@activeDays": {
+    "placeholders": {
+      "count": { "type": "int" }
+    }
+  },
+  "gamificationRules": "Gamification Rules",
+  "howItWorks": "How it Works",
+  "howItWorksDesc": "Earn XP by staying active and engaging with the community. Level up to unlock exclusive badges, avatar frames, and multipliers for step coins!",
+  "howToEarnXp": "How to Earn XP",
+  "levelLadder": "Level Ladder",
+  "messagesTitle": "Messages",
+  "noMessagesYet": "No messages yet",
+  "unknownUser": "Unknown User",
+  "typeAMessage": "Type a message...",
+  "youSaid": "You said: {message}",
+  "@youSaid": {
+    "placeholders": {
+      "message": { "type": "String" }
+    }
+  },
+  "userSaid": "{userName} said: {message}",
+  "@userSaid": {
+    "placeholders": {
+      "userName": { "type": "String" },
+      "message": { "type": "String" }
+    }
+  },
+  "watchAndEarn": "Watch & Earn",
+  "watchAdsToEarn": "Watch ads to earn points!",
+  "earnPointsPerAd": "Earn {points} points per ad",
+  "@earnPointsPerAd": {
+    "placeholders": {
+      "points": { "type": "int" }
+    }
+  },
+  "todayViews": "Today",
+  "remainingViews": "Remaining",
+  "watchAdNow": "Watch Ad Now",
+  "nextAdAvailableIn": "Next ad available in",
+  "dailyLimitReached": "Daily limit reached!",
+  "comeBackTomorrow": "Come back tomorrow",
+  "rewardEarned": "Reward Earned!",
+  "pointsAdded": "+{points} points",
+  "@pointsAdded": {
+    "placeholders": {
+      "points": { "type": "int" }
+    }
+  },
+  "awesomeBtn": "Awesome!",
+  "failedToClaimReward": "Failed to claim reward: {error}",
+  "@failedToClaimReward": {
+    "placeholders": {
+      "error": { "type": "String" }
+    }
+  },
+  "stepifyPremium": "Stepify Premium",
+  "adFreeExperience": "Ad Free Experience",
+  "upgradeBtn": "Upgrade"
 }

@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_animate/flutter_animate.dart';
+import 'package:go_router/go_router.dart';
 import '../../../../core/theme/app_theme.dart';
 import '../providers/offers_provider.dart';
 
@@ -10,8 +11,6 @@ class MyOffersScreen extends ConsumerWidget {
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
-    // We'll use the same offersProvider but filter for user's history
-    // In a real app, we'd have a specific `myOffersProvider` or fetch different data
     final state = ref.watch(offersProvider);
 
     return DefaultTabController(
@@ -35,18 +34,18 @@ class MyOffersScreen extends ConsumerWidget {
             ? const Center(child: CircularProgressIndicator())
             : TabBarView(
                 children: [
-                  _buildOfferList(context, state.allOffers, status: 'active'), // Mock filtering
-                  _buildOfferList(context, [], status: 'used'),
-                  _buildOfferList(context, [], status: 'expired'),
+                  _buildOfferList(context, state.activeOffers, status: 'active'),
+                  _buildOfferList(context, state.completedOffers, status: 'used'),
+                  _buildOfferList(context, state.expiredOffers, status: 'expired'),
                 ],
               ),
       ),
     );
   }
 
-  Widget _buildOfferList(BuildContext context, List<Offer> offers, {required String status}) {
+  Widget _buildOfferList(BuildContext context, List<UserOffer> offers, {required String status}) {
     if (offers.isEmpty) {
-      return _buildEmptyState(status);
+      return _buildEmptyState(context, status);
     }
 
     return ListView.builder(
@@ -58,63 +57,97 @@ class MyOffersScreen extends ConsumerWidget {
     );
   }
 
-  Widget _buildMyOfferCard(BuildContext context, Offer offer, String status) {
-    return Container(
-      margin: const EdgeInsets.only(bottom: 16),
-      decoration: BoxDecoration(
-        color: Theme.of(context).colorScheme.surface,
-        borderRadius: BorderRadius.circular(16),
-        border: Border.all(color: AppTheme.neutral200),
-        boxShadow: [
-          BoxShadow(
-            color: Colors.black.withOpacity(0.04),
-            blurRadius: 8,
-            offset: const Offset(0, 4),
-          ),
-        ],
-      ),
-      child: Column(
-        children: [
-          ListTile(
-            contentPadding: const EdgeInsets.all(16),
-            leading: Container(
-              padding: const EdgeInsets.all(10),
-              decoration: BoxDecoration(
-                color: AppTheme.neutral100,
-                borderRadius: BorderRadius.circular(12),
-              ),
-              child: const Icon(Icons.local_offer, color: AppTheme.primaryGreen),
+  Widget _buildMyOfferCard(BuildContext context, UserOffer userOffer, String status) {
+    final offer = userOffer.offer;
+    
+    // Calculate expiration days based on startedAt, for example +7 days
+    final expirationDate = userOffer.startedAt.add(const Duration(days: 7));
+    final diff = expirationDate.difference(DateTime.now());
+    final expiresText = diff.isNegative ? 'Expired' : 'Expires in ${diff.inDays} days';
+    
+    final semanticLabel = '${offer.title}, $expiresText. Status: $status';
+
+    return Semantics(
+      label: semanticLabel,
+      button: status == 'active',
+      child: Container(
+        margin: const EdgeInsets.only(bottom: 16),
+        decoration: BoxDecoration(
+          color: Theme.of(context).colorScheme.surface,
+          borderRadius: BorderRadius.circular(16),
+          border: Border.all(color: Theme.of(context).dividerColor.withValues(alpha: 0.5)),
+          boxShadow: [
+            BoxShadow(
+              color: Colors.black.withValues(alpha: 0.04),
+              blurRadius: 8,
+              offset: const Offset(0, 4),
             ),
-            title: Text(offer.title, style: const TextStyle(fontWeight: FontWeight.bold)),
-            subtitle: Text('Expires in 2 days', style: TextStyle(color: AppTheme.neutral500, fontSize: 12)),
-            trailing: Chip(
-              label: Text(status.toUpperCase(), style: const TextStyle(fontSize: 10)),
-              backgroundColor: status == 'active' ? AppTheme.primaryGreen.withOpacity(0.1) : AppTheme.neutral100,
-              labelStyle: TextStyle(color: status == 'active' ? AppTheme.primaryGreen : AppTheme.neutral500),
-            ),
-          ),
-          if (status == 'active')
-            Padding(
-              padding: const EdgeInsets.fromLTRB(16, 0, 16, 16),
-              child: SizedBox(
-                width: double.infinity,
-                child: ElevatedButton(
-                  onPressed: () {},
-                  style: ElevatedButton.styleFrom(
-                    backgroundColor: AppTheme.primaryGreen,
-                    foregroundColor: Colors.white,
-                    shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
+          ],
+        ),
+        child: Column(
+          children: [
+            ListTile(
+              contentPadding: const EdgeInsets.all(16),
+              leading: ExcludeSemantics(
+                child: Container(
+                  padding: const EdgeInsets.all(10),
+                  decoration: BoxDecoration(
+                    color: AppTheme.primaryGreen.withValues(alpha: 0.1),
+                    borderRadius: BorderRadius.circular(12),
                   ),
-                  child: const Text('Redeem Now'),
+                  child: const Icon(Icons.local_offer, color: AppTheme.primaryGreen),
                 ),
               ),
+              title: Text(
+                offer.title,
+                style: TextStyle(
+                  fontWeight: FontWeight.bold,
+                  color: Theme.of(context).textTheme.bodyLarge?.color,
+                ),
+              ),
+              subtitle: Text(
+                expiresText,
+                style: TextStyle(
+                  color: Theme.of(context).textTheme.bodySmall?.color,
+                  fontSize: 12,
+                ),
+              ),
+              trailing: Chip(
+                label: Text(status.toUpperCase(), style: const TextStyle(fontSize: 10, fontWeight: FontWeight.bold)),
+                backgroundColor: status == 'active' ? AppTheme.primaryGreen.withValues(alpha: 0.1) : Theme.of(context).dividerColor.withValues(alpha: 0.1),
+                labelStyle: TextStyle(color: status == 'active' ? AppTheme.primaryGreen : Theme.of(context).textTheme.bodyMedium?.color),
+                side: BorderSide.none,
+              ),
             ),
-        ],
-      ),
-    ).animate().fadeIn().slideY(begin: 0.1, end: 0);
+            if (status == 'active')
+              Padding(
+                padding: const EdgeInsets.fromLTRB(16, 0, 16, 16),
+                child: SizedBox(
+                  width: double.infinity,
+                  child: ExcludeSemantics(
+                    child: ElevatedButton(
+                      onPressed: () {
+                        if (offer.actionUrl != null) {
+                          context.push(offer.actionUrl!);
+                        }
+                      },
+                      style: ElevatedButton.styleFrom(
+                        backgroundColor: AppTheme.primaryGreen,
+                        foregroundColor: Colors.white,
+                        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
+                      ),
+                      child: const Text('Redeem Now'),
+                    ),
+                  ),
+                ),
+              ),
+          ],
+        ),
+      ).animate().fadeIn().slideY(begin: 0.1, end: 0),
+    );
   }
 
-  Widget _buildEmptyState(String status) {
+  Widget _buildEmptyState(BuildContext context, String status) {
     String message = '';
     IconData icon = Icons.local_offer_outlined;
 
@@ -136,12 +169,12 @@ class MyOffersScreen extends ConsumerWidget {
       child: Column(
         mainAxisAlignment: MainAxisAlignment.center,
         children: [
-          Icon(icon, size: 64, color: AppTheme.neutral300),
+          ExcludeSemantics(child: Icon(icon, size: 64, color: Theme.of(context).dividerColor)),
           const SizedBox(height: 16),
           Text(
             message,
             textAlign: TextAlign.center,
-            style: const TextStyle(color: AppTheme.neutral500),
+            style: TextStyle(color: Theme.of(context).textTheme.bodyMedium?.color?.withValues(alpha: 0.7)),
           ),
         ],
       ).animate().fadeIn(),

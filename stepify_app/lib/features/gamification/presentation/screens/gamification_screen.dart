@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_animate/flutter_animate.dart';
 import 'package:go_router/go_router.dart';
+import 'package:stepify_app/l10n/app_localizations.dart';
 
 import '../../../../core/router/app_router.dart';
 import '../../../../core/theme/app_theme.dart';
@@ -12,12 +13,13 @@ class GamificationScreen extends ConsumerWidget {
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
+    final l10n = AppLocalizations.of(context)!;
     final state = ref.watch(gamificationProvider);
 
     return Scaffold(
       body: CustomScrollView(
         slivers: [
-          _buildSliverAppBar(context),
+          _buildSliverAppBar(context, l10n),
           
           if (state.isLoading)
              const SliverFillRemaining(child: Center(child: CircularProgressIndicator()))
@@ -27,20 +29,20 @@ class GamificationScreen extends ConsumerWidget {
               sliver: SliverList(
                 delegate: SliverChildListDelegate([
                   // Level Header
-                  _buildLevelHeader(context, state),
+                  _buildLevelHeader(context, state, l10n),
                   const SizedBox(height: 30),
                   
                   // Stats Grid (Rank & Streak)
-                  _buildStatsGrid(context, state),
+                  _buildStatsGrid(context, state, l10n),
                   const SizedBox(height: 20),
                   
                   // Adventure Quests Card
-                  _buildQuestsCard(context),
+                  _buildQuestsCard(context, l10n),
                   const SizedBox(height: 30),
                   
                   // Activity Timeline Title
                   Text(
-                    'Recent Activity',
+                    l10n.recentActivity,
                     style: Theme.of(context).textTheme.titleLarge?.copyWith(
                       fontWeight: FontWeight.bold,
                     ),
@@ -58,7 +60,7 @@ class GamificationScreen extends ConsumerWidget {
                           Icon(Icons.timeline, size: 48, color: AppTheme.neutral300),
                           const SizedBox(height: 16),
                           Text(
-                            'No activity yet',
+                            l10n.noActivityYet,
                             style: TextStyle(
                               color: AppTheme.neutral500,
                               fontWeight: FontWeight.w600,
@@ -67,7 +69,7 @@ class GamificationScreen extends ConsumerWidget {
                           ),
                           const SizedBox(height: 8),
                           Text(
-                            'Start walking to earn XP and see your progress!',
+                            l10n.startWalkingXp,
                             textAlign: TextAlign.center,
                             style: TextStyle(color: AppTheme.neutral400, fontSize: 13),
                           ),
@@ -88,7 +90,7 @@ class GamificationScreen extends ConsumerWidget {
     );
   }
 
-  SliverAppBar _buildSliverAppBar(BuildContext context) {
+  SliverAppBar _buildSliverAppBar(BuildContext context, AppLocalizations l10n) {
     return SliverAppBar(
       expandedHeight: 70,
       pinned: true,
@@ -102,7 +104,7 @@ class GamificationScreen extends ConsumerWidget {
       ],
       flexibleSpace: FlexibleSpaceBar(
         centerTitle: true,
-        title: const Text('Your Journey', style: TextStyle(color: Colors.white)),
+        title: Text(l10n.yourJourney, style: const TextStyle(color: Colors.white)),
         background: Container(
           decoration: const BoxDecoration(
             gradient: AppTheme.primaryGradient,
@@ -112,7 +114,7 @@ class GamificationScreen extends ConsumerWidget {
                // Decorative pattern
                Positioned(
                  right: -30, top: -50,
-                 child: Icon(Icons.star, size: 200, color: Colors.white.withOpacity(0.1)),
+                 child: Icon(Icons.star, size: 200, color: Colors.white.withValues(alpha: 0.1)),
                ),
             ],
           ),
@@ -121,7 +123,7 @@ class GamificationScreen extends ConsumerWidget {
     );
   }
 
-  Widget _buildLevelHeader(BuildContext context, GamificationState state) {
+  Widget _buildLevelHeader(BuildContext context, GamificationState state, AppLocalizations l10n) {
     return Column(
       children: [
         Stack(
@@ -136,13 +138,13 @@ class GamificationScreen extends ConsumerWidget {
                 valueColor: const AlwaysStoppedAnimation(AppTheme.accentYellow),
               ),
             ),
-            Column(
-              children: [
-                Text(
-                  'LEVEL',
-                  style: TextStyle(color: AppTheme.neutral500, fontSize: 12, fontWeight: FontWeight.bold, letterSpacing: 1),
-                ),
-                Text(
+              Column(
+                children: [
+                  Text(
+                    l10n.levelTitle,
+                    style: TextStyle(color: AppTheme.neutral500, fontSize: 12, fontWeight: FontWeight.bold, letterSpacing: 1),
+                  ),
+                  Text(
                   '${state.level}',
                   style: const TextStyle(color: AppTheme.primaryGreen, fontSize: 40, fontWeight: FontWeight.bold),
                 ),
@@ -164,20 +166,20 @@ class GamificationScreen extends ConsumerWidget {
         const SizedBox(height: 8),
         
         Text(
-          '${state.currentXp} / ${state.nextLevelXp} XP',
+          '${state.currentXp} / ${state.nextLevelXp} ${l10n.xpText}',
           style: TextStyle(color: AppTheme.neutral600, fontWeight: FontWeight.w500),
         ),
       ],
     );
   }
 
-  Widget _buildStatsGrid(BuildContext context, GamificationState state) {
+  Widget _buildStatsGrid(BuildContext context, GamificationState state, AppLocalizations l10n) {
     return Row(
       children: [
         Expanded(
           child: _buildStatCard(
             context,
-            'Global Rank',
+            l10n.globalRank,
             '#${state.globalRank}',
             Icons.public,
             AppTheme.secondaryBlue,
@@ -188,8 +190,8 @@ class GamificationScreen extends ConsumerWidget {
         Expanded(
           child: _buildStatCard(
             context,
-            'Streak',
-            '${state.currentStreak} Days',
+            l10n.streak,
+            l10n.streakDays(state.currentStreak),
             Icons.local_fire_department,
             AppTheme.accentOrange,
           ),
@@ -198,17 +200,20 @@ class GamificationScreen extends ConsumerWidget {
     ).animate().fadeIn(delay: 300.ms).slideY(begin: 0.2, end: 0);
   }
   
-  Widget _buildQuestsCard(BuildContext context) {
-    return GestureDetector(
-      onTap: () => context.push(AppRoutes.quests),
-      child: Container(
+  Widget _buildQuestsCard(BuildContext context, AppLocalizations l10n) {
+    return Semantics(
+      label: '${l10n.adventureQuests}. ${l10n.adventureQuestsDesc}.',
+      button: true,
+      child: GestureDetector(
+        onTap: () => context.push(AppRoutes.quests),
+        child: Container(
         width: double.infinity,
         padding: const EdgeInsets.all(20),
         decoration: BoxDecoration(
           gradient: AppTheme.rewardGradient,
           borderRadius: BorderRadius.circular(20),
           boxShadow: [
-             BoxShadow(color: AppTheme.accentOrange.withOpacity(0.3), blurRadius: 10, offset: const Offset(0, 4)),
+             BoxShadow(color: AppTheme.accentOrange.withValues(alpha: 0.3), blurRadius: 10, offset: const Offset(0, 4)),
           ],
         ),
         child: Row(
@@ -216,7 +221,7 @@ class GamificationScreen extends ConsumerWidget {
             Container(
               padding: const EdgeInsets.all(12),
               decoration: BoxDecoration(
-                color: Colors.white.withOpacity(0.2),
+                color: Colors.white.withValues(alpha: 0.2),
                 shape: BoxShape.circle,
               ),
               child: const Icon(Icons.map, color: Colors.white, size: 32),
@@ -225,15 +230,15 @@ class GamificationScreen extends ConsumerWidget {
             Expanded(
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
-                children: const [
+                children: [
                   Text(
-                    'Adventure Quests',
-                    style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold, fontSize: 18),
+                    l10n.adventureQuests,
+                    style: const TextStyle(color: Colors.white, fontWeight: FontWeight.bold, fontSize: 18),
                   ),
-                   SizedBox(height: 4),
+                   const SizedBox(height: 4),
                   Text(
-                    'Embark on story-driven journeys',
-                    style: TextStyle(color: Colors.white, fontSize: 14),
+                    l10n.adventureQuestsDesc,
+                    style: const TextStyle(color: Colors.white, fontSize: 14),
                   ),
                 ],
               ),
@@ -242,26 +247,30 @@ class GamificationScreen extends ConsumerWidget {
           ],
         ),
       ),
+      ),
     ).animate().fadeIn(delay: 400.ms).slideX(begin: 0.1, end: 0);
   }
 
   Widget _buildStatCard(BuildContext context, String label, String value, IconData icon, Color color, {VoidCallback? onTap}) {
-    return GestureDetector(
-      onTap: onTap,
-      child: Container(
+    return Semantics(
+      label: '$label. $value',
+      button: onTap != null,
+      child: GestureDetector(
+        onTap: onTap,
+        child: Container(
         padding: const EdgeInsets.all(16),
         decoration: BoxDecoration(
           color: Theme.of(context).colorScheme.surface,
           borderRadius: BorderRadius.circular(16),
           boxShadow: [
-            BoxShadow(color: Colors.black.withOpacity(0.05), blurRadius: 10, offset: const Offset(0, 4)),
+            BoxShadow(color: Colors.black.withValues(alpha: 0.05), blurRadius: 10, offset: const Offset(0, 4)),
           ],
         ),
         child: Column(
           children: [
             Container(
               padding: const EdgeInsets.all(12),
-              decoration: BoxDecoration(color: color.withOpacity(0.1), shape: BoxShape.circle),
+              decoration: BoxDecoration(color: color.withValues(alpha: 0.1), shape: BoxShape.circle),
               child: Icon(icon, color: color, size: 28),
             ),
             const SizedBox(height: 12),
@@ -271,10 +280,12 @@ class GamificationScreen extends ConsumerWidget {
           ],
         ),
       ),
+      ),
     );
   }
 
   Widget _buildTimelineItem(BuildContext context, ActivityEvent event, bool isLast) {
+    final l10n = AppLocalizations.of(context)!;
     // Determine icon and color based on type
     IconData icon;
     Color color;
@@ -295,11 +306,11 @@ class GamificationScreen extends ConsumerWidget {
             children: [
               Container(
                 width: 36, height: 36,
-                decoration: BoxDecoration(color: color.withOpacity(0.1), shape: BoxShape.circle),
+                decoration: BoxDecoration(color: color.withValues(alpha: 0.1), shape: BoxShape.circle),
                 child: Icon(icon, color: color, size: 18),
               ),
               if (!isLast)
-                Expanded(child: Container(width: 2, color: AppTheme.neutral200.withOpacity(0.5))),
+                Expanded(child: Container(width: 2, color: AppTheme.neutral200.withValues(alpha: 0.5))),
             ],
           ),
           const SizedBox(width: 16),
@@ -315,7 +326,7 @@ class GamificationScreen extends ConsumerWidget {
                     mainAxisAlignment: MainAxisAlignment.spaceBetween,
                     children: [
                       Text(event.title, style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 16)),
-                      Text('+${event.xpEarned} XP', style: TextStyle(color: AppTheme.primaryGreen, fontWeight: FontWeight.bold)),
+                      Text('+${event.xpEarned} ${l10n.xpText}', style: TextStyle(color: AppTheme.primaryGreen, fontWeight: FontWeight.bold)),
                     ],
                   ),
                   const SizedBox(height: 4),

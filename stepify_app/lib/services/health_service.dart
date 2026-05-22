@@ -1,36 +1,52 @@
+import 'package:flutter/foundation.dart';
 import 'package:health/health.dart';
 import 'package:permission_handler/permission_handler.dart';
-import 'package:flutter/foundation.dart';
 
-/// Service to handle HealthKit (iOS) and Google Fit (Android) integration
+/// Service that bridges HealthKit (iOS) and Google Health Connect (Android).
+///
+/// Use [requestAuthorization] before any data-fetch calls.
 class HealthService {
+  // ── Singleton ─────────────────────────────────────────────────────────────
+  static final HealthService _instance = HealthService._internal();
+  factory HealthService() => _instance;
+  HealthService._internal();
+
   final Health _health = Health();
 
-  /// Define the types of data we want to request
-  final List<HealthDataType> _types = [
+  /// Data types we request read access for.
+  static const List<HealthDataType> _types = [
     HealthDataType.STEPS,
     HealthDataType.ACTIVE_ENERGY_BURNED,
     HealthDataType.DISTANCE_DELTA,
   ];
 
-  /// Configure authorization permissions
-  final List<HealthDataAccess> _permissions = [
+  /// Matching read-only permissions for each type above.
+  static const List<HealthDataAccess> _permissions = [
     HealthDataAccess.READ,
     HealthDataAccess.READ,
     HealthDataAccess.READ,
   ];
 
-  /// Check if health data is available and authorized
+  // ── Authorization ─────────────────────────────────────────────────────────
+
+  /// Requests access to health data.
+  ///
+  /// On Android, also requests the `activityRecognition` permission first.
+  /// Returns `true` if authorization was granted.
   Future<bool> requestAuthorization() async {
-    // Check if permission handler says we have access (useful for Android pre-check)
     if (defaultTargetPlatform == TargetPlatform.android) {
       PermissionStatus status;
       try {
         status = await Permission.activityRecognition.request();
-      } catch (e) {
-        // If another permission request is running concurrently, wait and retry
-        await Future.delayed(const Duration(seconds: 1));
-        status = await Permission.activityRecognition.request();
+      } catch (_) {
+        // Retry once if another concurrent request interfered.
+        await Future<void>.delayed(const Duration(seconds: 1));
+        try {
+          status = await Permission.activityRecognition.request();
+        } catch (e) {
+          debugPrint('HealthService: Activity recognition permission error: $e');
+          return false;
+        }
       }
       if (status != PermissionStatus.granted) {
         return false;
@@ -38,56 +54,55 @@ class HealthService {
     }
 
     try {
-      // Request access to HealthKit/Google Fit
-      final bool authorized = await _health.requestAuthorization(
-        _types,
-        permissions: _permissions,
-      );
-      
-      return authorized;
+      return await _health.requestAuthorization(_types,
+          permissions: _permissions);
     } catch (e) {
-      print('Health authorization error: $e');
+      debugPrint('HealthService: Authorization error: $e');
       return false;
     }
   }
 
-  /// Fetch today's steps
+  // ── Step Queries ──────────────────────────────────────────────────────────
+
+  /// Returns the total step count for today (midnight → now).
   Future<int> getTodaySteps() async {
     final now = DateTime.now();
     final midnight = DateTime(now.year, now.month, now.day);
-    
     try {
       return await _health.getTotalStepsInInterval(midnight, now) ?? 0;
     } catch (e) {
-      print('Error fetching steps: $e');
+      debugPrint('HealthService: Error fetching today\'s steps: $e');
       return 0;
     }
   }
 
-  /// Method to get step count history for the last [days]
+  /// Returns a map of {startOfDay → stepCount} for each of the past [days].
+  ///
+  /// Uses [Future.wait] to parallelise day queries for better performance.
   Future<Map<DateTime, int>> getStepHistory(int days) async {
+    assert(days > 0, 'days must be positive');
     final now = DateTime.now();
-    final startDate = now.subtract(Duration(days: days));
-    final stepsMap = <DateTime, int>{};
 
-    // We can't get daily aggregates easily with a single call that splits by day 
-    // in the unified package easily without manual processing, 
-    // so we iterate or fetch all points. 
-    // Since Health package doesn't give a "getDailySummary", we fetch the aggregate for each day loop.
-    
-    for (int i = 0; i < days; i++) {
-        final date = now.subtract(Duration(days: i));
-        final startOfDay = DateTime(date.year, date.month, date.day);
-        final endOfDay = DateTime(date.year, date.month, date.day, 23, 59, 59);
-        
-        try {
-            final steps = await _health.getTotalStepsInInterval(startOfDay, endOfDay) ?? 0;
-             stepsMap[startOfDay] = steps;
-        } catch (e) {
-            print("Error getting steps for $startOfDay: $e");
-        }
-    }
-    
-    return stepsMap;
+    final futures = List<Future<MapEntry<DateTime, int>>>.generate(days, (i) {
+      final date = now.subtract(Duration(days: i));
+      final startOfDay = DateTime(date.year, date.month, date.day);
+      // Use exclusive end-of-day: start of next day avoids the 23:59:59 gap.
+      final endOfDay =
+          DateTime(date.year, date.month, date.day + 1);
+
+      return _health
+          .getTotalStepsInInterval(startOfDay, endOfDay)
+          .then<MapEntry<DateTime, int>>(
+            (steps) => MapEntry(startOfDay, steps ?? 0),
+            onError: (Object e) {
+              debugPrint(
+                  'HealthService: Error fetching steps for $startOfDay: $e');
+              return MapEntry(startOfDay, 0);
+            },
+          );
+    });
+
+    final entries = await Future.wait(futures);
+    return Map.fromEntries(entries);
   }
 }

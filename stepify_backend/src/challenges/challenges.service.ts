@@ -7,76 +7,92 @@ import {
 } from "@nestjs/common";
 import { Cron, CronExpression } from "@nestjs/schedule";
 import { PrismaService } from "../prisma/prisma.service";
-import {
-  CreateChallengeDto,
-  JoinChallengeDto,
-  ChallengeStatus,
-} from "./dto/challenge.dto";
+import { RedisService } from "../redis/redis.service";
+import { CreateChallengeDto, ChallengeStatus } from "./dto/challenge.dto";
 
 @Injectable()
 export class ChallengesService {
   private readonly logger = new Logger(ChallengesService.name);
 
-  constructor(private prisma: PrismaService) {}
+  constructor(
+    private readonly prisma: PrismaService,
+    private readonly redis: RedisService,
+  ) {}
 
   @Cron(CronExpression.EVERY_DAY_AT_MIDNIGHT)
   async generateDailyMissions() {
     this.logger.log("Running CRON: generateDailyMissions");
 
-    // 1. Expire old daily missions
-    await this.prisma.challenge.updateMany({
-      where: {
-        challengeType: "SOLO",
-        title: { startsWith: "Daily Mission:" },
-        isActive: true,
-      },
-      data: { isActive: false },
-    });
+    const lockKey = "cron:generateDailyMissions";
+    const redisClient = this.redis.getClient();
 
-    const todayDateStr = new Date().toISOString().split("T")[0];
-
-    // 2. Create 3 new daily missions
-    const missions = [
-      {
-        title: `Daily Mission: Walk 5K (${todayDateStr})`,
-        description: "Walk 5,000 steps today to earn a quick bonus!",
-        stepTarget: 5000,
-        rewardCoins: 50,
-        rewardXp: 20,
-        durationDays: 1,
-        challengeType: "SOLO" as any,
-        difficulty: "EASY" as any,
-        imageUrl: "assets/images/missions/daily_walk.png",
-      },
-      {
-        title: `Daily Mission: 10K Push (${todayDateStr})`,
-        description: "Hit the 10,000 step mark for a solid reward.",
-        stepTarget: 10000,
-        rewardCoins: 150,
-        rewardXp: 50,
-        durationDays: 1,
-        challengeType: "SOLO" as any,
-        difficulty: "MEDIUM" as any,
-        imageUrl: "assets/images/missions/daily_push.png",
-      },
-      {
-        title: `Daily Mission: Watch & Win (${todayDateStr})`,
-        description: "Watch 2 ads today to support the app and earn!",
-        stepTarget: 2, // Treated as ad views internally in a different hook
-        rewardCoins: 30,
-        rewardXp: 10,
-        durationDays: 1,
-        challengeType: "SOLO" as any,
-        difficulty: "EASY" as any,
-        imageUrl: "assets/images/missions/daily_ads.png",
-      },
-    ];
-
-    for (const mission of missions) {
-      await this.prisma.challenge.create({ data: mission });
+    // Acquire a distributed lock for 10 minutes
+    const acquired = await redisClient.set(lockKey, "1", "EX", 600, "NX");
+    if (!acquired) {
+      this.logger.log("Cron lock already acquired by another node. Skipping.");
+      return;
     }
 
-    this.logger.log("Daily Missions generated successfully.");
+    try {
+      // 1. Expire old daily missions
+      await this.prisma.challenge.updateMany({
+        where: {
+          challengeType: "SOLO",
+          title: { startsWith: "Daily Mission:" },
+          isActive: true,
+        },
+        data: { isActive: false },
+      });
+
+      const todayDateStr = new Date().toISOString().split("T")[0];
+
+      // 2. Create 3 new daily missions
+      const missions = [
+        {
+          title: `Daily Mission: Walk 5K (${todayDateStr})`,
+          description: "Walk 5,000 steps today to earn a quick bonus!",
+          stepTarget: 5000,
+          rewardCoins: 50,
+          rewardXp: 20,
+          durationDays: 1,
+          challengeType: "SOLO" as any,
+          difficulty: "EASY" as any,
+          imageUrl: "assets/images/missions/daily_walk.png",
+        },
+        {
+          title: `Daily Mission: 10K Push (${todayDateStr})`,
+          description: "Hit the 10,000 step mark for a solid reward.",
+          stepTarget: 10000,
+          rewardCoins: 150,
+          rewardXp: 50,
+          durationDays: 1,
+          challengeType: "SOLO" as any,
+          difficulty: "MEDIUM" as any,
+          imageUrl: "assets/images/missions/daily_push.png",
+        },
+        {
+          title: `Daily Mission: Watch & Win (${todayDateStr})`,
+          description: "Watch 2 ads today to support the app and earn!",
+          stepTarget: 2, // Treated as ad views internally in a different hook
+          rewardCoins: 30,
+          rewardXp: 10,
+          durationDays: 1,
+          challengeType: "SOLO" as any,
+          difficulty: "EASY" as any,
+          imageUrl: "assets/images/missions/daily_ads.png",
+        },
+      ];
+
+      for (const mission of missions) {
+        await this.prisma.challenge.create({ data: mission });
+      }
+
+      this.logger.log("Daily Missions generated successfully.");
+    } catch (err) {
+      this.logger.error("Failed to generate daily missions", err.stack);
+      // Delete lock on failure so it can be retried if needed
+      await redisClient.del(lockKey);
+    }
   }
 
   /**
@@ -247,57 +263,59 @@ export class ChallengesService {
     );
     const isCompleted = newSteps >= userChallenge.challenge.stepTarget;
 
-    const updated = await this.prisma.userChallenge.update({
-      where: {
-        userId_challengeId: {
-          userId,
-          challengeId,
-        },
-      },
-      data: {
-        currentSteps: newSteps,
-        progress,
-        status: isCompleted ? "COMPLETED" : "ONGOING",
-        completedAt: isCompleted ? new Date() : null,
-      },
-      include: {
-        challenge: true,
-      },
-    });
+    try {
+      const updated = await this.prisma.$transaction(async (tx) => {
+        const uc = await tx.userChallenge.update({
+          where: {
+            userId_challengeId: {
+              userId,
+              challengeId,
+            },
+          },
+          data: {
+            currentSteps: newSteps,
+            progress,
+            status: isCompleted ? "COMPLETED" : "ONGOING",
+            completedAt: isCompleted ? new Date() : null,
+          },
+          include: {
+            challenge: true,
+          },
+        });
 
-    // If completed, award coins and XP (we know it wasn't completed before since we checked status === ONGOING above)
-    if (isCompleted) {
-      await this.awardRewards(
-        userId,
-        userChallenge.challenge.rewardCoins,
-        userChallenge.challenge.rewardXp,
+        // Award coins and XP securely within transaction
+        if (isCompleted && userChallenge.challenge.rewardCoins > 0) {
+          const coins = userChallenge.challenge.rewardCoins;
+
+          await tx.wallet.upsert({
+            where: { userId },
+            update: {
+              balance: { increment: coins },
+              lifetimePoints: { increment: coins },
+            },
+            create: { userId, balance: coins, lifetimePoints: coins },
+          });
+
+          await tx.transaction.create({
+            data: {
+              userId,
+              type: "MILESTONE",
+              points: coins,
+              description: `Reward for completing: ${userChallenge.challenge.title}`,
+              metadata: { challengeId: challengeId },
+            },
+          });
+        }
+
+        return uc;
+      });
+
+      return updated;
+    } catch (error) {
+      this.logger.error(
+        `Failed to update challenge progress: ${error.message}`,
       );
-    }
-
-    return updated;
-  }
-
-  /**
-   * Award coins and XP for completing a challenge
-   */
-  private async awardRewards(userId: string, coins: number, xp: number) {
-    if (coins > 0) {
-      await this.prisma.wallet.update({
-        where: { userId },
-        data: {
-          balance: { increment: coins },
-          lifetimePoints: { increment: coins },
-        },
-      });
-
-      await this.prisma.transaction.create({
-        data: {
-          userId,
-          type: "MILESTONE",
-          points: coins,
-          description: "Challenge completion reward",
-        },
-      });
+      throw new BadRequestException("Failed to update challenge progress");
     }
   }
 

@@ -72,13 +72,17 @@ class _OnboardingScreenState extends State<OnboardingScreen> {
             // Skip button
             Align(
               alignment: Alignment.topRight,
-              child: TextButton(
-                onPressed: _completeOnboarding,
-                child: Text(
-                  'Skip',
-                  style: TextStyle(
-                    color: AppTheme.neutral500,
-                    fontSize: 16,
+              child: Semantics(
+                button: true,
+                label: 'Skip onboarding',
+                child: TextButton(
+                  onPressed: _completeOnboarding,
+                  child: Text(
+                    'Skip',
+                    style: TextStyle(
+                      color: Theme.of(context).textTheme.bodySmall?.color,
+                      fontSize: 16,
+                    ),
                   ),
                 ),
               ),
@@ -93,13 +97,17 @@ class _OnboardingScreenState extends State<OnboardingScreen> {
                   setState(() => _currentPage = index);
                 },
                 itemBuilder: (context, index) {
-                  return _buildPage(_pages[index]);
+                  return Semantics(
+                    label: 'Page ${index + 1} of ${_pages.length}',
+                    child: _buildPage(_pages[index]),
+                  );
                 },
               ),
             ),
             
             // Indicators
-            ExcludeSemantics(
+            Semantics(
+              label: 'Page ${_currentPage + 1} of ${_pages.length}',
               child: Row(
                 mainAxisAlignment: MainAxisAlignment.center,
                 children: List.generate(
@@ -114,13 +122,20 @@ class _OnboardingScreenState extends State<OnboardingScreen> {
             // Next/Get Started Button
             Padding(
               padding: const EdgeInsets.symmetric(horizontal: 24),
-              child: ElevatedButton(
-                onPressed: _nextPage,
-                style: ElevatedButton.styleFrom(
-                  backgroundColor: _pages[_currentPage].color,
-                ),
-                child: Text(
-                  _currentPage == _pages.length - 1 ? 'Get Started' : 'Next',
+              child: SizedBox(
+                width: double.infinity,
+                height: 56,
+                child: ElevatedButton(
+                  onPressed: _nextPage,
+                  style: ElevatedButton.styleFrom(
+                    backgroundColor: _pages[_currentPage].color,
+                    foregroundColor: Colors.white,
+                    shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+                  ),
+                  child: Text(
+                    _currentPage == _pages.length - 1 ? 'Get Started' : 'Next',
+                    style: const TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
+                  ),
                 ),
               ),
             ),
@@ -144,7 +159,7 @@ class _OnboardingScreenState extends State<OnboardingScreen> {
               width: 150,
               height: 150,
               decoration: BoxDecoration(
-                color: page.color.withOpacity(0.1),
+                color: page.color.withValues(alpha: 0.1),
                 shape: BoxShape.circle,
               ),
               child: Icon(
@@ -171,6 +186,7 @@ class _OnboardingScreenState extends State<OnboardingScreen> {
               textAlign: TextAlign.center,
               style: Theme.of(context).textTheme.headlineMedium?.copyWith(
                 fontWeight: FontWeight.bold,
+                color: Theme.of(context).textTheme.titleLarge?.color,
               ),
             )
                 .animate(delay: 200.ms)
@@ -186,6 +202,7 @@ class _OnboardingScreenState extends State<OnboardingScreen> {
             textAlign: TextAlign.center,
             style: Theme.of(context).textTheme.bodyLarge?.copyWith(
               height: 1.5,
+              color: Theme.of(context).textTheme.bodyMedium?.color,
             ),
           )
               .animate(delay: 400.ms)
@@ -204,7 +221,7 @@ class _OnboardingScreenState extends State<OnboardingScreen> {
       width: isActive ? 32 : 8,
       height: 8,
       decoration: BoxDecoration(
-        color: isActive ? _pages[_currentPage].color : AppTheme.neutral300,
+        color: isActive ? _pages[_currentPage].color : Theme.of(context).dividerColor.withValues(alpha: 0.3),
         borderRadius: BorderRadius.circular(4),
       ),
     );

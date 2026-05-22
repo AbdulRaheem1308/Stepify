@@ -3,9 +3,13 @@ import 'package:google_mobile_ads/google_mobile_ads.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../core/services/remote_config_service.dart';
 
+/// AdMob service handling Banner, Interstitial, Rewarded, and Native ads.
+///
+/// Ad IDs are selected at runtime based on build mode and platform.
+/// Production IDs must be set via environment config before release.
 class AdService {
   final RemoteConfigService _remoteConfigService;
-  
+
   AdService(this._remoteConfigService);
 
   InterstitialAd? _interstitialAd;
@@ -13,16 +17,23 @@ class AdService {
 
   RewardedAd? _rewardedAd;
   bool _isRewardedAdReady = false;
-  
-  // Track loaded native ads
+
+  // Loaded native ads keyed by factoryId
   final Map<String, NativeAd> _nativeAds = {};
 
-  // Check if Ads are supported (Android/iOS only, not Web)
+  // Retry backoff state
+  int _interstitialRetryAttempt = 0;
+  int _rewardedRetryAttempt = 0;
+  static const int _maxRetryAttempts = 5;
+
+  /// Whether Google Mobile Ads is supported on the current platform.
   bool get _isSupported {
     if (kIsWeb) return false;
-    return defaultTargetPlatform == TargetPlatform.android || defaultTargetPlatform == TargetPlatform.iOS;
+    return defaultTargetPlatform == TargetPlatform.android ||
+        defaultTargetPlatform == TargetPlatform.iOS;
   }
 
+  /// Initialise the AdMob SDK and pre-load ads.
   Future<void> initialize() async {
     if (!_isSupported) return;
     try {
@@ -30,88 +41,99 @@ class AdService {
       _loadInterstitialAd();
       loadRewardedAd();
     } catch (e) {
-      debugPrint('AdMob Init Failed: $e');
+      debugPrint('AdService: AdMob init failed: $e');
     }
   }
 
-  // Banner Ad Unit ID
+  // ── Ad Unit IDs ─────────────────────────────────────────────────────────────
+
+  /// Banner ad unit ID. Uses Google test IDs in debug mode.
   String get bannerAdUnitId {
     if (!_isSupported) return '';
-    
     if (kDebugMode) {
       return defaultTargetPlatform == TargetPlatform.android
           ? 'ca-app-pub-3940256099942544/6300978111'
           : 'ca-app-pub-3940256099942544/2934735716';
     }
+    // TODO(release): Replace with your production Ad Unit IDs from AdMob console.
     return defaultTargetPlatform == TargetPlatform.android
-        ? 'ca-app-pub-xxxxxxxxxxxxxxxx/1111111111'
-        : 'ca-app-pub-xxxxxxxxxxxxxxxx/2222222222';
+        ? const String.fromEnvironment('BANNER_AD_UNIT_ANDROID',
+            defaultValue: 'ca-app-pub-REPLACE_ME/BANNER_ANDROID')
+        : const String.fromEnvironment('BANNER_AD_UNIT_IOS',
+            defaultValue: 'ca-app-pub-REPLACE_ME/BANNER_IOS');
   }
 
-  // Interstitial Ad Unit ID
+  /// Interstitial ad unit ID.
   String get interstitialAdUnitId {
     if (!_isSupported) return '';
-
     if (kDebugMode) {
       return defaultTargetPlatform == TargetPlatform.android
           ? 'ca-app-pub-3940256099942544/1033173712'
           : 'ca-app-pub-3940256099942544/4411468910';
     }
+    // TODO(release): Replace with your production Ad Unit IDs from AdMob console.
     return defaultTargetPlatform == TargetPlatform.android
-        ? 'ca-app-pub-xxxxxxxxxxxxxxxx/3333333333'
-        : 'ca-app-pub-xxxxxxxxxxxxxxxx/4444444444'; 
+        ? const String.fromEnvironment('INTERSTITIAL_AD_UNIT_ANDROID',
+            defaultValue: 'ca-app-pub-REPLACE_ME/INTERSTITIAL_ANDROID')
+        : const String.fromEnvironment('INTERSTITIAL_AD_UNIT_IOS',
+            defaultValue: 'ca-app-pub-REPLACE_ME/INTERSTITIAL_IOS');
   }
 
-  // Rewarded Ad Unit ID
+  /// Rewarded ad unit ID.
   String get rewardedAdUnitId {
     if (!_isSupported) return '';
-
     if (kDebugMode) {
       return defaultTargetPlatform == TargetPlatform.android
           ? 'ca-app-pub-3940256099942544/5224354917'
           : 'ca-app-pub-3940256099942544/1712485313';
     }
+    // TODO(release): Replace with your production Ad Unit IDs from AdMob console.
     return defaultTargetPlatform == TargetPlatform.android
-        ? 'ca-app-pub-xxxxxxxxxxxxxxxx/5555555555'
-        : 'ca-app-pub-xxxxxxxxxxxxxxxx/6666666666';
+        ? const String.fromEnvironment('REWARDED_AD_UNIT_ANDROID',
+            defaultValue: 'ca-app-pub-REPLACE_ME/REWARDED_ANDROID')
+        : const String.fromEnvironment('REWARDED_AD_UNIT_IOS',
+            defaultValue: 'ca-app-pub-REPLACE_ME/REWARDED_IOS');
   }
 
-  // Native Ad Unit ID
+  /// Native ad unit ID.
   String get nativeAdUnitId {
     if (!_isSupported) return '';
-
     if (kDebugMode) {
       return defaultTargetPlatform == TargetPlatform.android
-          ? 'ca-app-pub-3940256099942544/2247696110' // Android native advanced test ID
-          : 'ca-app-pub-3940256099942544/3986624511'; // iOS native advanced test ID
+          ? 'ca-app-pub-3940256099942544/2247696110'
+          : 'ca-app-pub-3940256099942544/3986624511';
     }
+    // TODO(release): Replace with your production Ad Unit IDs from AdMob console.
     return defaultTargetPlatform == TargetPlatform.android
-        ? 'ca-app-pub-xxxxxxxxxxxxxxxx/7777777777'
-        : 'ca-app-pub-xxxxxxxxxxxxxxxx/8888888888';
+        ? const String.fromEnvironment('NATIVE_AD_UNIT_ANDROID',
+            defaultValue: 'ca-app-pub-REPLACE_ME/NATIVE_ANDROID')
+        : const String.fromEnvironment('NATIVE_AD_UNIT_IOS',
+            defaultValue: 'ca-app-pub-REPLACE_ME/NATIVE_IOS');
   }
 
-  // Create Banner Ad
+  // ── Banner ──────────────────────────────────────────────────────────────────
+
+  /// Creates and returns a [BannerAd] ready to be loaded by the caller.
   BannerAd? createBannerAd() {
     if (!_isSupported) return null;
-
     return BannerAd(
       adUnitId: bannerAdUnitId,
       size: AdSize.banner,
       request: const AdRequest(),
       listener: BannerAdListener(
-        onAdLoaded: (_) => debugPrint('Banner Ad loaded'),
+        onAdLoaded: (_) => debugPrint('AdService: Banner loaded'),
         onAdFailedToLoad: (ad, error) {
           ad.dispose();
-          debugPrint('Banner Ad failed to load: $error');
+          debugPrint('AdService: Banner failed to load: $error');
         },
       ),
     );
   }
 
-  // Load Interstitial Ad
+  // ── Interstitial ─────────────────────────────────────────────────────────────
+
   void _loadInterstitialAd() {
     if (!_isSupported) return;
-
     InterstitialAd.load(
       adUnitId: interstitialAdUnitId,
       request: const AdRequest(),
@@ -119,13 +141,12 @@ class AdService {
         onAdLoaded: (ad) {
           _interstitialAd = ad;
           _isInterstitialAdReady = true;
-          debugPrint('Interstitial Ad loaded');
-          
+          _interstitialRetryAttempt = 0;
           ad.fullScreenContentCallback = FullScreenContentCallback(
             onAdDismissedFullScreenContent: (ad) {
               ad.dispose();
               _isInterstitialAdReady = false;
-              _loadInterstitialAd(); // Load next one
+              _loadInterstitialAd();
             },
             onAdFailedToShowFullScreenContent: (ad, error) {
               ad.dispose();
@@ -135,20 +156,28 @@ class AdService {
           );
         },
         onAdFailedToLoad: (error) {
-          debugPrint('Interstitial Ad failed to load: $error');
+          debugPrint('AdService: Interstitial failed to load: $error');
           _isInterstitialAdReady = false;
+          _scheduleInterstitialRetry();
         },
       ),
     );
   }
 
-  // Check if Rewarded Ad is ready
+  void _scheduleInterstitialRetry() {
+    if (_interstitialRetryAttempt >= _maxRetryAttempts) return;
+    _interstitialRetryAttempt++;
+    final delay = Duration(seconds: (1 << _interstitialRetryAttempt).clamp(1, 64));
+    Future.delayed(delay, _loadInterstitialAd);
+  }
+
+  // ── Rewarded ─────────────────────────────────────────────────────────────────
+
+  /// Whether a rewarded ad is loaded and ready to show.
   bool get isRewardedAdReady => _isRewardedAdReady && _rewardedAd != null;
 
-  // Load Rewarded Ad
   void loadRewardedAd() {
     if (!_isSupported) return;
-
     RewardedAd.load(
       adUnitId: rewardedAdUnitId,
       request: const AdRequest(),
@@ -156,13 +185,12 @@ class AdService {
         onAdLoaded: (ad) {
           _rewardedAd = ad;
           _isRewardedAdReady = true;
-          debugPrint('Rewarded Ad loaded');
-          
+          _rewardedRetryAttempt = 0;
           ad.fullScreenContentCallback = FullScreenContentCallback(
             onAdDismissedFullScreenContent: (ad) {
               ad.dispose();
               _isRewardedAdReady = false;
-              loadRewardedAd(); // Load next one
+              loadRewardedAd();
             },
             onAdFailedToShowFullScreenContent: (ad, error) {
               ad.dispose();
@@ -172,81 +200,91 @@ class AdService {
           );
         },
         onAdFailedToLoad: (error) {
-          debugPrint('Rewarded Ad failed to load: $error');
+          debugPrint('AdService: Rewarded ad failed to load: $error');
           _isRewardedAdReady = false;
+          _scheduleRewardedRetry();
         },
       ),
     );
   }
 
-  // Show Rewarded Ad
+  void _scheduleRewardedRetry() {
+    if (_rewardedRetryAttempt >= _maxRetryAttempts) return;
+    _rewardedRetryAttempt++;
+    final delay = Duration(seconds: (1 << _rewardedRetryAttempt).clamp(1, 64));
+    Future.delayed(delay, loadRewardedAd);
+  }
+
+  /// Shows a rewarded ad. Calls [onUserEarnedReward] on success, or
+  /// [onAdFailedToShow] if the ad is not ready.
   void showRewardedAd({
     required void Function(RewardItem reward) onUserEarnedReward,
     required VoidCallback onAdFailedToShow,
   }) {
-    if (!_isSupported || !_isRewardedAdReady || _rewardedAd == null) {
-      debugPrint('Rewarded ad not ready, calling fallback');
+    if (!_isSupported || !isRewardedAdReady) {
       onAdFailedToShow();
       return;
     }
-
     _rewardedAd!.show(
-      onUserEarnedReward: (AdWithoutView ad, RewardItem reward) {
-        onUserEarnedReward(reward);
-      },
+      onUserEarnedReward: (_, reward) => onUserEarnedReward(reward),
     );
   }
 
-  DateTime? _lastAdTime;
-  
-  // Dynamic Interval from Remote Config
-  Duration get _minAdInterval => Duration(seconds: _remoteConfigService.interstitialAdIntervalSeconds);
+  // ── Interstitial Show ────────────────────────────────────────────────────────
 
-  // Show Interstitial Ad (e.g. after workout)
+  DateTime? _lastAdTime;
+
+  Duration get _minAdInterval =>
+      Duration(seconds: _remoteConfigService.interstitialAdIntervalSeconds);
+
+  /// Shows the interstitial ad if ready and frequency cap allows.
   void showInterstitialAd() {
     if (!_isSupported) return;
-
     final now = DateTime.now();
-    
-    // Frequency Capping: Don't show if last ad was less than 2 mins ago
     if (_lastAdTime != null && now.difference(_lastAdTime!) < _minAdInterval) {
-      debugPrint('Ad suppressed by frequency cap');
       return;
     }
-
     if (_isInterstitialAdReady && _interstitialAd != null) {
       _interstitialAd!.show();
       _lastAdTime = now;
     } else {
-      debugPrint('Interstitial not ready yet');
-      // Optionally load it now if it failed earlier
       if (!_isInterstitialAdReady) _loadInterstitialAd();
     }
   }
 
-  // Load a Native Ad
+  // ── Native ────────────────────────────────────────────────────────────────────
+
+  /// Loads a native ad with the given [factoryId].
+  ///
+  /// The factory must be registered in `MainActivity.kt` / `AppDelegate.swift`.
+  /// Previously loaded ads with the same factoryId are disposed before reloading.
   Future<NativeAd?> loadNativeAd({required String factoryId}) async {
     if (!_isSupported) return null;
-    
+
+    // Dispose previous ad for this factoryId to prevent leaks
+    _nativeAds[factoryId]?.dispose();
+    _nativeAds.remove(factoryId);
+
     final nativeAd = NativeAd(
       adUnitId: nativeAdUnitId,
-      factoryId: factoryId, // Needs to be configured in MainActivity.java / AppDelegate.swift
+      factoryId: factoryId,
       request: const AdRequest(),
       listener: NativeAdListener(
         onAdLoaded: (ad) {
-          debugPrint('Native Ad loaded.');
+          _nativeAds[factoryId] = ad as NativeAd;
         },
         onAdFailedToLoad: (ad, error) {
-          debugPrint('Native Ad failed to load: $error');
+          debugPrint('AdService: Native ad failed ($factoryId): $error');
           ad.dispose();
         },
       ),
     );
-    
+
     await nativeAd.load();
     return nativeAd;
   }
-  
+
+  /// Dispose all loaded ads. Call when the service is no longer needed.
   void dispose() {
     _interstitialAd?.dispose();
     _rewardedAd?.dispose();
@@ -257,6 +295,10 @@ class AdService {
   }
 }
 
+/// Riverpod provider for [AdService].
 final adServiceProvider = Provider<AdService>((ref) {
-  return AdService(remoteConfigServiceProvider);
+  final service = AdService(remoteConfigServiceProvider);
+  ref.onDispose(service.dispose);
+  return service;
 });
+

@@ -3,40 +3,51 @@ import { AdsService } from "./ads.service";
 import { JwtAuthGuard } from "../auth/guards/jwt-auth.guard";
 import { CurrentUser } from "../auth/decorators/current-user.decorator";
 import { ClaimAdRewardDto } from "./dto/ads.dto";
+import { GetAdHistoryDto } from "./dto/get-ad-history.dto";
+import {
+  ApiTags,
+  ApiBearerAuth,
+  ApiOperation,
+  ApiResponse,
+} from "@nestjs/swagger";
 
+@ApiTags("Ads")
+@ApiBearerAuth()
 @Controller("ads")
 @UseGuards(JwtAuthGuard)
 export class AdsController {
-  constructor(private adsService: AdsService) {}
+  constructor(private readonly adsService: AdsService) {}
 
-  /**
-   * Check if user can watch a rewarded ad
-   * GET /api/v1/ads/can-watch
-   */
   @Get("can-watch")
+  @ApiOperation({
+    summary: "Check if the user can currently watch a rewarded ad",
+  })
+  @ApiResponse({
+    status: 200,
+    description: "Returns ad availability and cooldown details",
+  })
   async canWatchAd(@CurrentUser() user: any) {
     return this.adsService.checkCanWatchAd(user.id);
   }
 
-  /**
-   * Claim reward for watching an ad
-   * POST /api/v1/ads/claim
-   */
   @Post("claim")
+  @ApiOperation({ summary: "Claim a reward for watching an ad" })
+  @ApiResponse({ status: 201, description: "Reward claimed successfully" })
+  @ApiResponse({
+    status: 400,
+    description: "Cooldown active or daily limit reached",
+  })
   async claimReward(@CurrentUser() user: any, @Body() dto: ClaimAdRewardDto) {
     return this.adsService.claimAdReward(user.id, dto.adType, dto.adUnitId);
   }
 
-  /**
-   * Get ad watch history
-   * GET /api/v1/ads/history
-   */
   @Get("history")
-  async getHistory(
-    @CurrentUser() user: any,
-    @Query("page") page: number = 1,
-    @Query("limit") limit: number = 20,
-  ) {
-    return this.adsService.getAdHistory(user.id, page, limit);
+  @ApiOperation({ summary: "Get the user's ad watch history" })
+  @ApiResponse({
+    status: 200,
+    description: "Returns paginated ad history and summary",
+  })
+  async getHistory(@CurrentUser() user: any, @Query() query: GetAdHistoryDto) {
+    return this.adsService.getAdHistory(user.id, query.page, query.limit);
   }
 }

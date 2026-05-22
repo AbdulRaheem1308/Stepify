@@ -45,7 +45,7 @@ class _CoinCounterState extends State<CoinCounter> {
           borderRadius: BorderRadius.circular(10),
           boxShadow: [
             BoxShadow(
-              color: AppTheme.accentYellow.withOpacity(0.4),
+              color: AppTheme.accentYellow.withAlpha(102),
               blurRadius: 8,
               offset: const Offset(0, 3),
             ),

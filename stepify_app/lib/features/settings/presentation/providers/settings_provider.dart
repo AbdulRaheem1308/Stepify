@@ -17,8 +17,11 @@ class AppSettings {
   final bool backgroundSyncEnabled;
   final String distanceUnit; // 'km', 'mi'
   final String syncFrequency; // 'Auto (15m)', 'Manual Only', 'Every Hour'
+  
+  final bool isLoading;
+  final String? error;
 
-  AppSettings({
+  const AppSettings({
     this.themeMode = 'system',
     this.language = 'en',
     this.pushNotificationsEnabled = true,
@@ -31,6 +34,8 @@ class AppSettings {
     this.backgroundSyncEnabled = true,
     this.distanceUnit = 'km',
     this.syncFrequency = 'Auto (15m)',
+    this.isLoading = false,
+    this.error,
   });
 
   AppSettings copyWith({
@@ -46,6 +51,9 @@ class AppSettings {
     bool? backgroundSyncEnabled,
     String? distanceUnit,
     String? syncFrequency,
+    bool? isLoading,
+    String? error,
+    bool clearError = false,
   }) {
     return AppSettings(
       themeMode: themeMode ?? this.themeMode,
@@ -60,7 +68,48 @@ class AppSettings {
       backgroundSyncEnabled: backgroundSyncEnabled ?? this.backgroundSyncEnabled,
       distanceUnit: distanceUnit ?? this.distanceUnit,
       syncFrequency: syncFrequency ?? this.syncFrequency,
+      isLoading: isLoading ?? this.isLoading,
+      error: clearError ? null : (error ?? this.error),
     );
+  }
+
+  @override
+  bool operator ==(Object other) {
+    if (identical(this, other)) return true;
+  
+    return other is AppSettings &&
+      other.themeMode == themeMode &&
+      other.language == language &&
+      other.pushNotificationsEnabled == pushNotificationsEnabled &&
+      other.dailyRemindersEnabled == dailyRemindersEnabled &&
+      other.dataSyncOverCellular == dataSyncOverCellular &&
+      other.soundEnabled == soundEnabled &&
+      other.isPublic == isPublic &&
+      other.showOnLeaderboard == showOnLeaderboard &&
+      other.showMilestones == showMilestones &&
+      other.backgroundSyncEnabled == backgroundSyncEnabled &&
+      other.distanceUnit == distanceUnit &&
+      other.syncFrequency == syncFrequency &&
+      other.isLoading == isLoading &&
+      other.error == error;
+  }
+
+  @override
+  int get hashCode {
+    return themeMode.hashCode ^
+      language.hashCode ^
+      pushNotificationsEnabled.hashCode ^
+      dailyRemindersEnabled.hashCode ^
+      dataSyncOverCellular.hashCode ^
+      soundEnabled.hashCode ^
+      isPublic.hashCode ^
+      showOnLeaderboard.hashCode ^
+      showMilestones.hashCode ^
+      backgroundSyncEnabled.hashCode ^
+      distanceUnit.hashCode ^
+      syncFrequency.hashCode ^
+      isLoading.hashCode ^
+      error.hashCode;
   }
 }
 
@@ -71,7 +120,14 @@ class SettingsNotifier extends StateNotifier<AppSettings> {
     _loadSettings();
   }
 
+  void clearError() {
+    if (state.error != null) {
+      state = state.copyWith(clearError: true);
+    }
+  }
+
   Future<void> _loadSettings() async {
+    state = state.copyWith(isLoading: true, clearError: true);
     try {
       final response = await _apiService.get('/users/me/settings');
       final data = response.data;
@@ -89,13 +145,14 @@ class SettingsNotifier extends StateNotifier<AppSettings> {
         backgroundSyncEnabled: StorageService.get('backgroundSyncEnabled', defaultValue: true) ?? true,
         distanceUnit: data['distanceUnit'] ?? 'km',
         syncFrequency: StorageService.get('syncFrequency', defaultValue: 'Auto (15m)') ?? 'Auto (15m)',
+        isLoading: false,
       );
       
       if (state.backgroundSyncEnabled) {
         await BackgroundService.registerPeriodicTask();
       }
     } catch (e) {
-      print('Error loading settings: $e');
+      state = state.copyWith(isLoading: false, error: 'Failed to load settings: $e');
     }
   }
 
@@ -114,7 +171,7 @@ class SettingsNotifier extends StateNotifier<AppSettings> {
         'distanceUnit': state.distanceUnit,
       });
     } catch (e) {
-      print('Error saving settings: $e');
+      state = state.copyWith(error: 'Failed to save settings: $e');
     }
   }
 
@@ -196,5 +253,5 @@ class SettingsNotifier extends StateNotifier<AppSettings> {
 }
 
 final settingsProvider = StateNotifierProvider<SettingsNotifier, AppSettings>((ref) {
-  return SettingsNotifier(ref.read(apiServiceProvider));
+  return SettingsNotifier(ref.watch(apiServiceProvider));
 });

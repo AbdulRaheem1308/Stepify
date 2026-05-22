@@ -6,111 +6,103 @@ import {
   Param,
   Query,
   UseGuards,
-  Req,
 } from "@nestjs/common";
-import { Request } from "express";
 import { JwtAuthGuard } from "../auth/guards/jwt-auth.guard";
+import { CurrentUser } from "../auth/decorators/current-user.decorator";
 import { ChallengesService } from "./challenges.service";
 import {
   JoinChallengeDto,
   UpdateChallengeProgressDto,
   ChallengeStatus,
 } from "./dto/challenge.dto";
+import {
+  ApiTags,
+  ApiOperation,
+  ApiResponse,
+  ApiBearerAuth,
+} from "@nestjs/swagger";
 
-// Extend Express Request to include user property from JWT
-interface AuthenticatedRequest extends Request {
-  user: { id: string; [key: string]: any };
-}
-
+@ApiTags("Challenges")
+@ApiBearerAuth()
 @Controller("challenges")
 @UseGuards(JwtAuthGuard)
 export class ChallengesController {
   constructor(private readonly challengesService: ChallengesService) {}
 
-  /**
-   * GET /challenges - Get all available challenges
-   */
   @Get()
+  @ApiOperation({ summary: "Get all available challenges" })
+  @ApiResponse({ status: 200, description: "Returns list of challenges" })
   async findAll() {
     return this.challengesService.findAll();
   }
 
-  /**
-   * GET /challenges/new - Get new challenges (not joined by user)
-   */
   @Get("new")
-  async findNew(@Req() req: AuthenticatedRequest) {
-    return this.challengesService.findNewChallenges(req.user.id);
+  @ApiOperation({ summary: "Get new challenges not joined by user" })
+  @ApiResponse({ status: 200, description: "Returns new challenges" })
+  async findNew(@CurrentUser() user: any) {
+    return this.challengesService.findNewChallenges(user.id);
   }
 
-  /**
-   * GET /challenges/my - Get user's challenges
-   */
   @Get("my")
+  @ApiOperation({ summary: "Get user's challenges" })
+  @ApiResponse({ status: 200, description: "Returns user challenges" })
   async findMy(
-    @Req() req: AuthenticatedRequest,
+    @CurrentUser() user: any,
     @Query("status") status?: ChallengeStatus,
   ) {
-    return this.challengesService.findUserChallenges(req.user.id, status);
+    return this.challengesService.findUserChallenges(user.id, status);
   }
 
-  /**
-   * GET /challenges/ongoing - Get user's ongoing challenges
-   */
   @Get("ongoing")
-  async findOngoing(@Req() req: AuthenticatedRequest) {
+  @ApiOperation({ summary: "Get user's ongoing challenges" })
+  @ApiResponse({ status: 200, description: "Returns ongoing challenges" })
+  async findOngoing(@CurrentUser() user: any) {
     return this.challengesService.findUserChallenges(
-      req.user.id,
+      user.id,
       ChallengeStatus.ONGOING,
     );
   }
 
-  /**
-   * GET /challenges/completed - Get user's completed challenges
-   */
   @Get("completed")
-  async findCompleted(@Req() req: AuthenticatedRequest) {
+  @ApiOperation({ summary: "Get user's completed challenges" })
+  @ApiResponse({ status: 200, description: "Returns completed challenges" })
+  async findCompleted(@CurrentUser() user: any) {
     return this.challengesService.findUserChallenges(
-      req.user.id,
+      user.id,
       ChallengeStatus.COMPLETED,
     );
   }
 
-  /**
-   * GET /challenges/:id - Get a single challenge
-   */
   @Get(":id")
+  @ApiOperation({ summary: "Get a single challenge by ID" })
+  @ApiResponse({ status: 200, description: "Returns challenge details" })
   async findOne(@Param("id") id: string) {
     return this.challengesService.findOne(id);
   }
 
-  /**
-   * POST /challenges/join - Join a challenge
-   */
   @Post("join")
-  async join(@Req() req: AuthenticatedRequest, @Body() dto: JoinChallengeDto) {
-    return this.challengesService.join(req.user.id, dto.challengeId);
+  @ApiOperation({ summary: "Join a challenge" })
+  @ApiResponse({ status: 201, description: "Successfully joined challenge" })
+  async join(@CurrentUser() user: any, @Body() dto: JoinChallengeDto) {
+    return this.challengesService.join(user.id, dto.challengeId);
   }
 
-  /**
-   * POST /challenges/progress - Update challenge progress
-   */
   @Post("progress")
+  @ApiOperation({ summary: "Update challenge progress" })
+  @ApiResponse({ status: 201, description: "Progress updated successfully" })
   async updateProgress(
-    @Req() req: AuthenticatedRequest,
+    @CurrentUser() user: any,
     @Body() dto: UpdateChallengeProgressDto,
   ) {
     return this.challengesService.updateProgress(
-      req.user.id,
+      user.id,
       dto.challengeId,
       dto.stepsToAdd,
     );
   }
 
-  /**
-   * POST /challenges/seed - Seed demo challenges (dev only)
-   */
   @Post("seed")
+  @ApiOperation({ summary: "Seed demo challenges (dev only)" })
   async seed() {
     return this.challengesService.seedDemoChallenges();
   }

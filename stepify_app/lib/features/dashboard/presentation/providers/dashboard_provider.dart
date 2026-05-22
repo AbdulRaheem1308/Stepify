@@ -313,7 +313,6 @@ class DashboardNotifier extends StateNotifier<DashboardState> {
             final healthSteps = await _healthService.getTodaySteps();
             if (healthSteps > 0) {
               stepsToSync = healthSteps;
-              debugPrint('Pedometer: Falling back to Health Service steps: $healthSteps');
             }
           }
         } catch (e) {

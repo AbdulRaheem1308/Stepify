@@ -1,112 +1,180 @@
+import 'package:flutter/foundation.dart';
 import 'package:hive_flutter/hive_flutter.dart';
 import 'package:flutter_secure_storage/flutter_secure_storage.dart';
 import 'package:uuid/uuid.dart';
 
 import '../core/constants/app_constants.dart';
 
-/// Local storage service using Hive and Secure Storage
+/// Local storage service backed by Hive (general data) and
+/// FlutterSecureStorage (tokens & device UUID).
+///
+/// Call [StorageService.init] once at app startup before using any other
+/// method. Calling methods before [init] will throw a [StateError] with a
+/// helpful message.
 class StorageService {
-  static late Box _box;
+  static const String _boxName = 'stepify_storage';
+
+  static Box? _box;
+
   static const FlutterSecureStorage _secureStorage = FlutterSecureStorage(
     iOptions: IOSOptions(accessibility: KeychainAccessibility.first_unlock),
     aOptions: AndroidOptions(encryptedSharedPreferences: true),
   );
-  
+
+  // ── Lifecycle ─────────────────────────────────────────────────────────────
+
+  /// Initialises Hive and opens the main storage box.
+  ///
+  /// Must be called before any other [StorageService] method.
   static Future<void> init() async {
-    _box = await Hive.openBox('stepify_storage');
+    _box = await Hive.openBox(_boxName);
   }
-  
-  // ============================================
-  // SECURE STORAGE (for tokens)
-  // ============================================
-  
+
+  /// Returns the open Hive box, throwing a [StateError] if [init] has not
+  /// been called yet.
+  static Box get _openBox {
+    final box = _box;
+    if (box == null || !box.isOpen) {
+      throw StateError(
+        'StorageService is not initialised. '
+        'Call StorageService.init() before using any other method.',
+      );
+    }
+    return box;
+  }
+
+  // ── Secure Storage ────────────────────────────────────────────────────────
+
+  /// Saves the access and refresh tokens in the secure enclave.
   static Future<void> saveTokens({
     required String accessToken,
     required String refreshToken,
   }) async {
-    await _secureStorage.write(
-      key: AppConstants.accessTokenKey,
-      value: accessToken,
-    );
-    await _secureStorage.write(
-      key: AppConstants.refreshTokenKey,
-      value: refreshToken,
-    );
-  }
-  
-  static Future<String?> getAccessToken() async {
-    return _secureStorage.read(key: AppConstants.accessTokenKey);
-  }
-  
-  static Future<String?> getRefreshToken() async {
-    return _secureStorage.read(key: AppConstants.refreshTokenKey);
-  }
-  
-  static Future<void> clearTokens() async {
-    await _secureStorage.delete(key: AppConstants.accessTokenKey);
-    await _secureStorage.delete(key: AppConstants.refreshTokenKey);
+    await Future.wait([
+      _secureStorage.write(
+          key: AppConstants.accessTokenKey, value: accessToken),
+      _secureStorage.write(
+          key: AppConstants.refreshTokenKey, value: refreshToken),
+    ]);
   }
 
+  /// Returns the stored access token, or `null` if none exists.
+  static Future<String?> getAccessToken() =>
+      _secureStorage.read(key: AppConstants.accessTokenKey);
+
+  /// Returns the stored refresh token, or `null` if none exists.
+  static Future<String?> getRefreshToken() =>
+      _secureStorage.read(key: AppConstants.refreshTokenKey);
+
+  /// Deletes both tokens from the secure enclave.
+  static Future<void> clearTokens() async {
+    await Future.wait([
+      _secureStorage.delete(key: AppConstants.accessTokenKey),
+      _secureStorage.delete(key: AppConstants.refreshTokenKey),
+    ]);
+  }
+
+  /// Returns a stable device UUID, creating one if it does not yet exist.
   static Future<String> getOrCreateDeviceUUID() async {
-    String? uuidStr = await _secureStorage.read(key: AppConstants.deviceUuidKey);
+    String? uuidStr =
+        await _secureStorage.read(key: AppConstants.deviceUuidKey);
     if (uuidStr == null) {
       uuidStr = const Uuid().v4();
-      await _secureStorage.write(key: AppConstants.deviceUuidKey, value: uuidStr);
+      await _secureStorage.write(
+          key: AppConstants.deviceUuidKey, value: uuidStr);
     }
     return uuidStr;
   }
-  
-  // ============================================
-  // HIVE STORAGE (for general data)
-  // ============================================
-  
+
+  // ── Hive Storage ───────────────────────────────────────────────────────────
+
+  /// Saves the user object in Hive.
   static Future<void> saveUser(Map<String, dynamic> user) async {
-    await _box.put(AppConstants.userKey, user);
+    await _openBox.put(AppConstants.userKey, user);
   }
-  
+
+  /// Returns the cached user object, or `null` if not found.
   static Map<String, dynamic>? getUser() {
-    final data = _box.get(AppConstants.userKey);
+    final data = _openBox.get(AppConstants.userKey);
     if (data == null) return null;
-    return Map<String, dynamic>.from(data);
+    return Map<String, dynamic>.from(data as Map);
   }
-  
+
+  /// Removes the cached user object.
   static Future<void> clearUser() async {
-    await _box.delete(AppConstants.userKey);
+    await _openBox.delete(AppConstants.userKey);
   }
-  
-  // Onboarding
+
+  // ── Onboarding ─────────────────────────────────────────────────────────────
+
   static bool isOnboardingComplete() {
-    return _box.get(AppConstants.onboardingCompleteKey, defaultValue: false);
+    return _openBox.get(AppConstants.onboardingCompleteKey,
+        defaultValue: false) as bool;
   }
-  
+
   static Future<void> setOnboardingComplete() async {
-    await _box.put(AppConstants.onboardingCompleteKey, true);
+    await _openBox.put(AppConstants.onboardingCompleteKey, true);
   }
-  
-  // Theme
+
+  // ── Theme ──────────────────────────────────────────────────────────────────
+
   static String getThemeMode() {
-    return _box.get(AppConstants.themeKey, defaultValue: 'system');
+    return _openBox.get(AppConstants.themeKey, defaultValue: 'system') as String;
   }
-  
+
   static Future<void> setThemeMode(String mode) async {
-    await _box.put(AppConstants.themeKey, mode);
+    await _openBox.put(AppConstants.themeKey, mode);
   }
-  
-  // Generic methods
+
+  // ── Generic ────────────────────────────────────────────────────────────────
+
+  /// Writes [value] to the Hive box under [key].
   static Future<void> put(String key, dynamic value) async {
-    await _box.put(key, value);
+    await _openBox.put(key, value);
   }
-  
+
+  /// Reads the value stored under [key], cast to [T].
+  ///
+  /// Returns [defaultValue] if the key does not exist or the stored value
+  /// cannot be cast to [T].
   static T? get<T>(String key, {T? defaultValue}) {
-    return _box.get(key, defaultValue: defaultValue);
+    try {
+      final value = _openBox.get(key, defaultValue: defaultValue);
+      if (value == null) return defaultValue;
+      return value as T;
+    } catch (e) {
+      debugPrint(
+          'StorageService: Type mismatch reading "$key" as $T: $e');
+      return defaultValue;
+    }
   }
-  
+
+  /// Removes the value for [key] from the Hive box.
   static Future<void> delete(String key) async {
-    await _box.delete(key);
+    await _openBox.delete(key);
   }
-  
+
+  /// Clears all Hive data and all secure-storage entries.
+  ///
+  /// Both operations are attempted even if the first fails.
   static Future<void> clearAll() async {
-    await _box.clear();
-    await _secureStorage.deleteAll();
+    Object? hiveError;
+    try {
+      await _openBox.clear();
+    } catch (e) {
+      hiveError = e;
+      debugPrint('StorageService: Hive clear error: $e');
+    }
+
+    try {
+      await _secureStorage.deleteAll();
+    } catch (e) {
+      debugPrint('StorageService: Secure storage clear error: $e');
+    }
+
+    if (hiveError != null) {
+      throw StateError(
+          'StorageService.clearAll: Hive clear failed: $hiveError');
+    }
   }
 }

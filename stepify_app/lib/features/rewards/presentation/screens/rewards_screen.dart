@@ -133,11 +133,13 @@ class _RewardsScreenState extends ConsumerState<RewardsScreen>
           // Confetti for redemption success
           Align(
             alignment: Alignment.topCenter,
-            child: ConfettiWidget(
-              confettiController: _confettiController,
-              blastDirectionality: BlastDirectionality.explosive,
-              shouldLoop: false,
-              colors: const [AppTheme.primaryGreen, AppTheme.accentYellow, AppTheme.accentPurple],
+            child: RepaintBoundary(
+              child: ConfettiWidget(
+                confettiController: _confettiController,
+                blastDirectionality: BlastDirectionality.explosive,
+                shouldLoop: false,
+                colors: const [AppTheme.primaryGreen, AppTheme.accentYellow, AppTheme.accentPurple],
+              ),
             ),
           ),
         ],
@@ -190,7 +192,7 @@ class _RewardsScreenState extends ConsumerState<RewardsScreen>
         borderRadius: BorderRadius.circular(16),
         boxShadow: [
           BoxShadow(
-            color: AppTheme.primaryGreen.withOpacity(0.25),
+            color: AppTheme.primaryGreen.withValues(alpha: 0.25),
             blurRadius: 12,
             offset: const Offset(0, 4),
           ),
@@ -202,7 +204,7 @@ class _RewardsScreenState extends ConsumerState<RewardsScreen>
           Container(
             padding: const EdgeInsets.all(12),
             decoration: BoxDecoration(
-              color: Colors.white.withOpacity(0.2),
+              color: Colors.white.withValues(alpha: 0.2),
               borderRadius: BorderRadius.circular(12),
             ),
             child: const Icon(Icons.stars_rounded, color: Colors.white, size: 28),
@@ -230,7 +232,7 @@ class _RewardsScreenState extends ConsumerState<RewardsScreen>
           Container(
             padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
             decoration: BoxDecoration(
-              color: Colors.white.withOpacity(0.15),
+              color: Colors.white.withValues(alpha: 0.15),
               borderRadius: BorderRadius.circular(20),
             ),
             child: Row(
@@ -269,13 +271,13 @@ class _RewardsScreenState extends ConsumerState<RewardsScreen>
       decoration: BoxDecoration(
         color: Theme.of(context).colorScheme.surface,
         borderRadius: BorderRadius.circular(16),
-        border: Border.all(color: Theme.of(context).dividerColor.withOpacity(0.5)),
+        border: Border.all(color: Theme.of(context).dividerColor.withValues(alpha: 0.5)),
       ),
       child: Row(
         children: [
           Container(
             padding: const EdgeInsets.all(8),
-            decoration: BoxDecoration(color: color.withOpacity(0.1), shape: BoxShape.circle),
+            decoration: BoxDecoration(color: color.withValues(alpha: 0.1), shape: BoxShape.circle),
             child: Icon(icon, color: color, size: 18),
           ),
           const SizedBox(width: 12),
@@ -302,7 +304,7 @@ class _RewardsScreenState extends ConsumerState<RewardsScreen>
             label: Text(filter == 'ALL' ? 'All' : filter == 'EARNED' ? 'Earned' : 'Redeemed'),
             selected: isSelected,
             onSelected: (_) => ref.read(walletProvider.notifier).setFilter(filter),
-            selectedColor: AppTheme.primaryGreen.withOpacity(0.2),
+            selectedColor: AppTheme.primaryGreen.withValues(alpha: 0.2),
             checkmarkColor: AppTheme.primaryGreen,
             backgroundColor: Theme.of(context).cardColor,
           ),
@@ -318,14 +320,14 @@ class _RewardsScreenState extends ConsumerState<RewardsScreen>
       decoration: BoxDecoration(
         color: Theme.of(context).colorScheme.surface,
         borderRadius: BorderRadius.circular(14),
-        border: Border.all(color: Theme.of(context).dividerColor.withOpacity(0.5)),
+        border: Border.all(color: Theme.of(context).dividerColor.withValues(alpha: 0.5)),
       ),
       child: Row(
         children: [
           Container(
             width: 42, height: 42,
             decoration: BoxDecoration(
-              color: _getTxTypeColor(tx.type).withOpacity(0.1),
+              color: _getTxTypeColor(tx.type).withValues(alpha: 0.1),
               borderRadius: BorderRadius.circular(10),
             ),
             child: Icon(_getTxTypeIcon(tx.type), color: _getTxTypeColor(tx.type), size: 22),
@@ -455,7 +457,7 @@ class _RewardsScreenState extends ConsumerState<RewardsScreen>
               const SizedBox(height: 8),
               Container(
                 padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
-                decoration: BoxDecoration(color: AppTheme.accentYellow.withOpacity(0.1), borderRadius: BorderRadius.circular(12)),
+                decoration: BoxDecoration(color: AppTheme.accentYellow.withValues(alpha: 0.1), borderRadius: BorderRadius.circular(12)),
                 child: Row(mainAxisSize: MainAxisSize.min, children: [
                   const Icon(Icons.stars_rounded, color: AppTheme.accentYellow, size: 24),
                   const SizedBox(width: 6),
@@ -594,13 +596,13 @@ class _RewardsScreenState extends ConsumerState<RewardsScreen>
             width: 54, height: 54,
             decoration: BoxDecoration(
               shape: BoxShape.circle,
-              color: unlocked ? AppTheme.accentPurple.withOpacity(0.1) : AppTheme.neutral100,
+              color: unlocked ? AppTheme.accentPurple.withValues(alpha: 0.1) : AppTheme.neutral100,
               border: Border.all(
                 color: unlocked ? AppTheme.accentPurple : AppTheme.neutral300, 
                 width: unlocked ? 2 : 1
               ),
               boxShadow: unlocked ? [
-                BoxShadow(color: AppTheme.accentPurple.withOpacity(0.3), blurRadius: 6, offset: const Offset(0, 3))
+                BoxShadow(color: AppTheme.accentPurple.withValues(alpha: 0.3), blurRadius: 6, offset: const Offset(0, 3))
               ] : null,
             ),
             child: Icon(
@@ -645,7 +647,7 @@ class _RewardsScreenState extends ConsumerState<RewardsScreen>
                 width: 100, height: 100,
                 decoration: BoxDecoration(
                   shape: BoxShape.circle,
-                  color: unlocked ? AppTheme.accentPurple.withOpacity(0.1) : AppTheme.neutral100,
+                  color: unlocked ? AppTheme.accentPurple.withValues(alpha: 0.1) : AppTheme.neutral100,
                   border: Border.all(color: unlocked ? AppTheme.accentPurple : AppTheme.neutral300, width: 3),
                 ),
                 child: Icon(
@@ -664,7 +666,7 @@ class _RewardsScreenState extends ConsumerState<RewardsScreen>
               Container(
                 padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 4),
                 decoration: BoxDecoration(
-                  color: unlocked ? AppTheme.success.withOpacity(0.1) : AppTheme.neutral200,
+                  color: unlocked ? AppTheme.success.withValues(alpha: 0.1) : AppTheme.neutral200,
                   borderRadius: BorderRadius.circular(12),
                 ),
                 child: Text(

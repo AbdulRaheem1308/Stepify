@@ -18,7 +18,7 @@ class DeviceSyncScreen extends ConsumerWidget {
 
     return Scaffold(
       appBar: AppBar(
-        title: const Text('Device Management'),
+        title: Text(l10n.deviceManagement),
         centerTitle: true,
       ),
       body: Padding(
@@ -26,9 +26,9 @@ class DeviceSyncScreen extends ConsumerWidget {
         child: Column(
           children: [
             // Header
-            const Text(
-              'Connected Devices',
-              style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
+            Text(
+              l10n.connectedDevices,
+              style: const TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
             ),
             const SizedBox(height: 16),
             
@@ -48,13 +48,13 @@ class DeviceSyncScreen extends ConsumerWidget {
                             child: Icon(Icons.watch_off_outlined, size: 48, color: AppTheme.neutral400),
                           ),
                           const SizedBox(height: 24),
-                          const Text(
-                            'No devices connected',
-                            style: TextStyle(fontSize: 18, fontWeight: FontWeight.w600),
+                          Text(
+                            l10n.noDevicesConnected,
+                            style: const TextStyle(fontSize: 18, fontWeight: FontWeight.w600),
                           ),
                           const SizedBox(height: 8),
                           Text(
-                            'Connect your wearable to sync steps',
+                            l10n.connectWearablePrompt,
                             style: TextStyle(color: AppTheme.neutral500),
                           ),
                         ],
@@ -64,7 +64,7 @@ class DeviceSyncScreen extends ConsumerWidget {
                       itemCount: state.devices.length,
                       itemBuilder: (context, index) {
                         final device = state.devices[index];
-                        return _buildDeviceCard(context, ref, device);
+                        return _buildDeviceCard(context, ref, device, l10n);
                       },
                     ),
             ),
@@ -75,7 +75,7 @@ class DeviceSyncScreen extends ConsumerWidget {
                 ref.read(deviceProvider.notifier).connectHealthDevice();
               },
               icon: const Icon(Icons.add),
-              label: const Text('Connect Health App'), // More accurate label
+              label: Text(l10n.connectHealthApp), // More accurate label
             ),
             const SizedBox(height: 20),
           ],
@@ -84,7 +84,7 @@ class DeviceSyncScreen extends ConsumerWidget {
     );
   }
 
-  Widget _buildDeviceCard(BuildContext context, WidgetRef ref, ConnectedDevice device) {
+  Widget _buildDeviceCard(BuildContext context, WidgetRef ref, ConnectedDevice device, AppLocalizations l10n) {
     final isSyncing = device.status == SyncStatus.syncing;
     
     return Container(
@@ -96,7 +96,7 @@ class DeviceSyncScreen extends ConsumerWidget {
         border: Border.all(color: AppTheme.neutral200),
         boxShadow: [
           BoxShadow(
-            color: AppTheme.neutral200.withOpacity(0.3),
+            color: AppTheme.neutral200.withValues(alpha: 0.3),
             blurRadius: 8,
             offset: const Offset(0, 4),
           ),
@@ -135,7 +135,7 @@ class DeviceSyncScreen extends ConsumerWidget {
                         ),
                         const SizedBox(width: 6),
                         Text(
-                          _getStatusText(device.status),
+                          _getStatusText(device.status, l10n),
                           style: TextStyle(color: AppTheme.neutral500, fontSize: 13),
                         ),
                       ],
@@ -165,7 +165,7 @@ class DeviceSyncScreen extends ConsumerWidget {
                           child: CircularProgressIndicator(strokeWidth: 2)
                         )
                       : const Icon(Icons.sync, color: AppTheme.primaryGreen),
-                    tooltip: 'Sync steps',
+                    tooltip: l10n.syncSteps,
                   ),
                   
                   // Disconnect Button
@@ -176,17 +176,17 @@ class DeviceSyncScreen extends ConsumerWidget {
                           final confirm = await showDialog<bool>(
                             context: context,
                             builder: (ctx) => AlertDialog(
-                              title: const Text('Disconnect Device?'),
-                              content: Text('Are you sure you want to disconnect "${device.name}"?'),
+                              title: Text(l10n.disconnectDeviceTitle),
+                              content: Text(l10n.disconnectDeviceConfirm(device.name)),
                               actions: [
                                 TextButton(
                                   onPressed: () => Navigator.pop(ctx, false),
-                                  child: const Text('Cancel'),
+                                  child: Text(l10n.cancel),
                                 ),
                                 TextButton(
                                   onPressed: () => Navigator.pop(ctx, true),
                                   style: TextButton.styleFrom(foregroundColor: AppTheme.error),
-                                  child: const Text('Disconnect'),
+                                  child: Text(l10n.disconnect),
                                 ),
                               ],
                             ),
@@ -195,13 +195,13 @@ class DeviceSyncScreen extends ConsumerWidget {
                             await ref.read(deviceProvider.notifier).removeDevice(device.id);
                             if (context.mounted) {
                               ScaffoldMessenger.of(context).showSnackBar(
-                                SnackBar(content: Text('"${device.name}" disconnected successfully')),
+                                SnackBar(content: Text(l10n.deviceDisconnectedSuccess(device.name))),
                               );
                             }
                           }
                         },
                     icon: const Icon(Icons.delete_outline, color: AppTheme.error),
-                    tooltip: 'Disconnect device',
+                    tooltip: l10n.disconnectDeviceTooltip,
                   ),
                 ],
               ),
@@ -211,8 +211,8 @@ class DeviceSyncScreen extends ConsumerWidget {
           Row(
              mainAxisAlignment: MainAxisAlignment.spaceBetween,
              children: [
-               _buildMetric('Steps', '${device.syncedSteps}'),
-               _buildMetric('Last Sync', _formatTime(device.lastSyncTime)),
+               _buildMetric(l10n.stepsLabel, '${device.syncedSteps}'),
+               _buildMetric(l10n.lastSyncLabel, _formatTime(device.lastSyncTime, l10n)),
              ],
           ),
         ],
@@ -250,17 +250,17 @@ class DeviceSyncScreen extends ConsumerWidget {
     }
   }
 
-  String _getStatusText(SyncStatus status) {
+  String _getStatusText(SyncStatus status, AppLocalizations l10n) {
     switch (status) {
-      case SyncStatus.connected: return 'Connected';
-      case SyncStatus.syncing: return 'Syncing...';
-      case SyncStatus.error: return 'Sync Error';
-      case SyncStatus.disconnected: return 'Disconnected';
+      case SyncStatus.connected: return l10n.statusConnected;
+      case SyncStatus.syncing: return l10n.statusSyncing;
+      case SyncStatus.error: return l10n.statusSyncError;
+      case SyncStatus.disconnected: return l10n.statusDisconnected;
     }
   }
 
-  String _formatTime(DateTime? time) {
-    if (time == null) return 'Never';
+  String _formatTime(DateTime? time, AppLocalizations l10n) {
+    if (time == null) return l10n.never;
     return DateFormat('MMM d, h:mm a').format(time);
   }
 }

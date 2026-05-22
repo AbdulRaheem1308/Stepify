@@ -4,19 +4,21 @@ import {
   BadRequestException,
 } from "@nestjs/common";
 import { PrismaService } from "../prisma/prisma.service";
+import { CreateCompanyDto } from "./dto/company.dto";
+import * as crypto from "crypto";
 
 @Injectable()
 export class CompaniesService {
-  constructor(private prisma: PrismaService) {}
+  constructor(private readonly prisma: PrismaService) {}
 
-  async createCompany(data: any) {
+  async createCompany(data: CreateCompanyDto) {
     return this.prisma.company.create({
       data: {
         name: data.name,
         domain: data.domain,
         inviteCode:
           data.inviteCode ||
-          Math.random().toString(36).substring(7).toUpperCase(),
+          crypto.randomBytes(4).toString("hex").toUpperCase(),
         logoUrl: data.logoUrl,
       },
     });

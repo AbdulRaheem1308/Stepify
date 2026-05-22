@@ -185,10 +185,15 @@ class _SensorDiagnosticsScreenState extends ConsumerState<SensorDiagnosticsScree
       appBar: AppBar(
         title: const Text('Sensor & Sync Diagnostics'),
         actions: [
-          IconButton(
-            icon: const Icon(Icons.refresh),
-            onPressed: _loadDiagnostics,
-          )
+          Tooltip(
+            message: 'Refresh diagnostics',
+            child: IconButton(
+              icon: const Icon(Icons.refresh),
+              onPressed: _loadDiagnostics,
+              tooltip: 'Refresh diagnostics',
+              style: IconButton.styleFrom(minimumSize: const Size(48, 48)),
+            ),
+          ),
         ],
       ),
       body: _isLoading 
@@ -316,7 +321,7 @@ class _SensorDiagnosticsScreenState extends ConsumerState<SensorDiagnosticsScree
     return Container(
       padding: const EdgeInsets.all(12),
       decoration: BoxDecoration(
-        color: AppTheme.accentOrange.withOpacity(0.1),
+        color: AppTheme.accentOrange.withValues(alpha: 0.1),
         borderRadius: BorderRadius.circular(AppTheme.defaultRadius),
         border: Border.all(color: AppTheme.accentOrange),
       ),
@@ -328,7 +333,7 @@ class _SensorDiagnosticsScreenState extends ConsumerState<SensorDiagnosticsScree
           Expanded(
             child: Text(
               'Developer Screen: This view displays raw hardware sensor telemetry, database sync states, and allows reset operations for testing.',
-              style: TextStyle(color: AppTheme.neutral700, fontSize: 13, height: 1.4),
+              style: TextStyle(color: Theme.of(context).textTheme.bodyMedium?.color ?? AppTheme.neutral700, fontSize: 13, height: 1.4),
             ),
           )
         ],
@@ -345,7 +350,7 @@ class _SensorDiagnosticsScreenState extends ConsumerState<SensorDiagnosticsScree
       elevation: 0,
       shape: RoundedRectangleBorder(
         borderRadius: BorderRadius.circular(AppTheme.defaultRadius),
-        side: BorderSide(color: AppTheme.neutral200),
+        side: BorderSide(color: Theme.of(context).dividerColor),
       ),
       color: Theme.of(context).colorScheme.surface,
       child: Padding(
@@ -372,63 +377,73 @@ class _SensorDiagnosticsScreenState extends ConsumerState<SensorDiagnosticsScree
   }
 
   Widget _buildDiagnosticRow(String label, String value, bool isOk) {
-    return Padding(
-      padding: const EdgeInsets.symmetric(vertical: 6.0),
-      child: Row(
-        mainAxisAlignment: MainAxisAlignment.spaceBetween,
-        children: [
-          Text(label, style: TextStyle(fontSize: 13, color: AppTheme.neutral700)),
-          const SizedBox(width: 8),
-          Flexible(
-            child: Container(
-              padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
-              decoration: BoxDecoration(
-                color: isOk ? Colors.green.withOpacity(0.1) : AppTheme.error.withOpacity(0.08),
-                borderRadius: BorderRadius.circular(4),
-              ),
-              child: Text(
-                value,
-                textAlign: TextAlign.end,
-                style: TextStyle(
-                  fontSize: 12,
-                  fontWeight: FontWeight.bold,
-                  color: isOk ? Colors.green.shade800 : AppTheme.error,
+    return Semantics(
+      label: '$label: $value',
+      child: Padding(
+        padding: const EdgeInsets.symmetric(vertical: 6.0),
+        child: Row(
+          mainAxisAlignment: MainAxisAlignment.spaceBetween,
+          children: [
+            Text(label, style: TextStyle(fontSize: 13, color: Theme.of(context).textTheme.bodyMedium?.color ?? AppTheme.neutral700)),
+            const SizedBox(width: 8),
+            Flexible(
+              child: Container(
+                padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                decoration: BoxDecoration(
+                  color: isOk ? Colors.green.withValues(alpha: 0.1) : AppTheme.error.withValues(alpha: 0.08),
+                  borderRadius: BorderRadius.circular(4),
+                ),
+                child: Text(
+                  value,
+                  textAlign: TextAlign.end,
+                  style: TextStyle(
+                    fontSize: 12,
+                    fontWeight: FontWeight.bold,
+                    color: isOk ? Colors.green.shade800 : AppTheme.error,
+                  ),
                 ),
               ),
             ),
-          ),
-        ],
+          ],
+        ),
       ),
     );
   }
 
   Widget _buildPermissionRow(String permissionName, PermissionStatus status, VoidCallback onRequest) {
     final isGranted = status == PermissionStatus.granted;
-    return Padding(
-      padding: const EdgeInsets.symmetric(vertical: 4.0),
-      child: Row(
-        mainAxisAlignment: MainAxisAlignment.spaceBetween,
-        children: [
-          Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              Text(permissionName, style: const TextStyle(fontSize: 13, fontWeight: FontWeight.w500)),
-              Text(
-                status.toString().split('.').last.toUpperCase(),
-                style: TextStyle(fontSize: 11, color: isGranted ? Colors.green : AppTheme.error),
-              ),
-            ],
-          ),
-          ElevatedButton(
-            onPressed: isGranted ? null : onRequest,
-            style: ElevatedButton.styleFrom(
-              padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 0),
-              minimumSize: const Size(60, 30),
-              backgroundColor: isGranted ? AppTheme.neutral300 : AppTheme.primaryGreen,
+    return Semantics(
+      label: '$permissionName permission: ${status.toString().split('.').last}.',
+      child: Padding(
+        padding: const EdgeInsets.symmetric(vertical: 4.0),
+        child: Row(
+          mainAxisAlignment: MainAxisAlignment.spaceBetween,
+          children: [
+            Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(permissionName, style: const TextStyle(fontSize: 13, fontWeight: FontWeight.w500)),
+                Text(
+                  status.toString().split('.').last.toUpperCase(),
+                  style: TextStyle(fontSize: 11, color: isGranted ? Colors.green : AppTheme.error),
+                ),
+              ],
             ),
-            child: Text(isGranted ? 'Granted' : 'Grant', style: const TextStyle(fontSize: 12)),
-          ),
-        ],
+            Semantics(
+              label: isGranted ? '$permissionName already granted' : 'Grant $permissionName permission',
+              button: true,
+              child: ElevatedButton(
+                onPressed: isGranted ? null : onRequest,
+                style: ElevatedButton.styleFrom(
+                  padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 0),
+                  minimumSize: const Size(60, 44),
+                  backgroundColor: isGranted ? AppTheme.neutral300 : AppTheme.primaryGreen,
+                ),
+                child: Text(isGranted ? 'Granted' : 'Grant', style: const TextStyle(fontSize: 12)),
+              ),
+            ),
+          ],
+        ),
       ),
     );
   }

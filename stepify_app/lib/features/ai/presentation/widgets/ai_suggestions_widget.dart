@@ -1,7 +1,9 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
+import 'package:flutter_animate/flutter_animate.dart';
 import 'package:stepify_app/core/theme/app_theme.dart';
+import 'package:stepify_app/l10n/app_localizations.dart';
 import '../../domain/models/suggestion_model.dart';
 import '../providers/ai_provider.dart';
 
@@ -23,42 +25,124 @@ class _AiSuggestionsWidgetState extends ConsumerState<AiSuggestionsWidget> {
   @override
   Widget build(BuildContext context) {
     final state = ref.watch(aiSuggestionsProvider);
+    final l10n = AppLocalizations.of(context)!;
 
-    if (state.suggestions.isEmpty) return const SizedBox.shrink();
+    if (state.error != null || (!state.isLoading && state.suggestions.isEmpty)) {
+      return const SizedBox.shrink();
+    }
 
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        Padding(
-          padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
-          child: Row(
+    return Semantics(
+      container: true,
+      label: 'AI Insights section',
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Padding(
+            padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+            child: ExcludeSemantics(
+              child: Row(
+                children: [
+                  const Icon(Icons.auto_awesome, size: 16, color: AppTheme.accentOrange),
+                  const SizedBox(width: 6),
+                  Text(
+                    l10n.aiInsights,
+                    style: const TextStyle(
+                      fontWeight: FontWeight.bold,
+                      fontSize: 14,
+                      letterSpacing: 0.5,
+                    ),
+                  ),
+                ],
+              ),
+            ),
+          ),
+          SizedBox(
+            height: 140, // Height of the cards
+            child: state.isLoading
+                ? _buildLoadingState()
+                : ListView.separated(
+                    padding: const EdgeInsets.symmetric(horizontal: 16),
+                    scrollDirection: Axis.horizontal,
+                    itemCount: state.suggestions.length,
+                    separatorBuilder: (_, __) => const SizedBox(width: 12),
+                    itemBuilder: (context, index) {
+                      return _SuggestionCard(suggestion: state.suggestions[index])
+                          .animate(delay: Duration(milliseconds: 100 * index))
+                          .fadeIn(duration: 400.ms)
+                          .slideX(begin: 0.1, end: 0, curve: Curves.easeOut);
+                    },
+                  ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildLoadingState() {
+    return ListView.separated(
+      padding: const EdgeInsets.symmetric(horizontal: 16),
+      scrollDirection: Axis.horizontal,
+      physics: const NeverScrollableScrollPhysics(),
+      itemCount: 3,
+      separatorBuilder: (_, __) => const SizedBox(width: 12),
+      itemBuilder: (context, index) {
+        return Container(
+          width: 240,
+          padding: const EdgeInsets.all(16),
+          decoration: BoxDecoration(
+            color: Theme.of(context).cardColor,
+            borderRadius: BorderRadius.circular(20),
+            border: Border.all(color: Theme.of(context).dividerColor.withValues(alpha: 0.1)),
+          ),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              Icon(Icons.auto_awesome, size: 16, color: AppTheme.accentOrange),
-              const SizedBox(width: 6),
-              const Text(
-                'AI Insights',
-                style: TextStyle(
-                  fontWeight: FontWeight.bold,
-                  fontSize: 14,
-                  letterSpacing: 0.5,
+              Row(
+                children: [
+                  Container(
+                    width: 28,
+                    height: 28,
+                    decoration: BoxDecoration(
+                      color: Theme.of(context).disabledColor.withValues(alpha: 0.2),
+                      shape: BoxShape.circle,
+                    ),
+                  ),
+                ],
+              ),
+              const SizedBox(height: 16),
+              Container(
+                height: 14,
+                width: 140,
+                decoration: BoxDecoration(
+                  color: Theme.of(context).disabledColor.withValues(alpha: 0.2),
+                  borderRadius: BorderRadius.circular(4),
+                ),
+              ),
+              const SizedBox(height: 8),
+              Container(
+                height: 12,
+                width: double.infinity,
+                decoration: BoxDecoration(
+                  color: Theme.of(context).disabledColor.withValues(alpha: 0.2),
+                  borderRadius: BorderRadius.circular(4),
+                ),
+              ),
+              const SizedBox(height: 4),
+              Container(
+                height: 12,
+                width: 180,
+                decoration: BoxDecoration(
+                  color: Theme.of(context).disabledColor.withValues(alpha: 0.2),
+                  borderRadius: BorderRadius.circular(4),
                 ),
               ),
             ],
           ),
-        ),
-        SizedBox(
-          height: 140, // Height of the cards
-          child: ListView.separated(
-            padding: const EdgeInsets.symmetric(horizontal: 16),
-            scrollDirection: Axis.horizontal,
-            itemCount: state.suggestions.length,
-            separatorBuilder: (_, __) => const SizedBox(width: 12),
-            itemBuilder: (context, index) {
-              return _SuggestionCard(suggestion: state.suggestions[index]);
-            },
-          ),
-        ),
-      ],
+        ).animate(onPlay: (controller) => controller.repeat()).shimmer(
+              duration: 1200.ms,
+              color: Theme.of(context).disabledColor.withValues(alpha: 0.3),
+            );
+      },
     );
   }
 }
@@ -70,67 +154,90 @@ class _SuggestionCard extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return Container(
-      width: 240,
-      padding: const EdgeInsets.all(16),
-      decoration: BoxDecoration(
-        color: _getCardColor(suggestion.type).withOpacity(0.1),
-        borderRadius: BorderRadius.circular(20),
-        border: Border.all(color: _getCardColor(suggestion.type).withOpacity(0.2)),
-      ),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Row(
+    final color = _getCardColor(suggestion.type);
+    final semanticLabel = 'Insight: ${suggestion.title}. ${suggestion.description}'
+        '${suggestion.actionLabel != null ? '. Action: ${suggestion.actionLabel}' : ''}';
+
+    return Semantics(
+      label: semanticLabel,
+      button: suggestion.actionRoute != null,
+      onTapHint: suggestion.actionRoute != null ? 'Activate to ${suggestion.actionLabel}' : null,
+      child: GestureDetector(
+        onTap: suggestion.actionRoute != null ? () => context.push(suggestion.actionRoute!) : null,
+        child: Container(
+          width: 240,
+          padding: const EdgeInsets.all(16),
+          decoration: BoxDecoration(
+            color: color.withValues(alpha: 0.12),
+            borderRadius: BorderRadius.circular(20),
+            border: Border.all(color: color.withValues(alpha: 0.2)),
+          ),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              Container(
-                padding: const EdgeInsets.all(6),
-                decoration: BoxDecoration(
-                  color: Colors.white,
-                  shape: BoxShape.circle,
-                ),
-                child: Icon(
-                  _getIcon(suggestion.type),
-                  size: 16,
-                  color: _getCardColor(suggestion.type),
-                ),
-              ),
-              const Spacer(),
-              if (suggestion.actionLabel != null)
-                GestureDetector(
-                  onTap: () {
-                    if (suggestion.actionRoute != null) {
-                      context.push(suggestion.actionRoute!);
-                    }
-                  },
-                  child: Text(
-                    suggestion.actionLabel!,
-                    style: TextStyle(
-                      fontSize: 12,
-                      fontWeight: FontWeight.bold,
-                      color: _getCardColor(suggestion.type),
+              Row(
+                children: [
+                  ExcludeSemantics(
+                    child: Container(
+                      padding: const EdgeInsets.all(6),
+                      decoration: BoxDecoration(
+                        color: Theme.of(context).colorScheme.surface,
+                        shape: BoxShape.circle,
+                        boxShadow: [
+                          BoxShadow(
+                            color: Colors.black.withValues(alpha: 0.05),
+                            blurRadius: 4,
+                            offset: const Offset(0, 2),
+                          ),
+                        ],
+                      ),
+                      child: Icon(
+                        _getIcon(suggestion.type),
+                        size: 16,
+                        color: color,
+                      ),
                     ),
                   ),
+                  const Spacer(),
+                  if (suggestion.actionLabel != null)
+                    ExcludeSemantics(
+                      child: Text(
+                        suggestion.actionLabel!,
+                        style: TextStyle(
+                          fontSize: 12,
+                          fontWeight: FontWeight.bold,
+                          color: color,
+                        ),
+                      ),
+                    ),
+                ],
+              ),
+              const SizedBox(height: 12),
+              ExcludeSemantics(
+                child: Text(
+                  suggestion.title,
+                  style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 14),
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
                 ),
+              ),
+              const SizedBox(height: 4),
+              Expanded(
+                child: ExcludeSemantics(
+                  child: Text(
+                    suggestion.description,
+                    style: TextStyle(
+                      fontSize: 12,
+                      color: Theme.of(context).textTheme.bodySmall?.color ?? AppTheme.neutral600,
+                    ),
+                    maxLines: 3,
+                    overflow: TextOverflow.ellipsis,
+                  ),
+                ),
+              ),
             ],
           ),
-          const SizedBox(height: 12),
-          Text(
-            suggestion.title,
-            style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 14),
-            maxLines: 1,
-            overflow: TextOverflow.ellipsis,
-          ),
-          const SizedBox(height: 4),
-          Expanded(
-            child: Text(
-              suggestion.description,
-              style: const TextStyle(fontSize: 12, color: AppTheme.neutral600),
-              maxLines: 3,
-              overflow: TextOverflow.ellipsis,
-            ),
-          ),
-        ],
+        ),
       ),
     );
   }

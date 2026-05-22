@@ -48,20 +48,24 @@ export class RewardsService {
     for (const user of inactiveUsers) {
       if (!user.wallet) continue;
 
-      // 1. Drain balance
-      await this.prisma.wallet.update({
-        where: { userId: user.id },
-        data: { balance: 0 },
-      });
+      const walletBalance = user.wallet.balance;
 
-      // 2. Log expiration transaction
-      await this.prisma.transaction.create({
-        data: {
-          userId: user.id,
-          type: "REDEMPTION", // Align with schema TransactionType
-          points: -user.wallet.balance,
-          description: "Coins expired due to 180 days of inactivity.",
-        },
+      await this.prisma.$transaction(async (tx) => {
+        // 1. Drain balance
+        await tx.wallet.update({
+          where: { userId: user.id },
+          data: { balance: 0 },
+        });
+
+        // 2. Log expiration transaction
+        await tx.transaction.create({
+          data: {
+            userId: user.id,
+            type: "REDEMPTION", // Align with schema TransactionType
+            points: -walletBalance,
+            description: "Coins expired due to 180 days of inactivity.",
+          },
+        });
       });
 
       this.logger.log(
@@ -736,77 +740,85 @@ export class RewardsService {
    * Redeem a reward
    */
   async redeemReward(userId: string, rewardId: string) {
-    const wallet = await this.getWallet(userId);
-
-    const reward = await this.prisma.reward.findUnique({
-      where: { id: rewardId },
-    });
-
-    if (!reward) {
-      throw new Error("Reward not found");
-    }
-
-    if (!reward.isActive) {
-      throw new Error("Reward is no longer available");
-    }
-
-    if (wallet.balance < reward.coinCost) {
-      throw new Error("Insufficient coins");
-    }
-
-    if (reward.availableStock !== -1 && reward.availableStock <= 0) {
-      throw new Error("Reward is out of stock");
-    }
-
-    // Generate voucher code
-    const voucherCode = this.generateVoucherCode();
-
-    // Calculate expiry (30 days from now by default, or reward expiry)
-    const expiresAt =
-      reward.expiryDate || new Date(Date.now() + 30 * 24 * 60 * 60 * 1000);
-
-    // Create redemption record
-    const redemption = await this.prisma.userRedemption.create({
-      data: {
-        userId,
-        rewardId,
-        coinCost: reward.coinCost,
-        voucherCode,
-        expiresAt,
-      },
-      include: { reward: true },
-    });
-
-    // Deduct coins
-    await this.prisma.wallet.update({
-      where: { userId },
-      data: { balance: { decrement: reward.coinCost } },
-    });
-
-    // Create transaction record
-    await this.prisma.transaction.create({
-      data: {
-        userId,
-        type: "REDEMPTION",
-        points: -reward.coinCost,
-        description: `Redeemed: ${reward.title}`,
-      },
-    });
-
-    // Decrement stock if not unlimited
-    if (reward.availableStock !== -1) {
-      await this.prisma.reward.update({
-        where: { id: rewardId },
-        data: { availableStock: { decrement: 1 } },
+    return this.prisma.$transaction(async (tx) => {
+      const wallet = await tx.wallet.findUnique({
+        where: { userId },
       });
-    }
 
-    return {
-      success: true,
-      redemption,
-      newBalance: wallet.balance - reward.coinCost,
-      voucherCode,
-    };
+      if (!wallet) {
+        throw new Error("Wallet not found");
+      }
+
+      const reward = await tx.reward.findUnique({
+        where: { id: rewardId },
+      });
+
+      if (!reward) {
+        throw new Error("Reward not found");
+      }
+
+      if (!reward.isActive) {
+        throw new Error("Reward is no longer available");
+      }
+
+      if (wallet.balance < reward.coinCost) {
+        throw new Error("Insufficient coins");
+      }
+
+      if (reward.availableStock !== -1 && reward.availableStock <= 0) {
+        throw new Error("Reward is out of stock");
+      }
+
+      // Generate voucher code
+      const voucherCode = this.generateVoucherCode();
+
+      // Calculate expiry (30 days from now by default, or reward expiry)
+      const expiresAt =
+        reward.expiryDate || new Date(Date.now() + 30 * 24 * 60 * 60 * 1000);
+
+      // Create redemption record
+      const redemption = await tx.userRedemption.create({
+        data: {
+          userId,
+          rewardId,
+          coinCost: reward.coinCost,
+          voucherCode,
+          expiresAt,
+        },
+        include: { reward: true },
+      });
+
+      // Deduct coins
+      await tx.wallet.update({
+        where: { userId },
+        data: { balance: { decrement: reward.coinCost } },
+      });
+
+      // Create transaction record
+      await tx.transaction.create({
+        data: {
+          userId,
+          type: "REDEMPTION",
+          points: -reward.coinCost,
+          description: `Redeemed: ${reward.title}`,
+        },
+      });
+
+      // Decrement stock if not unlimited
+      if (reward.availableStock !== -1) {
+        await tx.reward.update({
+          where: { id: rewardId },
+          data: { availableStock: { decrement: 1 } },
+        });
+      }
+
+      return {
+        success: true,
+        redemption,
+        newBalance: wallet.balance - reward.coinCost,
+        voucherCode,
+      };
+    });
   }
 
   /**

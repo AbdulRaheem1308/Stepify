@@ -6,6 +6,7 @@ import {
 } from "@nestjs/common";
 import { PrismaService } from "../prisma/prisma.service";
 import { RedisService } from "../redis/redis.service";
+import * as crypto from "crypto";
 
 @Injectable()
 export class FriendsService {
@@ -187,66 +188,68 @@ export class FriendsService {
    * Send boost to a friend (limited per day)
    */
   async sendBoost(userId: string, friendId: string) {
-    // Check if already sent today
-    const today = new Date();
-    today.setHours(0, 0, 0, 0);
+    return this.prisma.$transaction(async (tx) => {
+      // Check if already sent today
+      const today = new Date();
+      today.setHours(0, 0, 0, 0);
 
-    const existingBoost = await this.prisma.friendBoost.findFirst({
-      where: {
-        senderId: userId,
-        receiverId: friendId,
-        sentAt: { gte: today },
-      },
+      const existingBoost = await tx.friendBoost.findFirst({
+        where: {
+          senderId: userId,
+          receiverId: friendId,
+          sentAt: { gte: today },
+        },
+      });
+
+      if (existingBoost) {
+        throw new ConflictException("Boost already sent to this friend today");
+      }
+
+      // Check if they are friends
+      const friendship = await tx.friendship.findFirst({
+        where: {
+          status: "ACCEPTED",
+          OR: [
+            { userId, friendId },
+            { userId: friendId, friendId: userId },
+          ],
+        },
+      });
+
+      if (!friendship) {
+        throw new BadRequestException("You can only boost friends");
+      }
+
+      // Create boost record
+      const boost = await tx.friendBoost.create({
+        data: { senderId: userId, receiverId: friendId },
+      });
+
+      // Award coins to receiver (bonus motivation)
+      await tx.wallet.upsert({
+        where: { userId: friendId },
+        update: { balance: { increment: 5 } },
+        create: { userId: friendId, balance: 5, lifetimePoints: 5 },
+      });
+
+      // Create transaction
+      await tx.transaction.create({
+        data: {
+          userId: friendId,
+          type: "REFERRAL",
+          points: 5,
+          description: "Received a boost from a friend!",
+        },
+      });
+
+      return { success: true, boost };
     });
-
-    if (existingBoost) {
-      throw new ConflictException("Boost already sent to this friend today");
-    }
-
-    // Check if they are friends
-    const friendship = await this.prisma.friendship.findFirst({
-      where: {
-        status: "ACCEPTED",
-        OR: [
-          { userId, friendId },
-          { userId: friendId, friendId: userId },
-        ],
-      },
-    });
-
-    if (!friendship) {
-      throw new BadRequestException("You can only boost friends");
-    }
-
-    // Create boost record
-    const boost = await this.prisma.friendBoost.create({
-      data: { senderId: userId, receiverId: friendId },
-    });
-
-    // Award coins to receiver (bonus motivation)
-    await this.prisma.wallet.upsert({
-      where: { userId: friendId },
-      update: { balance: { increment: 5 } },
-      create: { userId: friendId, balance: 5, lifetimePoints: 5 },
-    });
-
-    // Create transaction
-    await this.prisma.transaction.create({
-      data: {
-        userId: friendId,
-        type: "REFERRAL",
-        points: 5,
-        description: "Received a boost from a friend!",
-      },
-    });
-
-    return { success: true, boost };
   }
 
   /**
    * Get mini leaderboard (top friends by steps)
    */
-  async getMiniLeaderboard(userId: string, timeFrame: string = "weekly") {
+  async getMiniLeaderboard(userId: string, _timeFrame: string = "weekly") {
     const friends = await this.getFriends(userId);
 
     // Sort by steps and take top 5
@@ -294,12 +297,7 @@ export class FriendsService {
    * Generate referral code
    */
   private generateReferralCode(): string {
-    const chars = "ABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789";
-    let code = "REF-";
-    for (let i = 0; i < 6; i++) {
-      code += chars.charAt(Math.floor(Math.random() * chars.length));
-    }
-    return code;
+    return "REF-" + crypto.randomBytes(3).toString("hex").toUpperCase();
   }
 
   /**
@@ -324,24 +322,19 @@ export class FriendsService {
   }
 
   /**
-    /**
-     * Get global leaderboard (all users)
-     */
+  /**
+   * Get global leaderboard (all users)
+   */
   async getGlobalLeaderboard(timeFrame: string = "weekly") {
     const cacheKey = `leaderboard:global:${timeFrame}`;
 
-    try {
-      // 1. Try to fetch from Redis cache first
-      const cachedData = await this.redis.getClient().get(cacheKey);
-      if (cachedData) {
-        return JSON.parse(cachedData);
-      }
-    } catch (err) {
-      console.warn("⚠️ Redis error reading leaderboard cache:", err);
+    // 1. Try to fetch from Redis cache first
+    const cachedData = await this.redis.getCache<any[]>(cacheKey);
+    if (cachedData) {
+      return cachedData;
     }
 
     let result: any[] = [];
-    const orderBy: any = {};
 
     if (timeFrame === "monthly") {
       // Sort by Monthly XP
@@ -415,14 +408,8 @@ export class FriendsService {
         }));
     }
 
-    try {
-      // 2. Store in Redis for 5 minutes (300 seconds) to prevent heavy DB queries
-      await this.redis
-        .getClient()
-        .set(cacheKey, JSON.stringify(result), "EX", 300);
-    } catch (err) {
-      console.warn("⚠️ Redis error setting leaderboard cache:", err);
-    }
+    // 2. Store in Redis for 5 minutes (300 seconds) to prevent heavy DB queries
+    await this.redis.setCache(cacheKey, result, 300);
 
     return result;
   }

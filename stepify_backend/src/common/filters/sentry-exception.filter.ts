@@ -6,11 +6,23 @@ import {
 } from "@nestjs/common";
 import { BaseExceptionFilter } from "@nestjs/core";
 import * as Sentry from "@sentry/nestjs";
+import { I18nService } from "nestjs-i18n";
+import { Request, Response } from "express";
 
 @Catch()
 export class SentryExceptionFilter extends BaseExceptionFilter {
-  catch(exception: unknown, host: ArgumentsHost) {
-    // Only capture 500 internal server errors or non-HttpExceptions in Sentry
+  constructor(
+    applicationRef: any,
+    private readonly i18n: I18nService,
+  ) {
+    super(applicationRef);
+  }
+
+  async catch(exception: unknown, host: ArgumentsHost) {
+    const ctx = host.switchToHttp();
+    const response = ctx.getResponse<Response>();
+    const request = ctx.getRequest<Request>();
+
     const isHttpException = exception instanceof HttpException;
     const status = isHttpException
       ? exception.getStatus()
@@ -18,6 +30,31 @@ export class SentryExceptionFilter extends BaseExceptionFilter {
 
     if (status >= 500 || !isHttpException) {
       Sentry.captureException(exception);
+    }
+
+    // Custom translation logic
+    if (isHttpException) {
+      const errorResponse = exception.getResponse() as any;
+      let message = errorResponse.message || exception.message;
+
+      // Try to translate the message if it's a known string key (e.g. "errors.NOT_FOUND")
+      if (typeof message === "string" && message.includes(".")) {
+        try {
+          message = await this.i18n.translate(message, {
+            lang: request.headers["accept-language"] || "en",
+          });
+        } catch (e) {
+          // Fallback to original
+        }
+      }
+
+      response.status(status).json({
+        statusCode: status,
+        timestamp: new Date().toISOString(),
+        path: request.url,
+        message: message,
+      });
+      return;
     }
 
     super.catch(exception, host);

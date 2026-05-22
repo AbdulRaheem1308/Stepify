@@ -1,6 +1,7 @@
 import 'package:workmanager/workmanager.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:flutter/foundation.dart';
+import 'dart:io';
 import '../../services/health_service.dart';
 import '../../services/api_service.dart';
 import '../../services/storage_service.dart';
@@ -12,7 +13,6 @@ const String kBackgroundSyncTask = "stepify.backgroundSync";
 @pragma('vm:entry-point')
 void callbackDispatcher() {
   Workmanager().executeTask((task, inputData) async {
-    debugPrint("Background Task Started: $task");
     
     try {
       if (task == kBackgroundSyncTask) {
@@ -25,7 +25,6 @@ void callbackDispatcher() {
         final token = await StorageService.getAccessToken();
         
         if (token == null) {
-          debugPrint("No token found in background task. Skipping sync.");
           await prefs.setString('bg_sync_status', 'Skipped: No access token found');
           return Future.value(true);
         }
@@ -42,7 +41,6 @@ void callbackDispatcher() {
         final steps = await healthService.getTodaySteps();
         
         if (steps > 0) {
-           debugPrint("Background Sync: Syncing $steps steps");
            // 4. Send to Backend
            try {
              final isJailBroken = await SafeDevice.isJailBroken;
@@ -62,14 +60,12 @@ void callbackDispatcher() {
                  'isMockLocation': isMockLocation,
                }
              });
-             debugPrint("Background Sync: Success");
              await prefs.setString('bg_sync_status', 'Success: Synced $steps steps');
            } catch (e) {
              debugPrint("Background Sync API Error: $e");
              await prefs.setString('bg_sync_status', 'API Error: $e');
            }
         } else {
-           debugPrint("Background Sync: 0 steps today, skipping API call");
            await prefs.setString('bg_sync_status', 'Skipped: Today\'s steps is 0');
         }
       }
@@ -91,16 +87,21 @@ class BackgroundService {
 
   static Future<void> init() async {
     if (_initialized) return;
+    if (kIsWeb || Platform.environment.containsKey('FLUTTER_TEST')) {
+      _initialized = true;
+      return;
+    }
     await Workmanager().initialize(
       callbackDispatcher,
       isInDebugMode: kDebugMode, // Logs to console
     );
     _initialized = true;
-    debugPrint("Background Service Initialized");
   }
 
   static Future<void> registerPeriodicTask() async {
     await init();
+    if (kIsWeb || Platform.environment.containsKey('FLUTTER_TEST')) return;
+    
     await Workmanager().registerPeriodicTask(
       "stepify_sync_job",
       kBackgroundSyncTask,
@@ -111,12 +112,12 @@ class BackgroundService {
       ),
       existingWorkPolicy: ExistingPeriodicWorkPolicy.replace,
     );
-    debugPrint("Background Task Registered");
   }
 
   static Future<void> cancelTask() async {
     await init();
+    if (kIsWeb || Platform.environment.containsKey('FLUTTER_TEST')) return;
+    
     await Workmanager().cancelAll();
-    debugPrint("Background Tasks Cancelled");
   }
 }

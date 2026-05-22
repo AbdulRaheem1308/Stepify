@@ -1,3 +1,4 @@
+import 'package:cached_network_image/cached_network_image.dart';
 import 'package:flutter/material.dart';
 import '../../../../core/theme/app_theme.dart';
 import '../../data/models/team_model.dart';
@@ -19,7 +20,10 @@ class TeamCard extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return GestureDetector(
+    return Semantics(
+      label: 'Team: ${team.name}. ${team.memberCount} of ${team.maxMembers} members. ${team.isPublic ? "Public" : "Private"}.',
+      button: true,
+      child: GestureDetector(
       onTap: onTap,
       child: Container(
         margin: const EdgeInsets.only(bottom: 12),
@@ -28,7 +32,7 @@ class TeamCard extends StatelessWidget {
           borderRadius: BorderRadius.circular(16),
           boxShadow: [
             BoxShadow(
-              color: Colors.black.withOpacity(0.05),
+              color: Colors.black.withValues(alpha: 0.05),
               blurRadius: 10,
               offset: const Offset(0, 2),
             ),
@@ -53,7 +57,7 @@ class TeamCard extends StatelessWidget {
                       child: team.imageUrl != null
                           ? ClipRRect(
                               borderRadius: BorderRadius.circular(12),
-                              child: Image.network(
+                              child: CachedNetworkImage(imageUrl: 
                                 team.imageUrl!,
                                 fit: BoxFit.cover,
                               ),
@@ -192,6 +196,7 @@ class TeamCard extends StatelessWidget {
             ],
           ),
         ),
+      ),
       ),
     );
   }

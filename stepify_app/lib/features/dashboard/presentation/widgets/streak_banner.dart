@@ -27,7 +27,7 @@ class StreakBanner extends StatelessWidget {
           borderRadius: BorderRadius.circular(10),
           boxShadow: [
             BoxShadow(
-              color: const Color(0xFFF44336).withOpacity(0.3),
+              color: const Color(0xFFF44336).withAlpha(77),
               blurRadius: 10,
               offset: const Offset(0, 4),
             ),
@@ -38,7 +38,7 @@ class StreakBanner extends StatelessWidget {
             Container(
               padding: const EdgeInsets.all(10),
               decoration: BoxDecoration(
-                color: Colors.white.withOpacity(0.2),
+                color: Colors.white.withAlpha(51),
                 shape: BoxShape.circle,
               ),
               child: const Icon(Icons.local_fire_department, color: Colors.white, size: 28),

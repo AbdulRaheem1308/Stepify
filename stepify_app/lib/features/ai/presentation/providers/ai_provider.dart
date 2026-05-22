@@ -3,23 +3,39 @@ import 'package:stepify_app/services/ai_service.dart';
 import '../../domain/models/suggestion_model.dart';
 import '../../../dashboard/presentation/providers/dashboard_provider.dart';
 
-final aiServiceProvider = Provider((ref) => AiService());
-
 class AiSuggestionsState {
   final List<Suggestion> suggestions;
   final bool isLoading;
+  final String? error;
 
-  AiSuggestionsState({this.suggestions = const [], this.isLoading = false});
+  const AiSuggestionsState({
+    this.suggestions = const [],
+    this.isLoading = false,
+    this.error,
+  });
+
+  AiSuggestionsState copyWith({
+    List<Suggestion>? suggestions,
+    bool? isLoading,
+    String? error,
+    bool clearError = false,
+  }) {
+    return AiSuggestionsState(
+      suggestions: suggestions ?? this.suggestions,
+      isLoading: isLoading ?? this.isLoading,
+      error: clearError ? null : (error ?? this.error),
+    );
+  }
 }
 
 class AiSuggestionsNotifier extends StateNotifier<AiSuggestionsState> {
   final AiService _aiService;
   final Ref _ref;
 
-  AiSuggestionsNotifier(this._aiService, this._ref) : super(AiSuggestionsState());
+  AiSuggestionsNotifier(this._aiService, this._ref) : super(const AiSuggestionsState());
 
   Future<void> refreshSuggestions() async {
-    state = AiSuggestionsState(suggestions: state.suggestions, isLoading: true);
+    state = state.copyWith(isLoading: true, clearError: true);
 
     // Get real context from dashboard provider
     final dashboard = _ref.read(dashboardProvider);
@@ -36,13 +52,17 @@ class AiSuggestionsNotifier extends StateNotifier<AiSuggestionsState> {
         lastActivityTime: lastActivity,
       );
       
-      state = AiSuggestionsState(suggestions: suggestions, isLoading: false);
+      state = state.copyWith(suggestions: suggestions, isLoading: false);
     } catch (e) {
-      state = AiSuggestionsState(suggestions: [], isLoading: false);
+      // Use ApiError if we want, or just a generic string
+      state = state.copyWith(
+        isLoading: false, 
+        error: e.toString(),
+      );
     }
   }
 }
 
-final aiSuggestionsProvider = StateNotifierProvider<AiSuggestionsNotifier, AiSuggestionsState>((ref) {
+final aiSuggestionsProvider = StateNotifierProvider.autoDispose<AiSuggestionsNotifier, AiSuggestionsState>((ref) {
   return AiSuggestionsNotifier(ref.watch(aiServiceProvider), ref);
 });

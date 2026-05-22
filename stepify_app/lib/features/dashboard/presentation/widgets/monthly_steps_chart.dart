@@ -26,10 +26,10 @@ class MonthlyStepsChart extends StatelessWidget {
       decoration: BoxDecoration(
         color: Theme.of(context).cardColor,
         borderRadius: BorderRadius.circular(24),
-        border: Border.all(color: Theme.of(context).dividerColor.withOpacity(0.08)),
+        border: Border.all(color: Theme.of(context).dividerColor.withAlpha(20)),
         boxShadow: [
           BoxShadow(
-            color: Colors.black.withOpacity(isDark ? 0.2 : 0.03),
+            color: Colors.black.withValues(alpha: isDark ? 0.2 : 0.03),
             blurRadius: 12,
             offset: const Offset(0, 6),
           ),
@@ -76,7 +76,7 @@ class MonthlyStepsChart extends StatelessWidget {
                   drawVerticalLine: false,
                   horizontalInterval: maxY / 4,
                   getDrawingHorizontalLine: (value) => FlLine(
-                    color: Theme.of(context).dividerColor.withOpacity(0.2),
+                    color: Theme.of(context).dividerColor.withAlpha(51),
                     strokeWidth: 1,
                     dashArray: [4, 4],
                   ),
@@ -123,8 +123,8 @@ class MonthlyStepsChart extends StatelessWidget {
                       show: true,
                       gradient: LinearGradient(
                         colors: [
-                          AppTheme.primaryGreen.withOpacity(0.3),
-                          AppTheme.primaryGreen.withOpacity(0.0),
+                          AppTheme.primaryGreen.withAlpha(77),
+                          AppTheme.primaryGreen.withAlpha(0),
                         ],
                         begin: Alignment.topCenter,
                         end: Alignment.bottomCenter,

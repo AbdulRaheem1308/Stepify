@@ -35,13 +35,13 @@ class HeroProgressCard extends StatelessWidget {
         borderRadius: BorderRadius.circular(24), // Smoother corners
         boxShadow: [
           BoxShadow(
-            color: const Color(0xFF26D0CE).withOpacity(0.4),
+            color: const Color(0xFF26D0CE).withAlpha(102),
             blurRadius: 24,
             offset: const Offset(0, 10),
             spreadRadius: -4,
           ),
           BoxShadow(
-            color: const Color(0xFF1A2980).withOpacity(0.4),
+            color: const Color(0xFF1A2980).withAlpha(102),
             blurRadius: 24,
             offset: const Offset(0, 10),
             spreadRadius: -4,
@@ -57,11 +57,11 @@ class HeroProgressCard extends StatelessWidget {
             child: Container(
               width: 200, height: 200,
               decoration: BoxDecoration(
-                color: Colors.white.withOpacity(0.1),
+                color: Colors.white.withAlpha(26),
                 shape: BoxShape.circle,
                 boxShadow: [
                   BoxShadow(
-                    color: Colors.white.withOpacity(0.05),
+                    color: Colors.white.withAlpha(13),
                     blurRadius: 40,
                     spreadRadius: 10,
                   )
@@ -74,7 +74,7 @@ class HeroProgressCard extends StatelessWidget {
             child: Container(
               width: 140, height: 140,
               decoration: BoxDecoration(
-                color: Colors.white.withOpacity(0.08),
+                color: Colors.white.withAlpha(20),
                 shape: BoxShape.circle,
               ),
             ),
@@ -99,7 +99,7 @@ class HeroProgressCard extends StatelessWidget {
                             size: const Size(140, 140),
                             painter: ArcProgressPainter(
                               progress: value,
-                              backgroundColor: Colors.white.withOpacity(0.1),
+                              backgroundColor: Colors.white.withAlpha(26),
                               color: const Color(0xFF00E5FF),
                               strokeWidth: 12, // Slightly thinner ring
                             ),
@@ -190,14 +190,15 @@ class HeroProgressCard extends StatelessWidget {
                             label: 'Adjust Daily Goal',
                             button: true,
                             child: Material(
-                              color: Colors.white.withOpacity(0.15),
+                              color: Colors.white.withAlpha(38),
                               borderRadius: BorderRadius.circular(12),
                               child: InkWell(
                                 onTap: onAdjustGoal,
-                              borderRadius: BorderRadius.circular(12),
-                              child: Container(
-                                padding: const EdgeInsets.all(10),
-                                child: const Icon(Icons.edit, color: Colors.white, size: 18),
+                                borderRadius: BorderRadius.circular(12),
+                                child: Container(
+                                  padding: const EdgeInsets.all(10),
+                                  child: const Icon(Icons.edit, color: Colors.white, size: 18),
+                                ),
                               ),
                             ),
                           ),

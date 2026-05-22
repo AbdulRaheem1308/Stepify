@@ -71,7 +71,11 @@ class WalletScreen extends ConsumerWidget {
               mainAxisAlignment: MainAxisAlignment.spaceBetween,
               children: [
                 const Text('Transaction History', style: TextStyle(fontWeight: FontWeight.bold, fontSize: 18)),
-                TextButton(onPressed: () {}, child: const Text('Export')),
+                Semantics(
+                  label: 'Export Transaction History',
+                  button: true,
+                  child: TextButton(onPressed: () {}, child: const Text('Export')),
+                ),
               ],
             ),
           ),
@@ -100,7 +104,7 @@ class WalletScreen extends ConsumerWidget {
         borderRadius: BorderRadius.circular(24),
         boxShadow: [
           BoxShadow(
-            color: AppTheme.primaryGreen.withOpacity(0.4),
+            color: AppTheme.primaryGreen.withValues(alpha: 0.4),
             blurRadius: 16,
             offset: const Offset(0, 8),
           ),
@@ -147,7 +151,9 @@ class WalletScreen extends ConsumerWidget {
 
   Widget _buildTransactionItem(BuildContext context, WalletTransaction txn, int index) {
     final isEarn = txn.type == TransactionType.earn;
-    return Container(
+    return Semantics(
+      label: '${txn.title}. ${txn.description}. ${isEarn ? 'Earned' : 'Spent'} ${txn.amount} coins on ${DateFormat.yMMMd().format(txn.date)}.',
+      child: Container(
       margin: const EdgeInsets.only(bottom: 12),
       padding: const EdgeInsets.all(16),
       decoration: BoxDecoration(
@@ -160,7 +166,7 @@ class WalletScreen extends ConsumerWidget {
           Container(
             padding: const EdgeInsets.all(10),
             decoration: BoxDecoration(
-              color: isEarn ? AppTheme.success.withOpacity(0.1) : AppTheme.error.withOpacity(0.1),
+              color: isEarn ? AppTheme.success.withValues(alpha: 0.1) : AppTheme.error.withValues(alpha: 0.1),
               shape: BoxShape.circle,
             ),
             child: Icon(
@@ -197,6 +203,7 @@ class WalletScreen extends ConsumerWidget {
              ],
           ),
         ],
+      ),
       ),
     ).animate().fadeIn(delay: (50 * index).ms).slideX();
   }

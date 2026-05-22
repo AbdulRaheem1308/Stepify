@@ -5,6 +5,7 @@ import 'package:confetti/confetti.dart';
 import 'package:go_router/go_router.dart';
 
 import '../../../../core/theme/app_theme.dart';
+import '../../../../l10n/app_localizations.dart';
 import '../providers/challenges_provider.dart';
 import '../widgets/challenge_card.dart';
 
@@ -125,11 +126,11 @@ class _ChallengesScreenState extends ConsumerState<ChallengesScreen> with Single
             ),
             const SizedBox(height: 20),
             
-            Text('Filter Challenges', style: Theme.of(context).textTheme.titleLarge?.copyWith(fontWeight: FontWeight.bold)),
+            Text(AppLocalizations.of(context)?.filterChallenges ?? 'Filter Challenges', style: Theme.of(context).textTheme.titleLarge?.copyWith(fontWeight: FontWeight.bold)),
             const SizedBox(height: 20),
             
             // Difficulty Filter
-            Text('Difficulty', style: Theme.of(context).textTheme.titleMedium?.copyWith(fontWeight: FontWeight.w600)),
+            Text(AppLocalizations.of(context)?.difficulty ?? 'Difficulty', style: Theme.of(context).textTheme.titleMedium?.copyWith(fontWeight: FontWeight.w600)),
             const SizedBox(height: 8),
             Wrap(
               spacing: 8,
@@ -139,7 +140,7 @@ class _ChallengesScreenState extends ConsumerState<ChallengesScreen> with Single
                 return ChoiceChip(
                   label: Text(d.toLowerCase()),
                   selected: isSelected,
-                  selectedColor: AppTheme.primaryGreen.withOpacity(0.2),
+                  selectedColor: AppTheme.primaryGreen.withValues(alpha: 0.2),
                   onSelected: (_) {
                     setSheetState(() {});
                     setState(() => _selectedDifficulty = d == 'All' ? null : d);
@@ -158,7 +159,7 @@ class _ChallengesScreenState extends ConsumerState<ChallengesScreen> with Single
 
             
             // Type Filter
-            const Text('Challenge Type', style: TextStyle(fontWeight: FontWeight.w600)),
+            Text(AppLocalizations.of(context)?.challengeTypeLabel ?? 'Challenge Type', style: const TextStyle(fontWeight: FontWeight.w600)),
             const SizedBox(height: 8),
             Wrap(
               spacing: 8,
@@ -168,7 +169,7 @@ class _ChallengesScreenState extends ConsumerState<ChallengesScreen> with Single
                 return ChoiceChip(
                   label: Text(t.toLowerCase()),
                   selected: isSelected,
-                  selectedColor: AppTheme.primaryGreen.withOpacity(0.2),
+                  selectedColor: AppTheme.primaryGreen.withValues(alpha: 0.2),
                   onSelected: (_) {
                     setSheetState(() {});
                     setState(() => _selectedType = t == 'All' ? null : t);
@@ -190,7 +191,7 @@ class _ChallengesScreenState extends ConsumerState<ChallengesScreen> with Single
                       });
                       Navigator.pop(context);
                     },
-                    child: const Text('Reset'),
+                    child: Text(AppLocalizations.of(context)?.resetBtn ?? 'Reset'),
                   ),
                 ),
                 const SizedBox(width: 12),
@@ -201,7 +202,7 @@ class _ChallengesScreenState extends ConsumerState<ChallengesScreen> with Single
                       backgroundColor: AppTheme.primaryGreen,
                       foregroundColor: Colors.white,
                     ),
-                    child: const Text('Apply'),
+                    child: Text(AppLocalizations.of(context)?.applyBtn ?? 'Apply'),
                   ),
                 ),
               ],
@@ -226,7 +227,7 @@ class _ChallengesScreenState extends ConsumerState<ChallengesScreen> with Single
         _confettiController.play();
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
-            content: Text('🎉 Joined "${challenge.title}"!'),
+            content: Text(AppLocalizations.of(context)?.joinedChallengeSuccess(challenge.title) ?? '🎉 Joined "${challenge.title}"!'),
             backgroundColor: AppTheme.success,
           ),
         );
@@ -266,7 +267,7 @@ class _ChallengesScreenState extends ConsumerState<ChallengesScreen> with Single
                 
                 // Title
                 Text(
-                  'Join Challenge?',
+                  AppLocalizations.of(context)?.joinChallengeTitle ?? 'Join Challenge?',
                   style: Theme.of(context).textTheme.headlineSmall?.copyWith(
                     fontWeight: FontWeight.bold,
                   ),
@@ -289,7 +290,7 @@ class _ChallengesScreenState extends ConsumerState<ChallengesScreen> with Single
                       ),
                       const SizedBox(height: 8),
                       Text(
-                        '🎯 ${challenge.stepTarget} steps in ${challenge.durationDays} days',
+                        AppLocalizations.of(context)?.stepsInDays(challenge.stepTarget, challenge.durationDays) ?? '🎯 ${challenge.stepTarget} steps in ${challenge.durationDays} days',
                         style: Theme.of(context).textTheme.bodyMedium,
                       ),
                       const SizedBox(height: 8),
@@ -328,10 +329,10 @@ class _ChallengesScreenState extends ConsumerState<ChallengesScreen> with Single
                             children: [
                               Icon(Icons.description_outlined, size: 18, color: Theme.of(context).textTheme.bodyMedium?.color),
                               const SizedBox(width: 8),
-                              const Expanded(
+                              Expanded(
                                 child: Text(
-                                  'Terms & Conditions',
-                                  style: TextStyle(fontWeight: FontWeight.w600, fontSize: 14),
+                                  AppLocalizations.of(context)?.termsAndConditions ?? 'Terms & Conditions',
+                                  style: const TextStyle(fontWeight: FontWeight.w600, fontSize: 14),
                                 ),
                               ),
                               Icon(
@@ -383,7 +384,7 @@ class _ChallengesScreenState extends ConsumerState<ChallengesScreen> with Single
                       child: GestureDetector(
                         onTap: () => acceptedTerms.value = !acceptedTerms.value,
                         child: Text(
-                          'I agree to the challenge Terms & Conditions',
+                          AppLocalizations.of(context)?.iAgreeToTerms ?? 'I agree to the challenge Terms & Conditions',
                           style: TextStyle(fontSize: 13, color: Theme.of(context).textTheme.bodyMedium?.color),
                         ),
                       ),
@@ -402,7 +403,7 @@ class _ChallengesScreenState extends ConsumerState<ChallengesScreen> with Single
                           padding: const EdgeInsets.symmetric(vertical: 16),
                           side: BorderSide(color: AppTheme.neutral300),
                         ),
-                        child: const Text('Cancel'),
+                        child: Text(AppLocalizations.of(context)?.cancel ?? 'Cancel'),
                       ),
                     ),
                     const SizedBox(width: 16),
@@ -416,7 +417,7 @@ class _ChallengesScreenState extends ConsumerState<ChallengesScreen> with Single
                           disabledForegroundColor: AppTheme.neutral400,
                           padding: const EdgeInsets.symmetric(vertical: 16),
                         ),
-                        child: const Text('Join Now! 🚀', style: TextStyle(fontWeight: FontWeight.bold)),
+                        child: Text(AppLocalizations.of(context)?.joinNowBtn ?? 'Join Now! 🚀', style: const TextStyle(fontWeight: FontWeight.bold)),
                       ),
                     ),
                   ],
@@ -484,8 +485,8 @@ class _ChallengesScreenState extends ConsumerState<ChallengesScreen> with Single
                     child: Column(
                       crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
-                        const Text(
-                          'Challenges',
+                        Text(
+                          AppLocalizations.of(context)?.challenges ?? 'Challenges',
                           style: TextStyle(
                             fontSize: 24,
                             fontWeight: FontWeight.bold,
@@ -509,7 +510,7 @@ class _ChallengesScreenState extends ConsumerState<ChallengesScreen> with Single
                     child: Container(
                       padding: const EdgeInsets.all(10),
                       decoration: BoxDecoration(
-                        color: _showSearch ? AppTheme.primaryGreen.withOpacity(0.1) : Colors.white,
+                        color: _showSearch ? AppTheme.primaryGreen.withValues(alpha: 0.1) : Colors.white,
                         shape: BoxShape.circle,
                         border: Border.all(color: _showSearch ? AppTheme.primaryGreen : AppTheme.neutral200),
                       ),
@@ -530,7 +531,7 @@ class _ChallengesScreenState extends ConsumerState<ChallengesScreen> with Single
                           padding: const EdgeInsets.all(10),
                           decoration: BoxDecoration(
                             color: (_selectedDifficulty != null || _selectedType != null) 
-                                ? AppTheme.primaryGreen.withOpacity(0.1) 
+                                ? AppTheme.primaryGreen.withValues(alpha: 0.1) 
                                 : Colors.white,
                             shape: BoxShape.circle,
                             border: Border.all(
@@ -575,7 +576,7 @@ class _ChallengesScreenState extends ConsumerState<ChallengesScreen> with Single
                   controller: _searchController,
                   autofocus: true,
                   decoration: InputDecoration(
-                    hintText: 'Search challenges...',
+                    hintText: AppLocalizations.of(context)?.searchChallenges ?? 'Search challenges...',
                     prefixIcon: const Icon(Icons.search, color: AppTheme.neutral500),
                     suffixIcon: _searchQuery.isNotEmpty
                         ? IconButton(
@@ -670,14 +671,32 @@ class _ChallengesScreenState extends ConsumerState<ChallengesScreen> with Single
     if (challenges.isLoading) {
       return const Center(child: CircularProgressIndicator());
     }
+    
+    if (challenges.error != null) {
+      return Center(
+        child: Column(
+          mainAxisAlignment: MainAxisAlignment.center,
+          children: [
+            Icon(Icons.error_outline, size: 48, color: AppTheme.error),
+            const SizedBox(height: 16),
+            Text(challenges.error!, style: const TextStyle(color: AppTheme.error)),
+            const SizedBox(height: 16),
+            ElevatedButton(
+              onPressed: () => ref.read(challengesProvider.notifier).fetchAllChallenges(),
+              child: Text(AppLocalizations.of(context)?.retry ?? 'Retry'),
+            ),
+          ],
+        ),
+      );
+    }
 
     final filtered = _filterChallenges(challenges.newChallenges);
     
     if (filtered.isEmpty) {
       if (challenges.newChallenges.isEmpty) {
-        return _buildEmptyState('No new challenges', 'Check back later for new challenges!');
+        return _buildEmptyState(AppLocalizations.of(context)?.noNewChallenges ?? 'No new challenges', AppLocalizations.of(context)?.checkBackLater ?? 'Check back later for new challenges!');
       }
-      return _buildEmptyState('No matching challenges', 'Try adjusting your search or filters');
+      return _buildEmptyState(AppLocalizations.of(context)?.noMatchingChallenges ?? 'No matching challenges', AppLocalizations.of(context)?.tryAdjustingFilters ?? 'Try adjusting your search or filters');
     }
 
     return RefreshIndicator(
@@ -704,13 +723,31 @@ class _ChallengesScreenState extends ConsumerState<ChallengesScreen> with Single
       return const Center(child: CircularProgressIndicator());
     }
 
+    if (challenges.error != null) {
+      return Center(
+        child: Column(
+          mainAxisAlignment: MainAxisAlignment.center,
+          children: [
+            Icon(Icons.error_outline, size: 48, color: AppTheme.error),
+            const SizedBox(height: 16),
+            Text(challenges.error!, style: const TextStyle(color: AppTheme.error)),
+            const SizedBox(height: 16),
+            ElevatedButton(
+              onPressed: () => ref.read(challengesProvider.notifier).fetchAllChallenges(),
+              child: Text(AppLocalizations.of(context)?.retry ?? 'Retry'),
+            ),
+          ],
+        ),
+      );
+    }
+
     final filtered = _filterUserChallenges(challenges.ongoingChallenges);
     
     if (filtered.isEmpty) {
       if (challenges.ongoingChallenges.isEmpty) {
-        return _buildEmptyState('No ongoing challenges', 'Join a challenge to get started!');
+        return _buildEmptyState(AppLocalizations.of(context)?.noOngoingChallenges ?? 'No ongoing challenges', AppLocalizations.of(context)?.joinChallengeToStart ?? 'Join a challenge to get started!');
       }
-      return _buildEmptyState('No matching challenges', 'Try adjusting your search or filters');
+      return _buildEmptyState(AppLocalizations.of(context)?.noMatchingChallenges ?? 'No matching challenges', AppLocalizations.of(context)?.tryAdjustingFilters ?? 'Try adjusting your search or filters');
     }
 
     return RefreshIndicator(
@@ -738,13 +775,31 @@ class _ChallengesScreenState extends ConsumerState<ChallengesScreen> with Single
       return const Center(child: CircularProgressIndicator());
     }
 
+    if (challenges.error != null) {
+      return Center(
+        child: Column(
+          mainAxisAlignment: MainAxisAlignment.center,
+          children: [
+            Icon(Icons.error_outline, size: 48, color: AppTheme.error),
+            const SizedBox(height: 16),
+            Text(challenges.error!, style: const TextStyle(color: AppTheme.error)),
+            const SizedBox(height: 16),
+            ElevatedButton(
+              onPressed: () => ref.read(challengesProvider.notifier).fetchAllChallenges(),
+              child: Text(AppLocalizations.of(context)?.retry ?? 'Retry'),
+            ),
+          ],
+        ),
+      );
+    }
+
     final filtered = _filterUserChallenges(challenges.completedChallenges);
     
     if (filtered.isEmpty) {
       if (challenges.completedChallenges.isEmpty) {
-        return _buildEmptyState('No completed challenges', 'Complete challenges to see them here!');
+        return _buildEmptyState(AppLocalizations.of(context)?.noCompletedChallenges ?? 'No completed challenges', AppLocalizations.of(context)?.completeChallengesToSee ?? 'Complete challenges to see them here!');
       }
-      return _buildEmptyState('No matching challenges', 'Try adjusting your search or filters');
+      return _buildEmptyState(AppLocalizations.of(context)?.noMatchingChallenges ?? 'No matching challenges', AppLocalizations.of(context)?.tryAdjustingFilters ?? 'Try adjusting your search or filters');
     }
 
     return RefreshIndicator(

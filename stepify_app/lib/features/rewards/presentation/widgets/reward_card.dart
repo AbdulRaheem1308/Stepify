@@ -26,7 +26,7 @@ class RewardCard extends StatelessWidget {
           border: Border.all(color: AppTheme.neutral200),
           boxShadow: [
             BoxShadow(
-              color: AppTheme.neutral200.withOpacity(0.5),
+              color: AppTheme.neutral200.withValues(alpha: 0.5),
               blurRadius: 6,
               offset: const Offset(0, 2),
             ),
@@ -48,7 +48,7 @@ class RewardCard extends StatelessWidget {
                   Center(
                     child: Icon(
                       _getCategoryIcon(reward.category),
-                      color: Colors.white.withOpacity(0.3),
+                      color: Colors.white.withValues(alpha: 0.3),
                       size: 40,
                     ),
                   ),
@@ -60,7 +60,7 @@ class RewardCard extends StatelessWidget {
                     child: Container(
                       padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
                       decoration: BoxDecoration(
-                        color: Colors.white.withOpacity(0.2),
+                        color: Colors.white.withValues(alpha: 0.2),
                         borderRadius: BorderRadius.circular(6),
                       ),
                       child: Text(

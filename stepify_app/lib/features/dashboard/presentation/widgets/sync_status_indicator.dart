@@ -76,11 +76,11 @@ class SyncStatusIndicator extends StatelessWidget {
   Color _getBackgroundColor() {
     switch (status) {
       case SyncStatus.syncing:
-        return AppTheme.secondaryBlue.withOpacity(0.1);
+        return AppTheme.secondaryBlue.withAlpha(26);
       case SyncStatus.synced:
-        return AppTheme.success.withOpacity(0.1);
+        return AppTheme.success.withAlpha(26);
       case SyncStatus.failed:
-        return AppTheme.error.withOpacity(0.1);
+        return AppTheme.error.withAlpha(26);
       case SyncStatus.idle:
         return AppTheme.neutral100;
     }

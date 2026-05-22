@@ -1,5 +1,6 @@
 import { Injectable } from "@nestjs/common";
 import { PrismaService } from "../prisma/prisma.service";
+import { CreateOfferDto } from "./dto/offer.dto";
 
 @Injectable()
 export class OffersService {
@@ -37,57 +38,55 @@ export class OffersService {
 
   // Complete an offer and reward user
   async completeOffer(userId: string, offerId: string) {
-    const userOffer = await this.prisma.userOffer.findUnique({
-      where: { userId_offerId: { userId, offerId } },
-      include: { offer: true },
+    return this.prisma.$transaction(async (tx) => {
+      const userOffer = await tx.userOffer.findUnique({
+        where: { userId_offerId: { userId, offerId } },
+        include: { offer: true },
+      });
+
+      if (!userOffer || userOffer.status !== "STARTED") {
+        throw new Error("Offer not found or already completed");
+      }
+
+      // Update offer status
+      await tx.userOffer.update({
+        where: { id: userOffer.id },
+        data: { status: "REWARDED", completedAt: new Date() },
+      });
+
+      // Credit wallet
+      const rewardCoins = userOffer.offer.rewardCoins;
+      await tx.wallet.upsert({
+        where: { userId },
+        create: {
+          userId,
+          balance: rewardCoins,
+          lifetimePoints: rewardCoins,
+          lastResetDate: new Date(),
+        },
+        update: {
+          balance: { increment: rewardCoins },
+          lifetimePoints: { increment: rewardCoins },
+        },
+      });
+
+      // Create transaction
+      await tx.transaction.create({
+        data: {
+          userId,
+          type: "OFFER_REWARD",
+          points: rewardCoins,
+          description: `Completed offer: ${userOffer.offer.title}`,
+          metadata: { offerId },
+        },
+      });
+
+      return { rewarded: rewardCoins };
     });
-
-    if (!userOffer || userOffer.status !== "STARTED") {
-      throw new Error("Offer not found or already completed");
-    }
-
-    // Update offer status
-    await this.prisma.userOffer.update({
-      where: { id: userOffer.id },
-      data: { status: "REWARDED", completedAt: new Date() },
-    });
-
-    // Credit wallet
-    const rewardCoins = userOffer.offer.rewardCoins;
-    await this.prisma.wallet.upsert({
-      where: { userId },
-      create: { userId, balance: rewardCoins, lifetimePoints: rewardCoins },
-      update: {
-        balance: { increment: rewardCoins },
-        lifetimePoints: { increment: rewardCoins },
-      },
-    });
-
-    // Create transaction
-    await this.prisma.transaction.create({
-      data: {
-        userId,
-        type: "OFFER_REWARD" as any,
-        points: rewardCoins,
-        description: `Completed offer: ${userOffer.offer.title}`,
-        metadata: { offerId },
-      },
-    });
-
-    return { rewarded: rewardCoins };
   }
 
   // Create a new offer (admin)
-  async createOffer(data: {
-    title: string;
-    description: string;
-    providerName: string;
-    rewardCoins: number;
-    offerType?: string;
-    imageUrl?: string;
-    actionUrl?: string;
-    expiryDate?: Date;
-  }) {
-    return this.prisma.offer.create({ data: data as any });
+  async createOffer(data: CreateOfferDto) {
+    return this.prisma.offer.create({ data });
   }
 }

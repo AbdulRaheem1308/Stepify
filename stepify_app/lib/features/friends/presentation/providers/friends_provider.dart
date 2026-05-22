@@ -97,7 +97,7 @@ class FriendsState {
 }
 
 /// Friends Provider
-final friendsProvider = StateNotifierProvider<FriendsNotifier, FriendsState>((ref) {
+final friendsProvider = StateNotifierProvider.autoDispose<FriendsNotifier, FriendsState>((ref) {
   return FriendsNotifier(ref.watch(apiServiceProvider));
 });
 
@@ -151,7 +151,7 @@ class FriendsNotifier extends StateNotifier<FriendsState> {
       await searchUsers(''); // Clear search
       return true;
     } catch (e) {
-      state = state.copyWith(error: e.toString());
+      state = state.copyWith(error: ApiError.from(e).message);
       return false;
     }
   }
@@ -163,7 +163,7 @@ class FriendsNotifier extends StateNotifier<FriendsState> {
       await fetchFriendsData(); // Refresh
       return true;
     } catch (e) {
-      state = state.copyWith(error: e.toString());
+      state = state.copyWith(error: ApiError.from(e).message);
       return false;
     }
   }

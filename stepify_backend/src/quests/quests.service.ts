@@ -1,4 +1,4 @@
-import { Injectable, OnModuleInit } from "@nestjs/common";
+import { Injectable, OnModuleInit, Logger } from "@nestjs/common";
 import { PrismaService } from "../prisma/prisma.service";
 
 @Injectable()
@@ -9,7 +9,7 @@ export class QuestsService implements OnModuleInit {
   async onModuleInit() {
     const count = await this.prisma.quest.count();
     if (count === 0) {
-      console.log("🌱 Seeding Quests...");
+      Logger.log("🌱 Seeding Quests...");
       await this.prisma.quest.create({
         data: {
           title: "The Beginner's Path",
@@ -142,50 +142,53 @@ export class QuestsService implements OnModuleInit {
         const nextStageIndex = currentStageIndex + 1;
 
         if (nextStageIndex >= stages.length) {
-          // Completed the entire quest!
-          await this.prisma.userQuest.update({
-            where: { id: userQuest.id },
-            data: {
-              status: "COMPLETED",
-              currentStageIndex: nextStageIndex,
-              completedAt: new Date(),
-            },
-          });
+          // Completed the entire quest! Wrap in atomic transaction
+          await this.prisma.$transaction(async (tx) => {
+            await tx.userQuest.update({
+              where: { id: userQuest.id },
+              data: {
+                status: "COMPLETED",
+                currentStageIndex: nextStageIndex,
+                completedAt: new Date(),
+              },
+            });
 
-          // Award points & XP
-          await this.prisma.wallet.upsert({
-            where: { userId },
-            update: {
-              balance: { increment: quest.rewardCoins },
-              lifetimePoints: { increment: quest.rewardCoins },
-              monthlyXp: { increment: quest.rewardXp },
-            },
-            create: {
-              userId,
-              balance: quest.rewardCoins,
-              lifetimePoints: quest.rewardCoins,
-              monthlyXp: quest.rewardXp,
-            },
-          });
+            // Award points & XP
+            await tx.wallet.upsert({
+              where: { userId },
+              update: {
+                balance: { increment: quest.rewardCoins },
+                lifetimePoints: { increment: quest.rewardCoins },
+                monthlyXp: { increment: quest.rewardXp },
+              },
+              create: {
+                userId,
+                balance: quest.rewardCoins,
+                lifetimePoints: quest.rewardCoins,
+                monthlyXp: quest.rewardXp,
+                lastResetDate: new Date(),
+              },
+            });
 
-          // Create transaction
-          await this.prisma.transaction.create({
-            data: {
-              userId,
-              type: "OFFER_REWARD",
-              points: quest.rewardCoins,
-              description: `Adventure Quest completed: ${quest.title}`,
-            },
-          });
+            // Create transaction
+            await tx.transaction.create({
+              data: {
+                userId,
+                type: "OFFER_REWARD", // Consider mapping this to "MILESTONE" or similar
+                points: quest.rewardCoins,
+                description: `Adventure Quest completed: ${quest.title}`,
+              },
+            });
 
-          // Create system notification
-          await this.prisma.notification.create({
-            data: {
-              userId,
-              title: "Quest Completed! 🎉",
-              message: `Congratulations! You completed "${quest.title}" and earned ${quest.rewardCoins} coins and ${quest.rewardXp} XP!`,
-              type: "achievement",
-            },
+            // Create system notification
+            await tx.notification.create({
+              data: {
+                userId,
+                title: "Quest Completed! 🎉",
+                message: `Congratulations! You completed "${quest.title}" and earned ${quest.rewardCoins} coins and ${quest.rewardXp} XP!`,
+                type: "achievement",
+              },
+            });
           });
         } else {
           // Advance to the next stage!

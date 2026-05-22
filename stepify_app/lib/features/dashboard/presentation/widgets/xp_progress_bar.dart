@@ -19,9 +19,9 @@ class XpProgressBar extends StatelessWidget {
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
       decoration: BoxDecoration(
-        color: AppTheme.accentPurple.withOpacity(0.1),
+        color: AppTheme.accentPurple.withAlpha(26),
         borderRadius: BorderRadius.circular(10),
-        border: Border.all(color: AppTheme.accentPurple.withOpacity(0.2)),
+        border: Border.all(color: AppTheme.accentPurple.withAlpha(51)),
       ),
       child: Row(
         children: [
