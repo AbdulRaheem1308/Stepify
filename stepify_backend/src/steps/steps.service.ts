@@ -46,90 +46,7 @@ export class StepsService {
   async syncSteps(userId: string, dto: SyncStepsDto) {
     // ── Server-Side Anti-Cheat Validation ───────────────────────────────
 
-    // 0. Physical Device Binding Validation
-    if (!dto.deviceIdentifier) {
-      throw new BadRequestException(
-        "Device identifier is required for step synchronization.",
-      );
-    }
-
-    const boundDevice = await this.prisma.device.findFirst({
-      where: {
-        userId,
-        identifier: dto.deviceIdentifier,
-        isActive: true,
-      },
-    });
-
-    if (!boundDevice) {
-      this.logger.warn(
-        `🚨 SECURITY VIOLATION: User ${userId} attempted step sync from unauthorized device: ${dto.deviceIdentifier}`,
-      );
-      throw new BadRequestException(
-        "Step synchronization is only allowed from a registered, active bound device.",
-      );
-    }
-
-    if (dto.stepCount < 0) {
-      throw new BadRequestException("Step count cannot be negative.");
-    }
-
-    // 1. Replay attack validation (if nonce is provided)
-    if (dto.nonce) {
-      const isUnique = await this.redisService.setNonce(dto.nonce, 86400); // 24 hours
-      if (!isUnique) {
-        this.logger.warn(
-          `🚨 REPLAY DETECTED: Nonce ${dto.nonce} already processed. Rejecting.`,
-        );
-        throw new BadRequestException("Request replay detected.");
-      }
-    }
-
-    // 2. Timestamp drift validation (if timestamp is provided)
-    if (dto.timestamp) {
-      const serverTime = Date.now();
-      const timeDiff = Math.abs(serverTime - dto.timestamp);
-      if (timeDiff > 5 * 60 * 1000) {
-        // 5 minutes in milliseconds
-        this.logger.warn(
-          `🚨 TIME DRIFT: Request timestamp ${dto.timestamp} differs from server time ${serverTime} by ${timeDiff}ms. Rejecting.`,
-        );
-        throw new BadRequestException("Request expired or timestamp invalid.");
-      }
-    }
-
-    // 3. Device integrity and attestation verification
-    if (dto.integrity) {
-      if (dto.integrity.isJailBroken) {
-        this.logger.warn(
-          `🚨 JAILBROKEN DEVICE: Rejected steps from jailbroken user ${userId}`,
-        );
-        throw new BadRequestException(
-          "Jailbroken or rooted devices are blocked.",
-        );
-      }
-      if (dto.integrity.isMockLocation) {
-        this.logger.warn(
-          `🚨 LOCATION SPOOFING: Rejected steps from mock location user ${userId}`,
-        );
-        throw new BadRequestException("Location spoofing is blocked.");
-      }
-    }
-
-    if (dto.stepCount > MAX_STEPS_PER_DAY) {
-      this.logger.warn(
-        `🚨 ANTI-CHEAT: User ${userId} claimed ${dto.stepCount} steps — exceeds physical maximum of ${MAX_STEPS_PER_DAY}. Rejecting.`,
-      );
-      throw new BadRequestException(
-        `Step count ${dto.stepCount} exceeds the maximum physically achievable value of ${MAX_STEPS_PER_DAY} steps per day.`,
-      );
-    }
-
-    if (dto.stepCount > SUSPICIOUS_STEPS_THRESHOLD) {
-      this.logger.warn(
-        `⚠️ SUSPICIOUS: User ${userId} reported ${dto.stepCount} steps — above soft threshold of ${SUSPICIOUS_STEPS_THRESHOLD}. Accepted but flagged.`,
-      );
-    }
+    await this.validateSyncRequest(userId, dto);
     // ─────────────────────────────────────────────────────────────────────
 
     const date = new Date(dto.date);
@@ -495,5 +412,60 @@ export class StepsService {
         : null,
       weeklyBreakdown: weeks.filter(Boolean),
     };
+  }
+
+  private async validateSyncRequest(userId: string, dto: SyncStepsDto) {
+    if (!dto.deviceIdentifier) {
+      throw new BadRequestException("Device identifier is required for step synchronization.");
+    }
+
+    const boundDevice = await this.prisma.device.findFirst({
+      where: { userId, identifier: dto.deviceIdentifier, isActive: true },
+    });
+
+    if (!boundDevice) {
+      this.logger.warn(`🚨 SECURITY VIOLATION: User ${userId} attempted step sync from unauthorized device: ${dto.deviceIdentifier}`);
+      throw new BadRequestException("Step synchronization is only allowed from a registered, active bound device.");
+    }
+
+    if (dto.stepCount < 0) {
+      throw new BadRequestException("Step count cannot be negative.");
+    }
+
+    if (dto.nonce) {
+      const isUnique = await this.redisService.setNonce(dto.nonce, 86400);
+      if (!isUnique) {
+        this.logger.warn(`🚨 REPLAY DETECTED: Nonce ${dto.nonce} already processed. Rejecting.`);
+        throw new BadRequestException("Request replay detected.");
+      }
+    }
+
+    if (dto.timestamp) {
+      const timeDiff = Math.abs(Date.now() - dto.timestamp);
+      if (timeDiff > 300000) {
+        this.logger.warn(`🚨 TIME DRIFT: Request timestamp differs by ${timeDiff}ms. Rejecting.`);
+        throw new BadRequestException("Request expired or timestamp invalid.");
+      }
+    }
+
+    if (dto.integrity) {
+      if (dto.integrity.isJailBroken) {
+        this.logger.warn(`🚨 JAILBROKEN DEVICE: Rejected steps from user ${userId}`);
+        throw new BadRequestException("Jailbroken or rooted devices are blocked.");
+      }
+      if (dto.integrity.isMockLocation) {
+        this.logger.warn(`🚨 LOCATION SPOOFING: Rejected steps from user ${userId}`);
+        throw new BadRequestException("Location spoofing is blocked.");
+      }
+    }
+
+    if (dto.stepCount > MAX_STEPS_PER_DAY) {
+      this.logger.warn(`🚨 ANTI-CHEAT: User ${userId} claimed ${dto.stepCount} steps. Rejecting.`);
+      throw new BadRequestException(`Step count exceeds maximum of ${MAX_STEPS_PER_DAY}.`);
+    }
+
+    if (dto.stepCount > SUSPICIOUS_STEPS_THRESHOLD) {
+      this.logger.warn(`⚠️ SUSPICIOUS: User ${userId} reported ${dto.stepCount} steps. Flagged.`);
+    }
   }
 }

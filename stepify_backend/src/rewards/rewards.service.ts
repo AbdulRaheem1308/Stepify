@@ -377,52 +377,11 @@ export class RewardsService {
       ).sort((a, b) => a.localeCompare(b));
 
       if (uniqueDates.length > 0) {
-        let tempStreak = 1;
-        calculatedLongestStreak = 1;
-
-        for (let i = 1; i < uniqueDates.length; i++) {
-          const prevDate = new Date(uniqueDates[i - 1]);
-          const currDate = new Date(uniqueDates[i]);
-          const diffTime = Math.abs(currDate.getTime() - prevDate.getTime());
-          const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24));
-
-          if (diffDays === 1) {
-            tempStreak++;
-            if (tempStreak > calculatedLongestStreak) {
-              calculatedLongestStreak = tempStreak;
-            }
-          } else if (diffDays > 1) {
-            tempStreak = 1;
-          }
-        }
-
-        // Check if current streak is still active today or yesterday (Server Local & UTC safe matching)
-        const now = new Date();
-        const todayLocalStr = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, "0")}-${String(now.getDate()).padStart(2, "0")}`;
-        const todayUtcStr = now.toISOString().split("T")[0];
-
-        const yesterday = new Date();
-        yesterday.setDate(now.getDate() - 1);
-        const yesterdayLocalStr = `${yesterday.getFullYear()}-${String(yesterday.getMonth() + 1).padStart(2, "0")}-${String(yesterday.getDate()).padStart(2, "0")}`;
-
-        const yesterdayUtc = new Date(Date.now() - 86400000);
-        const yesterdayUtcStr = yesterdayUtc.toISOString().split("T")[0];
-
-        const lastActiveDateStr = uniqueDates[uniqueDates.length - 1];
-        lastActiveDate = new Date(lastActiveDateStr + "T00:00:00.000Z");
-
-        const matchesToday =
-          lastActiveDateStr === todayLocalStr ||
-          lastActiveDateStr === todayUtcStr;
-        const matchesYesterday =
-          lastActiveDateStr === yesterdayLocalStr ||
-          lastActiveDateStr === yesterdayUtcStr;
-
-        if (matchesToday || matchesYesterday) {
-          calculatedCurrentStreak = tempStreak;
-        } else {
-          calculatedCurrentStreak = 0;
-        }
+      if (uniqueDates.length > 0) {
+        const metrics = this.calculateStreakMetrics(uniqueDates);
+        calculatedCurrentStreak = metrics.currentStreak;
+        calculatedLongestStreak = metrics.longestStreak;
+        lastActiveDate = metrics.lastActiveDate;
       }
     }
 
@@ -595,40 +554,14 @@ export class RewardsService {
 
     for (const achievement of achievements) {
       // Calculate progress and check if unlocked
-      let progress = 0;
-      let currentValue = 0;
-      let unlocked = false;
-
-      if (achievement.stepsRequired) {
-        currentValue = lifetimeSteps;
-        progress = Math.min(
-          100,
-          Math.floor((lifetimeSteps / achievement.stepsRequired) * 100),
-        );
-        unlocked = lifetimeSteps >= achievement.stepsRequired;
-      } else if (achievement.streakRequired) {
-        currentValue = Math.max(currentStreak, longestStreak);
-        progress = Math.min(
-          100,
-          Math.floor((currentValue / achievement.streakRequired) * 100),
-        );
-        unlocked = currentValue >= achievement.streakRequired;
-      } else if (achievement.targetValue) {
-        // Handle different categories with targetValue
-        const category = achievement.category;
-        if (category === "SOCIAL") {
-          currentValue = friendships;
-        } else if (category === "CHALLENGE") {
-          currentValue = challengesCompleted;
-        } else if (category === "COINS") {
-          currentValue = lifetimeCoins;
-        }
-        progress = Math.min(
-          100,
-          Math.floor((currentValue / achievement.targetValue) * 100),
-        );
-        unlocked = currentValue >= achievement.targetValue;
-      }
+      const { progress, currentValue, unlocked } = this.calculateAchievementProgress(achievement, {
+        lifetimeSteps,
+        currentStreak,
+        longestStreak,
+        friendships,
+        challengesCompleted,
+        lifetimeCoins,
+      });
 
       // Get existing record
       const existing = await this.prisma.userAchievement.findUnique({
@@ -916,5 +849,68 @@ export class RewardsService {
     }
 
     return { message: "Demo rewards seeded", count: rewards.length };
+  }
+
+  private calculateStreakMetrics(uniqueDates: string[]) {
+    let currentStreak = 0;
+    let longestStreak = 1;
+    let tempStreak = 1;
+    let lastActiveDate: Date | null = null;
+
+    if (uniqueDates.length === 0) return { currentStreak: 0, longestStreak: 0, lastActiveDate: null };
+
+    for (let i = 1; i < uniqueDates.length; i++) {
+      const prevDate = new Date(uniqueDates[i - 1]);
+      const currDate = new Date(uniqueDates[i]);
+      const diffDays = Math.ceil(Math.abs(currDate.getTime() - prevDate.getTime()) / 86400000);
+
+      if (diffDays === 1) {
+        tempStreak++;
+        if (tempStreak > longestStreak) longestStreak = tempStreak;
+      } else if (diffDays > 1) {
+        tempStreak = 1;
+      }
+    }
+
+    const now = new Date();
+    const todayLocal = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, "0")}-${String(now.getDate()).padStart(2, "0")}`;
+    const todayUtc = now.toISOString().split("T")[0];
+
+    const yesterday = new Date(now);
+    yesterday.setDate(now.getDate() - 1);
+    const yesterdayLocal = `${yesterday.getFullYear()}-${String(yesterday.getMonth() + 1).padStart(2, "0")}-${String(yesterday.getDate()).padStart(2, "0")}`;
+    const yesterdayUtc = new Date(Date.now() - 86400000).toISOString().split("T")[0];
+
+    const lastDateStr = uniqueDates[uniqueDates.length - 1];
+    lastActiveDate = new Date(lastDateStr + "T00:00:00.000Z");
+
+    if ([todayLocal, todayUtc, yesterdayLocal, yesterdayUtc].includes(lastDateStr)) {
+      currentStreak = tempStreak;
+    }
+
+    return { currentStreak, longestStreak, lastActiveDate };
+  }
+
+  private calculateAchievementProgress(achievement: any, stats: any) {
+    let progress = 0, currentValue = 0, unlocked = false;
+
+    if (achievement.stepsRequired) {
+      currentValue = stats.lifetimeSteps;
+      progress = Math.min(100, Math.floor((currentValue / achievement.stepsRequired) * 100));
+      unlocked = currentValue >= achievement.stepsRequired;
+    } else if (achievement.streakRequired) {
+      currentValue = Math.max(stats.currentStreak, stats.longestStreak);
+      progress = Math.min(100, Math.floor((currentValue / achievement.streakRequired) * 100));
+      unlocked = currentValue >= achievement.streakRequired;
+    } else if (achievement.targetValue) {
+      if (achievement.category === "SOCIAL") currentValue = stats.friendships;
+      else if (achievement.category === "CHALLENGE") currentValue = stats.challengesCompleted;
+      else if (achievement.category === "COINS") currentValue = stats.lifetimeCoins;
+
+      progress = Math.min(100, Math.floor((currentValue / achievement.targetValue) * 100));
+      unlocked = currentValue >= achievement.targetValue;
+    }
+
+    return { progress, currentValue, unlocked };
   }
 }
