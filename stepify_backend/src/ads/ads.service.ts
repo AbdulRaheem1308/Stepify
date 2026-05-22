@@ -16,11 +16,11 @@ export class AdsService {
     private readonly redis: RedisService,
     private readonly configService: ConfigService,
   ) {
-    this.adRewardPoints = parseInt(
+    this.adRewardPoints = Number.parseInt(
       this.configService.get("AD_REWARD_POINTS", "10"),
       10,
     );
-    this.cooldownMinutes = parseInt(
+    this.cooldownMinutes = Number.parseInt(
       this.configService.get("AD_COOLDOWN_MINUTES", "5"),
       10,
     );

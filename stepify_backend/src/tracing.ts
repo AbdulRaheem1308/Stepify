@@ -5,7 +5,7 @@ import { getNodeAutoInstrumentations } from "@opentelemetry/auto-instrumentation
 // We keep it empty/console-based locally, or just omit the exporter to let the SDK initialize.
 
 export const otelSDK = new NodeSDK({
-  traceExporter: process.env.NODE_ENV === "production" ? undefined : undefined, // Replace with new OTLPTraceExporter()
+  traceExporter: undefined, // Replace with new OTLPTraceExporter() in production
   instrumentations: [
     getNodeAutoInstrumentations({
       // Configure specific instrumentations here if needed

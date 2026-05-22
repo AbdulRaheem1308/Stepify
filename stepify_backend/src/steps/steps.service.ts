@@ -30,10 +30,10 @@ export class StepsService {
     private redisService: RedisService,
     @InjectQueue("steps-processing") private stepsQueue: Queue,
   ) {
-    this.caloriesPerStep = parseFloat(
+    this.caloriesPerStep = Number.parseFloat(
       this.configService.get("CALORIES_PER_STEP", "0.04"),
     );
-    this.kmPerStep = parseFloat(
+    this.kmPerStep = Number.parseFloat(
       this.configService.get("KM_PER_STEP", "0.000762"),
     );
   }
@@ -152,7 +152,7 @@ export class StepsService {
       const caloriesBurned = Math.round(
         effectiveStepCount * this.caloriesPerStep,
       );
-      const distanceKm = parseFloat(
+      const distanceKm = Number.parseFloat(
         (effectiveStepCount * this.kmPerStep).toFixed(2),
       );
 
@@ -221,7 +221,7 @@ export class StepsService {
 
         const steps = Math.floor(Math.random() * 12000) + 2000;
         const calories = Math.floor(steps * this.caloriesPerStep);
-        const distance = parseFloat((steps * this.kmPerStep).toFixed(2));
+        const distance = Number.parseFloat((steps * this.kmPerStep).toFixed(2));
 
         stepsData.push({
           userId,
@@ -407,7 +407,7 @@ export class StepsService {
       endDate: today.toISOString().split("T")[0],
       totalSteps,
       totalCalories,
-      totalDistanceKm: parseFloat(totalDistance.toFixed(2)),
+      totalDistanceKm: Number.parseFloat(totalDistance.toFixed(2)),
       averageSteps: avgSteps,
       activeDays: steps.length,
       dailyBreakdown: dailyData,
@@ -477,7 +477,7 @@ export class StepsService {
       monthName: startOfMonth.toLocaleDateString("en-US", { month: "long" }),
       totalSteps,
       totalCalories,
-      totalDistanceKm: parseFloat(totalDistance.toFixed(2)),
+      totalDistanceKm: Number.parseFloat(totalDistance.toFixed(2)),
       averageSteps: avgSteps,
       activeDays: steps.length,
       totalDaysInMonth: endOfMonth.getDate(),

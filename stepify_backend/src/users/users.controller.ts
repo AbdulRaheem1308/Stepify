@@ -79,7 +79,7 @@ export class UsersController {
   @ApiQuery({ name: "limit", required: false, type: Number })
   @ApiResponse({ status: 200, description: "Returns the leaderboard" })
   async getReferralLeaderboard(@Query("limit") limit?: string) {
-    const limitNum = parseInt(limit || "20", 10) || 20;
+    const limitNum = Number.parseInt(limit || "20", 10) || 20;
     return this.usersService.getReferralLeaderboard(limitNum);
   }
 

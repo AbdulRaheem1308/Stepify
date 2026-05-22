@@ -749,7 +749,7 @@ export const getAdminDashboardHtml = () => `
         // Trigger Mock Sync Steps
         document.getElementById('btn-sync').addEventListener('click', async () => {
             const userId = document.getElementById('select-user').value;
-            const stepCount = parseInt(document.getElementById('input-steps').value);
+            const stepCount = Number.parseInt(document.getElementById('input-steps').value);
             const source = document.getElementById('select-source').value;
 
             if (!userId) {

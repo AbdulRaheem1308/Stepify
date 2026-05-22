@@ -73,7 +73,7 @@ import { HealthController } from "./health.controller";
             return {
               connection: {
                 host: url.hostname,
-                port: parseInt(url.port, 10) || 6379,
+                port: Number.parseInt(url.port, 10) || 6379,
                 password: url.password || undefined,
                 tls: redisUrl.startsWith("rediss://") ? {} : undefined,
               },

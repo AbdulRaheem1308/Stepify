@@ -18,7 +18,7 @@ export class SentryExceptionFilter extends BaseExceptionFilter {
     super(applicationRef);
   }
 
-  async catch(exception: unknown, host: ArgumentsHost) {
+  catch(exception: unknown, host: ArgumentsHost) {
     const ctx = host.switchToHttp();
     const response = ctx.getResponse<Response>();
     const request = ctx.getRequest<Request>();
@@ -35,17 +35,31 @@ export class SentryExceptionFilter extends BaseExceptionFilter {
     // Custom translation logic
     if (isHttpException) {
       const errorResponse = exception.getResponse() as any;
-      let message = errorResponse.message || exception.message;
+      const message = errorResponse.message || exception.message;
 
       // Try to translate the message if it's a known string key (e.g. "errors.NOT_FOUND")
       if (typeof message === "string" && message.includes(".")) {
-        try {
-          message = await this.i18n.translate(message, {
+        this.i18n
+          .translate(message, {
             lang: request.headers["accept-language"] || "en",
+          })
+          .then((translated) => {
+            response.status(status).json({
+              statusCode: status,
+              timestamp: new Date().toISOString(),
+              path: request.url,
+              message: translated,
+            });
+          })
+          .catch(() => {
+            response.status(status).json({
+              statusCode: status,
+              timestamp: new Date().toISOString(),
+              path: request.url,
+              message: message,
+            });
           });
-        } catch (e) {
-          // Fallback to original
-        }
+        return;
       }
 
       response.status(status).json({

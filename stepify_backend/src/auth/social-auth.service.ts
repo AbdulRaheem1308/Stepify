@@ -24,7 +24,7 @@ export class SocialAuthService implements OnModuleInit {
             credential: admin.credential.cert({
               projectId: process.env.FIREBASE_PROJECT_ID,
               clientEmail: process.env.FIREBASE_CLIENT_EMAIL,
-              privateKey: process.env.FIREBASE_PRIVATE_KEY.replace(
+              privateKey: process.env.FIREBASE_PRIVATE_KEY.replaceAll(
                 /\\n/g,
                 "\n",
               ),

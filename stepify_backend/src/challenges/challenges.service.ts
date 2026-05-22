@@ -392,7 +392,7 @@ export class ChallengesService {
 
     for (const challenge of challenges) {
       await this.prisma.challenge.upsert({
-        where: { id: challenge.title.replace(/\s/g, "-").toLowerCase() },
+        where: { id: challenge.title.replaceAll(/\s/g, "-").toLowerCase() },
         update: {},
         create: challenge,
       });

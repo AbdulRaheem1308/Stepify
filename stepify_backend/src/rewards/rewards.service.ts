@@ -15,7 +15,7 @@ export class RewardsService {
     private configService: ConfigService,
     private questsService: QuestsService,
   ) {
-    this.pointsPerStep = parseFloat(
+    this.pointsPerStep = Number.parseFloat(
       this.configService.get("POINTS_PER_STEP", "0.1"),
     );
   }
@@ -114,8 +114,8 @@ export class RewardsService {
    */
   async getTransactions(userId: string, page: number = 1, limit: number = 20) {
     // Ensure page and limit are valid integers
-    const pageNum = Math.max(1, parseInt(String(page)) || 1);
-    const limitNum = Math.max(1, Math.min(100, parseInt(String(limit)) || 20));
+    const pageNum = Math.max(1, Number.parseInt(String(page)) || 1);
+    const limitNum = Math.max(1, Math.min(100, Number.parseInt(String(limit)) || 20));
     const skip = (pageNum - 1) * limitNum;
 
     const [transactions, total] = await Promise.all([
@@ -374,7 +374,7 @@ export class RewardsService {
             return `${year}-${month}-${day}`;
           }),
         ),
-      ).sort();
+      ).sort((a, b) => a.localeCompare(b));
 
       if (uniqueDates.length > 0) {
         let tempStreak = 1;

@@ -55,8 +55,8 @@ export class StepsController {
     @Query("limit") limit?: string,
   ) {
     // Parse query params to integers with defaults
-    const pageNum = parseInt(page || "1", 10) || 1;
-    const limitNum = parseInt(limit || "30", 10) || 30;
+    const pageNum = Number.parseInt(page || "1", 10) || 1;
+    const limitNum = Number.parseInt(limit || "30", 10) || 30;
     return this.stepsService.getHistory(user.id, pageNum, limitNum);
   }
 
