@@ -18,6 +18,20 @@ jobs:
         working-directory: ./stepify_backend
 
     services:
+      postgres:
+        image: postgres:15-alpine
+        env:
+          POSTGRES_USER: postgres
+          POSTGRES_PASSWORD: postgres
+          POSTGRES_DB: stepify_test
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd pg_isready
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 5
+
       redis:
         image: redis:7-alpine
         ports:
@@ -31,6 +45,21 @@ jobs:
     strategy:
       matrix:
         node-version: [22.x]
+
+    env:
+      DATABASE_URL: postgresql://postgres:postgres@localhost:5432/stepify_test
+      REDIS_HOST: localhost
+      REDIS_PORT: 6379
+      JWT_SECRET: ci-test-jwt-secret
+      JWT_REFRESH_SECRET: ci-test-jwt-refresh-secret
+      JWT_EXPIRY: 15m
+      JWT_REFRESH_EXPIRY: 7d
+      NODE_ENV: test
+      OTP_EXPIRY_MINUTES: 5
+      OTP_LENGTH: 6
+      POINTS_PER_STEP: 0.1
+      AD_REWARD_POINTS: 10
+      AD_COOLDOWN_MINUTES: 5
 
     steps:
     - uses: actions/checkout@v3
@@ -50,13 +79,13 @@ jobs:
     - name: Generate Prisma Client
       run: npx prisma generate
 
+    - name: Run database migrations
+      run: npx prisma migrate deploy
+
     - name: Lint Code
       run: npm run lint
 
     - name: Run Unit & E2E Tests with Coverage
-      env:
-        REDIS_HOST: localhost
-        REDIS_PORT: 6379
       run: |
         npm run test:cov
         npm run test:e2e -- --passWithNoTests
