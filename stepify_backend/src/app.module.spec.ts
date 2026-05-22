@@ -2,15 +2,34 @@ import { Test } from '@nestjs/testing';
 import { AppModule } from './app.module';
 import { ConfigModule, ConfigService } from '@nestjs/config';
 
-jest.mock('@nestjs/bullmq', () => ({
-  BullModule: {
-    forRootAsync: jest.fn().mockImplementation((options) => {
-      // Export the useFactory so we can test it directly
-      (global as any).__bullUseFactory = options.useFactory;
-      return { module: class BullModuleMock {} };
-    }),
+jest.mock('bullmq', () => ({
+  Queue: class QueueMock {
+    constructor() {}
+    on() {}
+    close() {}
+  },
+  Worker: class WorkerMock {
+    constructor() {}
+    on() {}
+    close() {}
   },
 }));
+
+jest.mock('@nestjs/bullmq', () => {
+  const original = jest.requireActual('@nestjs/bullmq');
+  
+  class MockBullModule extends original.BullModule {
+    static forRootAsync(options: any) {
+      (global as any).__bullUseFactory = options.useFactory;
+      return { module: MockBullModule };
+    }
+  }
+
+  return {
+    ...original,
+    BullModule: MockBullModule,
+  };
+});
 
 describe('AppModule', () => {
   it('should compile the module', async () => {
