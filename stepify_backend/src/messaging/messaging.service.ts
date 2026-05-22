@@ -3,7 +3,7 @@ import { PrismaService } from "../prisma/prisma.service";
 
 @Injectable()
 export class MessagingService implements OnModuleInit {
-  constructor(private prisma: PrismaService) {}
+  constructor(private readonly prisma: PrismaService) {}
 
   async onModuleInit() {
     // Seed mock messages if empty

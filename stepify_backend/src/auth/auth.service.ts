@@ -34,13 +34,13 @@ export class AuthService {
   private readonly logger = new Logger(AuthService.name);
 
   constructor(
-    private jwtService: JwtService,
-    private configService: ConfigService,
-    private prisma: PrismaService,
-    private redis: RedisService,
-    private otpService: OtpService,
-    private socialAuth: SocialAuthService,
-    private usersService: UsersService,
+    private readonly jwtService: JwtService,
+    private readonly configService: ConfigService,
+    private readonly prisma: PrismaService,
+    private readonly redis: RedisService,
+    private readonly otpService: OtpService,
+    private readonly socialAuth: SocialAuthService,
+    private readonly usersService: UsersService,
   ) {}
 
   /**
@@ -175,7 +175,11 @@ export class AuthService {
     let user = await this.usersService.findByIdentifier(email);
     let isNewUser = false;
 
-    if (!user) {
+    if (user) {
+      this.logger.log(
+        `🔴 [loginWithSocial] Existing user found (ID: ${user.id}).`,
+      );
+    } else {
       this.logger.log(
         "🔴 [loginWithSocial] User not found. Creating new user...",
       );
@@ -193,10 +197,6 @@ export class AuthService {
         this.logger.log("🔴 [loginWithSocial] Processing referral code...");
         await this.attributeReferralRewards(user.id, dto.referralCode);
       }
-    } else {
-      this.logger.log(
-        `🔴 [loginWithSocial] Existing user found (ID: ${user.id}).`,
-      );
     }
 
     // 3. Generate Tokens
@@ -238,8 +238,8 @@ export class AuthService {
 
       // Generate new tokens
       return this.generateTokens(tokenRecord.user);
-    } catch (error) {
-      throw new UnauthorizedException("Invalid refresh token");
+    } catch (error: any) {
+      throw new UnauthorizedException("Invalid refresh token", { cause: error });
     }
   }
 
@@ -289,7 +289,7 @@ export class AuthService {
    */
   async validateUser(payload: JwtPayload): Promise<any> {
     const user = await this.usersService.findById(payload.sub);
-    if (!user || !user.isActive) {
+    if (!user?.isActive) {
       throw new UnauthorizedException();
     }
     return user;

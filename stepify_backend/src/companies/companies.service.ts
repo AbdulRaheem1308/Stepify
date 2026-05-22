@@ -5,7 +5,7 @@ import {
 } from "@nestjs/common";
 import { PrismaService } from "../prisma/prisma.service";
 import { CreateCompanyDto } from "./dto/company.dto";
-import * as crypto from "crypto";
+import * as crypto from "node:crypto";
 
 @Injectable()
 export class CompaniesService {

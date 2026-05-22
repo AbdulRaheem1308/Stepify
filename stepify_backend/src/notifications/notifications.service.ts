@@ -16,9 +16,9 @@ export interface NotificationItem {
 export class NotificationsService {
   private readonly logger = new Logger(NotificationsService.name);
   private readonly fcmEnabled: boolean;
-  private transporter: nodemailer.Transporter;
+  private readonly transporter: nodemailer.Transporter;
 
-  constructor(private prisma: PrismaService) {
+  constructor(private readonly prisma: PrismaService) {
     // Firebase Admin is initialized once in the app lifecycle.
     // If it hasn't been initialized yet (first service to use it), initialize now.
     if (!admin.apps.length) {
@@ -190,11 +190,10 @@ export class NotificationsService {
       const users = await this.prisma.user.findMany(query);
 
       if (users.length === 0) {
-        hasMore = false;
         break;
       }
 
-      cursorId = users[users.length - 1].id;
+      cursorId = users.at(-1)!.id;
 
       const tokens = users
         .map((u: { fcmToken: string | null }) => u.fcmToken!)

@@ -183,7 +183,10 @@ describe('API Routes (e2e)', () => {
       return request(app.getHttpServer())
         .post('/api/v1/auth/send-otp')
         .send({})
-        .expect(400);
+        .expect(400)
+        .expect((res: any) => {
+          expect(res.body.message).toBeDefined();
+        });
     });
   });
 
@@ -206,7 +209,10 @@ describe('API Routes (e2e)', () => {
       return request(app.getHttpServer())
         .post('/api/v1/auth/verify-otp')
         .send({ phone: '+919876543211', otp: '000000' })
-        .expect(401);
+        .expect(401)
+        .expect((res: any) => {
+          expect(res.body.message).toBeDefined();
+        });
     });
 
     it('should return isNewUser=false for returning user', async () => {
@@ -242,7 +248,10 @@ describe('API Routes (e2e)', () => {
       return request(app.getHttpServer())
         .post('/api/v1/auth/refresh')
         .send({ refreshToken: 'totally-invalid-token' })
-        .expect(401);
+        .expect(401)
+        .expect((res: any) => {
+          expect(res.body.message).toBeDefined();
+        });
     });
   });
 

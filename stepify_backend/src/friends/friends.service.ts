@@ -6,13 +6,13 @@ import {
 } from "@nestjs/common";
 import { PrismaService } from "../prisma/prisma.service";
 import { RedisService } from "../redis/redis.service";
-import * as crypto from "crypto";
+import * as crypto from "node:crypto";
 
 @Injectable()
 export class FriendsService {
   constructor(
-    private prisma: PrismaService,
-    private redis: RedisService,
+    private readonly prisma: PrismaService,
+    private readonly redis: RedisService,
   ) {}
 
   /**
@@ -253,8 +253,8 @@ export class FriendsService {
     const friends = await this.getFriends(userId);
 
     // Sort by steps and take top 5
-    return friends
-      .sort((a: any, b: any) => b.dailyStepCount - a.dailyStepCount)
+    const sortedFriends = [...friends].sort((a: any, b: any) => b.dailyStepCount - a.dailyStepCount);
+    return sortedFriends
       .slice(0, 5)
       .map((f: any, index: number) => ({
         ...f,
@@ -390,22 +390,20 @@ export class FriendsService {
       });
 
       // Calculate steps and sort
-      result = users
-        .map((u: any) => ({
-          id: u.id,
-          name: u.name || "Unknown",
-          avatarUrl: u.avatarUrl,
-          todaySteps: u.steps.reduce(
-            (sum: number, s: any) => sum + s.stepCount,
-            0,
-          ),
-          xp: u.steps.reduce((sum: number, s: any) => sum + s.stepCount, 0),
-        }))
-        .sort((a: any, b: any) => b.todaySteps - a.todaySteps)
-        .map((u: any, index: number) => ({
-          ...u,
-          rank: index + 1,
-        }));
+      const usersWithSteps = users.map((u: any) => ({
+        id: u.id,
+        name: u.name || "Unknown",
+        avatarUrl: u.avatarUrl,
+        todaySteps: u.steps.reduce((sum: number, s: any) => sum + s.stepCount, 0),
+        xp: u.steps.reduce((sum: number, s: any) => sum + s.stepCount, 0),
+      }));
+      const sortedUsers = [...usersWithSteps].sort(
+        (a: any, b: any) => b.todaySteps - a.todaySteps,
+      );
+      result = sortedUsers.map((u: any, index: number) => ({
+        ...u,
+        rank: index + 1,
+      }));
     }
 
     // 2. Store in Redis for 5 minutes (300 seconds) to prevent heavy DB queries

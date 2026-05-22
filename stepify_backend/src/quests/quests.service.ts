@@ -3,7 +3,7 @@ import { PrismaService } from "../prisma/prisma.service";
 
 @Injectable()
 export class QuestsService implements OnModuleInit {
-  constructor(private prisma: PrismaService) {}
+  constructor(private readonly prisma: PrismaService) {}
 
   // Seed data on init
   async onModuleInit() {

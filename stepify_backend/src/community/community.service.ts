@@ -5,8 +5,8 @@ import { RedisService } from "../redis/redis.service";
 @Injectable()
 export class CommunityService {
   constructor(
-    private prisma: PrismaService,
-    private redis: RedisService,
+    private readonly prisma: PrismaService,
+    private readonly redis: RedisService,
   ) {}
 
   // Get community feed (Screen 19)

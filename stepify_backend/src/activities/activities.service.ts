@@ -18,7 +18,7 @@ import {
 export class ActivitiesService {
   private readonly logger = new Logger(ActivitiesService.name);
 
-  constructor(private prisma: PrismaService) {}
+  constructor(private readonly prisma: PrismaService) {}
 
   async logActivity(userId: string, dto: LogActivityDto) {
     // ── Server-Side Anti-Cheat & Speed Constraints ─────────────────────
@@ -157,7 +157,7 @@ export class ActivitiesService {
   private getMaxDistanceKm(type: string, minutes: number): number {
     const limit =
       ACTIVITY_SPEED_LIMITS[type as keyof typeof ACTIVITY_SPEED_LIMITS];
-    return limit !== undefined ? minutes * limit : 999;
+    return limit === undefined ? 999 : minutes * limit;
   }
 
   private getPointsMultiplier(type: string): number {
@@ -165,6 +165,6 @@ export class ActivitiesService {
       ACTIVITY_POINT_MULTIPLIERS[
         type as keyof typeof ACTIVITY_POINT_MULTIPLIERS
       ];
-    return multiplier !== undefined ? multiplier : 1.0;
+    return multiplier ?? 1;
   }
 }

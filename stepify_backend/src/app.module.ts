@@ -5,7 +5,7 @@ import { APP_GUARD } from "@nestjs/core";
 import { BullModule } from "@nestjs/bullmq";
 import { ScheduleModule } from "@nestjs/schedule";
 import { I18nModule, AcceptLanguageResolver } from "nestjs-i18n";
-import * as path from "path";
+import * as path from "node:path";
 
 // Core modules
 import { PrismaModule } from "./prisma/prisma.module";

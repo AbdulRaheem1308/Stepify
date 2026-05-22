@@ -11,9 +11,9 @@ export class RedisService implements OnModuleDestroy {
     string,
     { value: any; expiry: number }
   >();
-  private sweepInterval: NodeJS.Timeout;
+  private readonly sweepInterval: NodeJS.Timeout;
 
-  constructor(private configService: ConfigService) {
+  constructor(private readonly configService: ConfigService) {
     this.isProduction = this.configService.get("NODE_ENV") === "production";
 
     // Memory leak prevention: sweep expired keys every 5 minutes
@@ -135,7 +135,8 @@ export class RedisService implements OnModuleDestroy {
         await this.client.expire(key, 3600); // 1 hour window
       }
       return count <= 5; // Max 5 OTP requests per hour
-    } catch (e) {
+    } catch (e: any) {
+      this.logger.warn("Redis checkOtpRateLimit error", e);
       return true; // Fail open
     }
   }
@@ -180,7 +181,8 @@ export class RedisService implements OnModuleDestroy {
       const data = await this.client.get(key);
       if (!data) return null;
       return JSON.parse(data) as T;
-    } catch (e) {
+    } catch (e: any) {
+      this.logger.warn("Redis getCache error", e);
       return null;
     }
   }
@@ -217,7 +219,8 @@ export class RedisService implements OnModuleDestroy {
         "NX",
       );
       return result === "OK";
-    } catch (e) {
+    } catch (e: any) {
+      this.logger.warn("Redis setNonce error", e);
       // Fail secure (reject) on Redis issues to prevent reward exploits
       return false;
     }

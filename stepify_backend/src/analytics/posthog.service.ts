@@ -18,7 +18,7 @@ export class PostHogService {
   private readonly host: string;
   private readonly isEnabled: boolean;
 
-  constructor(private configService: ConfigService) {
+  constructor(private readonly configService: ConfigService) {
     this.apiKey = this.configService.get<string>("POSTHOG_API_KEY", "");
     this.host = this.configService.get<string>(
       "POSTHOG_HOST",
@@ -26,12 +26,12 @@ export class PostHogService {
     );
     this.isEnabled = !!this.apiKey;
 
-    if (!this.isEnabled) {
+    if (this.isEnabled) {
+      this.logger.log(`PostHog analytics enabled → ${this.host}`);
+    } else {
       this.logger.warn(
         "PostHog API key not set — analytics events will be skipped. Set POSTHOG_API_KEY in .env to enable.",
       );
-    } else {
-      this.logger.log(`PostHog analytics enabled → ${this.host}`);
     }
   }
 

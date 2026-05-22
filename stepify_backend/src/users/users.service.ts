@@ -7,8 +7,8 @@ import { TransactionType } from "@prisma/client";
 @Injectable()
 export class UsersService {
   constructor(
-    private prisma: PrismaService,
-    private redis: RedisService,
+    private readonly prisma: PrismaService,
+    private readonly redis: RedisService,
   ) {}
 
   /**
@@ -449,7 +449,7 @@ export class UsersService {
    */
   sanitizeUser(user: any) {
     // eslint-disable-next-line @typescript-eslint/no-unused-vars
-    const { refreshTokens, fcmToken, ...sanitizedUser } = user as any;
+    const { refreshTokens, fcmToken, ...sanitizedUser } = user;
     return sanitizedUser;
   }
   /**
@@ -525,11 +525,9 @@ export class UsersService {
       where: { userId },
     });
 
-    if (!settings) {
-      settings = await this.prisma.userSettings.create({
-        data: { userId },
-      });
-    }
+    settings ??= await this.prisma.userSettings.create({
+      data: { userId },
+    });
     return settings;
   }
 

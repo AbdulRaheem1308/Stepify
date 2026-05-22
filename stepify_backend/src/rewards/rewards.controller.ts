@@ -24,7 +24,7 @@ import {
 @Controller("rewards")
 @UseGuards(JwtAuthGuard)
 export class RewardsController {
-  constructor(private rewardsService: RewardsService) {}
+  constructor(private readonly rewardsService: RewardsService) {}
 
   /**
    * Get wallet balance

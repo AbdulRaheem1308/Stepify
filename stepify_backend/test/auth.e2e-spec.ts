@@ -39,7 +39,10 @@ describe('AuthController (e2e)', () => {
       return request(app.getHttpServer())
         .post('/api/v1/auth/send-otp')
         .send({ phone: 'not-a-phone' })
-        .expect(400);
+        .expect(400)
+        .expect((res: any) => {
+          expect(res.body.message).toBeDefined();
+        });
     });
 
     it('should return 200 or 201 for a valid email address', () => {
@@ -61,14 +64,20 @@ describe('AuthController (e2e)', () => {
       return request(app.getHttpServer())
         .post('/api/v1/auth/verify-otp')
         .send({})
-        .expect(400);
+        .expect(400)
+        .expect((res: any) => {
+          expect(res.body.message).toBeDefined();
+        });
     });
 
     it('should return 400 when OTP is missing', () => {
       return request(app.getHttpServer())
         .post('/api/v1/auth/verify-otp')
         .send({ phone: '+15550000001' })
-        .expect(400);
+        .expect(400)
+        .expect((res: any) => {
+          expect(res.body.message).toBeDefined();
+        });
     });
 
     it('should return 401 for an invalid OTP', () => {
@@ -95,7 +104,10 @@ describe('AuthController (e2e)', () => {
       return request(app.getHttpServer())
         .get('/api/v1/users/me')
         .set('Authorization', 'Bearer invalid_token_here')
-        .expect(401);
+        .expect(401)
+        .expect((res: any) => {
+          expect(res.body.message).toBeDefined();
+        });
     });
   });
 });

@@ -4,7 +4,7 @@ import { CreateOfferDto } from "./dto/offer.dto";
 
 @Injectable()
 export class OffersService {
-  constructor(private prisma: PrismaService) {}
+  constructor(private readonly prisma: PrismaService) {}
 
   // Get all active offers
   async findAllActive() {
@@ -44,7 +44,7 @@ export class OffersService {
         include: { offer: true },
       });
 
-      if (!userOffer || userOffer.status !== "STARTED") {
+      if (userOffer?.status !== "STARTED") {
         throw new Error("Offer not found or already completed");
       }
 

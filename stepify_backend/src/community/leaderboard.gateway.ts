@@ -57,9 +57,10 @@ export class LeaderboardGateway
       this.logger.log(
         `Client authenticated and connected to leaderboard: ${client.id} (User: ${payload.sub})`,
       );
-    } catch (err) {
+    } catch (err: any) {
       this.logger.warn(
         `Unauthorized WebSocket connection attempt: ${client.id}. Disconnecting.`,
+        err,
       );
       client.disconnect();
     }

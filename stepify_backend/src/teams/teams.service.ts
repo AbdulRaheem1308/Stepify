@@ -8,7 +8,7 @@ import { PrismaService } from "../prisma/prisma.service";
 
 @Injectable()
 export class TeamsService {
-  constructor(private prisma: PrismaService) {}
+  constructor(private readonly prisma: PrismaService) {}
 
   // Get user's teams
   async getMyTeams(userId: string) {
@@ -265,7 +265,7 @@ export class TeamsService {
     const challengerTeam = await this.prisma.team.findUnique({
       where: { id: challengerTeamId },
     });
-    if (!challengerTeam || challengerTeam.captainId !== userId) {
+    if (challengerTeam?.captainId !== userId) {
       throw new ForbiddenException(
         "Only the Team Captain can initiate a battle.",
       );

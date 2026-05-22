@@ -3,7 +3,7 @@ import { otelSDK } from "./tracing";
 otelSDK.start();
 
 import { NestFactory, HttpAdapterHost } from "@nestjs/core";
-import { ValidationPipe } from "@nestjs/common";
+import { ValidationPipe, Logger } from "@nestjs/common";
 import { AppModule } from "./app.module";
 import helmet from "helmet";
 import { SwaggerModule, DocumentBuilder } from "@nestjs/swagger";
@@ -19,10 +19,10 @@ import { SentryExceptionFilter } from "./common/filters/sentry-exception.filter"
 Sentry.init({
   dsn: process.env.SENTRY_DSN || "https://mockDsnKey@o0.ingest.sentry.io/0",
   environment: process.env.NODE_ENV || "development",
-  tracesSampleRate: 1.0,
+  tracesSampleRate: 1,
 });
 
-import { Logger } from "@nestjs/common";
+
 
 async function bootstrap() {
   // Strip console logs in production for security and performance
@@ -71,12 +71,12 @@ async function bootstrap() {
   app.use(helmet());
 
   // Configure secure CORS policy
-  const allowedOrigins = [
+  const allowedOrigins = new Set([
     "http://localhost:3000",
     "http://localhost:5173",
     "https://stepify.app",
     "https://admin.stepify.app",
-  ];
+  ]);
 
   app.enableCors({
     origin: (
@@ -84,7 +84,7 @@ async function bootstrap() {
       callback: (err: Error | null, allow?: boolean) => void,
     ) => {
       // Allow requests with no origin (like mobile apps) or specific allowed web origins
-      if (!origin || allowedOrigins.includes(origin)) {
+      if (!origin || allowedOrigins.has(origin)) {
         callback(null, true);
       } else {
         callback(new Error("Blocked by CORS"));

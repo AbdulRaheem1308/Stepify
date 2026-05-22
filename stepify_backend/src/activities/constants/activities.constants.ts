@@ -20,11 +20,11 @@ export const ACTIVITY_SPEED_LIMITS: Record<ActivityType, number> = {
 
 // Point multipliers per minute based on effort
 export const ACTIVITY_POINT_MULTIPLIERS: Record<ActivityType, number> = {
-  [ActivityType.RUNNING]: 3.0,
-  [ActivityType.SWIMMING]: 3.0,
+  [ActivityType.RUNNING]: 3,
+  [ActivityType.SWIMMING]: 3,
   [ActivityType.CYCLING]: 2.5,
   [ActivityType.GYM]: 2.5,
   [ActivityType.WALKING]: 1.5,
-  [ActivityType.HIKING]: 2.0,
-  [ActivityType.YOGA]: 1.0,
+  [ActivityType.HIKING]: 2,
+  [ActivityType.YOGA]: 1,
 };
