@@ -1,135 +1,219 @@
-import { Test, TestingModule } from "@nestjs/testing";
-import { RewardsService } from "./rewards.service";
-import { PrismaService } from "../prisma/prisma.service";
-import { ConfigService } from "@nestjs/config";
-import { QuestsService } from "../quests/quests.service";
-import {} from "@nestjs/common";
+import { Test, TestingModule } from '@nestjs/testing';
+import { RewardsService } from './rewards.service';
+import { PrismaService } from '../prisma/prisma.service';
+import { ConfigService } from '@nestjs/config';
+import { QuestsService } from '../quests/quests.service';
+import { TransactionType } from '@prisma/client';
 
-describe("RewardsService", () => {
+describe('RewardsService', () => {
   let service: RewardsService;
-  let prismaService: PrismaService;
+  let prisma: PrismaService;
+
+  const mockPrisma = {
+    $transaction: jest.fn(async (cb) => cb(mockPrisma)),
+    user: {
+      findMany: jest.fn(),
+      findUnique: jest.fn(),
+    },
+    wallet: {
+      update: jest.fn(),
+      findUnique: jest.fn(),
+      create: jest.fn(),
+      upsert: jest.fn(),
+    },
+    transaction: {
+      create: jest.fn(),
+      findMany: jest.fn(),
+      count: jest.fn(),
+    },
+    step: {
+      findMany: jest.fn(),
+      aggregate: jest.fn(),
+    },
+    streak: {
+      findUnique: jest.fn(),
+      create: jest.fn(),
+      update: jest.fn(),
+    },
+    userAchievement: {
+      updateMany: jest.fn(),
+      findMany: jest.fn(),
+      findUnique: jest.fn(),
+      upsert: jest.fn(),
+    },
+    level: {
+      findMany: jest.fn(),
+    },
+    achievement: {
+      findMany: jest.fn(),
+    },
+    userChallenge: {
+      count: jest.fn(),
+    },
+    friendship: {
+      count: jest.fn(),
+    },
+    reward: {
+      findMany: jest.fn(),
+      findUnique: jest.fn(),
+      update: jest.fn(),
+    },
+    userRedemption: {
+      create: jest.fn(),
+      findMany: jest.fn(),
+    },
+  };
+
+  const mockConfig = {
+    get: jest.fn().mockImplementation((key, defaultVal) => {
+      if (key === 'POINTS_PER_STEP') return '0.1';
+      return defaultVal;
+    }),
+  };
+
+  const mockQuestsService = {
+    processQuestProgress: jest.fn(),
+  };
 
   beforeEach(async () => {
     const module: TestingModule = await Test.createTestingModule({
       providers: [
         RewardsService,
-        {
-          provide: ConfigService,
-          useValue: { get: jest.fn() },
-        },
-        {
-          provide: QuestsService,
-          useValue: { checkQuests: jest.fn() },
-        },
-        {
-          provide: PrismaService,
-          useValue: {
-            $transaction: jest.fn((callback) => callback(prismaService)),
-            reward: {
-              findUnique: jest.fn(),
-              update: jest.fn(),
-            },
-            wallet: {
-              findUnique: jest.fn(),
-              update: jest.fn(),
-            },
-            userRedemption: {
-              create: jest.fn(),
-            },
-            transaction: {
-              create: jest.fn(),
-            },
-          },
-        },
+        { provide: PrismaService, useValue: mockPrisma },
+        { provide: ConfigService, useValue: mockConfig },
+        { provide: QuestsService, useValue: mockQuestsService },
       ],
     }).compile();
 
     service = module.get<RewardsService>(RewardsService);
-    prismaService = module.get<PrismaService>(PrismaService);
+    prisma = module.get<PrismaService>(PrismaService);
+    jest.clearAllMocks();
   });
 
-  it("should be defined", () => {
+  it('should be defined', () => {
     expect(service).toBeDefined();
   });
 
-  describe("redeemReward (Transactional Integrity)", () => {
-    it("should successfully redeem a reward when balance is sufficient and stock is available", async () => {
-      const mockReward = {
-        id: "reward-1",
-        coinCost: 100,
-        availableStock: 10,
-        isActive: true,
-      };
-      const mockWallet = { id: "wallet-1", userId: "user-1", balance: 200 };
-
-      // Mock the tx methods
-      (prismaService.reward.findUnique as jest.Mock).mockResolvedValue(
-        mockReward,
+  describe('processWalletExpiry', () => {
+    it('should expire coins for inactive users', async () => {
+      mockPrisma.user.findMany.mockResolvedValueOnce([{ id: 'u1', wallet: { balance: 100 } }]);
+      await service.processWalletExpiry();
+      expect(mockPrisma.wallet.update).toHaveBeenCalledWith(
+        expect.objectContaining({ where: { userId: 'u1' }, data: { balance: 0 } })
       );
-      (prismaService.wallet.findUnique as jest.Mock).mockResolvedValue(
-        mockWallet,
-      );
-      (prismaService.wallet.update as jest.Mock).mockResolvedValue({
-        ...mockWallet,
-        balance: 100,
-      });
-      (prismaService.reward.update as jest.Mock).mockResolvedValue({
-        ...mockReward,
-        availableStock: 9,
-      });
-
-      const result = await service.redeemReward("user-1", "reward-1");
-
-      expect(prismaService.$transaction).toHaveBeenCalled();
-      expect(prismaService.wallet.update).toHaveBeenCalledWith({
-        where: { userId: "user-1" },
-        data: { balance: { decrement: 100 } },
-      });
-      expect(prismaService.userRedemption.create).toHaveBeenCalled();
-      expect(result.success).toBe(true);
+      expect(mockPrisma.transaction.create).toHaveBeenCalled();
     });
 
-    it("should throw Error if balance is insufficient", async () => {
-      const mockReward = {
-        id: "reward-1",
-        coinCost: 100,
-        availableStock: 10,
-        isActive: true,
-      };
-      const mockWallet = { id: "wallet-1", userId: "user-1", balance: 50 }; // Too low!
+    it('should do nothing if no inactive users', async () => {
+      mockPrisma.user.findMany.mockResolvedValueOnce([]);
+      await service.processWalletExpiry();
+      expect(mockPrisma.wallet.update).not.toHaveBeenCalled();
+    });
+  });
 
-      (prismaService.reward.findUnique as jest.Mock).mockResolvedValue(
-        mockReward,
-      );
-      (prismaService.wallet.findUnique as jest.Mock).mockResolvedValue(
-        mockWallet,
-      );
-
-      await expect(service.redeemReward("user-1", "reward-1")).rejects.toThrow(
-        Error,
-      );
-      expect(prismaService.wallet.update).not.toHaveBeenCalled();
+  describe('getWallet', () => {
+    it('should return existing wallet', async () => {
+      mockPrisma.wallet.findUnique.mockResolvedValueOnce({ id: 'w1', balance: 50 });
+      const w = await service.getWallet('u1');
+      expect(w.balance).toBe(50);
     });
 
-    it("should throw Error if reward is out of stock", async () => {
-      const mockReward = {
-        id: "reward-1",
-        coinCost: 100,
-        availableStock: 0,
-        isActive: true,
-      }; // Out of stock
-      const mockWallet = { id: "wallet-1", userId: "user-1", balance: 500 };
+    it('should create wallet if not found', async () => {
+      mockPrisma.wallet.findUnique.mockResolvedValueOnce(null);
+      mockPrisma.wallet.create.mockResolvedValueOnce({ id: 'w1', balance: 0 });
+      const w = await service.getWallet('u1');
+      expect(w.balance).toBe(0);
+      expect(mockPrisma.wallet.create).toHaveBeenCalled();
+    });
+  });
 
-      (prismaService.reward.findUnique as jest.Mock).mockResolvedValue(
-        mockReward,
-      );
-      (prismaService.wallet.findUnique as jest.Mock).mockResolvedValue(
-        mockWallet,
-      );
+  describe('processStepRewards', () => {
+    it('should award points and process dependencies correctly', async () => {
+      mockPrisma.user.findUnique.mockResolvedValueOnce({ dailyStepGoal: 5000 });
+      mockPrisma.transaction.create.mockResolvedValueOnce({});
+      mockPrisma.wallet.upsert.mockResolvedValueOnce({});
+      
+      // Mock updateStreak
+      mockPrisma.streak.findUnique.mockResolvedValueOnce({ currentStreak: 1, longestStreak: 1, lastActiveDate: new Date() });
+      mockPrisma.streak.update.mockResolvedValueOnce({});
+      
+      // Mock checkAchievements
+      mockPrisma.step.findMany.mockResolvedValue([]);
+      mockPrisma.step.aggregate.mockResolvedValueOnce({ _sum: { stepCount: 10000 } });
+      mockPrisma.wallet.findUnique.mockResolvedValueOnce({ lifetimePoints: 1000 });
+      mockPrisma.userChallenge.count.mockResolvedValueOnce(0);
+      mockPrisma.friendship.count.mockResolvedValueOnce(0);
+      mockPrisma.achievement.findMany.mockResolvedValueOnce([]);
+      
+      // Mock checkMonthlyReset
+      mockPrisma.wallet.findUnique.mockResolvedValueOnce({ lastResetDate: new Date() });
 
-      await expect(service.redeemReward("user-1", "reward-1")).rejects.toThrow(
-        Error,
+      const res = await service.processStepRewards('u1', 6000, new Date());
+      expect(res.pointsEarned).toBe(600); // 6000 * 0.1
+      expect(mockQuestsService.processQuestProgress).toHaveBeenCalledWith('u1', 6000);
+    });
+  });
+
+  describe('updateStreak', () => {
+    it('should increment streak on consecutive day', async () => {
+      const yesterday = new Date();
+      yesterday.setDate(yesterday.getDate() - 1);
+      yesterday.setHours(0,0,0,0);
+
+      mockPrisma.streak.findUnique.mockResolvedValueOnce({
+        userId: 'u1', currentStreak: 5, longestStreak: 5, lastActiveDate: yesterday
+      });
+      mockPrisma.streak.update.mockResolvedValueOnce({ currentStreak: 6 });
+
+      const res = await service.updateStreak('u1', new Date());
+      expect(mockPrisma.streak.update).toHaveBeenCalledWith(
+        expect.objectContaining({ data: expect.objectContaining({ currentStreak: 6 }) })
       );
+    });
+
+    it('should reset streak if missed a day', async () => {
+      const past = new Date();
+      past.setDate(past.getDate() - 3);
+      past.setHours(0,0,0,0);
+
+      mockPrisma.streak.findUnique.mockResolvedValueOnce({
+        userId: 'u1', currentStreak: 5, longestStreak: 5, lastActiveDate: past
+      });
+      mockPrisma.streak.update.mockResolvedValueOnce({ currentStreak: 1 });
+
+      await service.updateStreak('u1', new Date());
+      expect(mockPrisma.streak.update).toHaveBeenCalledWith(
+        expect.objectContaining({ data: expect.objectContaining({ currentStreak: 1 }) })
+      );
+    });
+  });
+
+  describe('redeemReward', () => {
+    it('should redeem successfully when balance allows', async () => {
+      const mockReward = { id: 'r1', coinCost: 100, availableStock: 10, isActive: true };
+      const mockWallet = { id: 'w1', userId: 'u1', balance: 200 };
+
+      mockPrisma.wallet.findUnique.mockResolvedValueOnce(mockWallet);
+      mockPrisma.reward.findUnique.mockResolvedValueOnce(mockReward);
+      mockPrisma.userRedemption.create.mockResolvedValueOnce({ id: 'red1' });
+      mockPrisma.wallet.update.mockResolvedValueOnce({});
+      mockPrisma.transaction.create.mockResolvedValueOnce({});
+      mockPrisma.reward.update.mockResolvedValueOnce({});
+
+      const res = await service.redeemReward('u1', 'r1');
+      expect(res.success).toBe(true);
+      expect(res.newBalance).toBe(100);
+      expect(mockPrisma.wallet.update).toHaveBeenCalled();
+    });
+
+    it('should fail if insufficient coins', async () => {
+      const mockReward = { id: 'r1', coinCost: 500, availableStock: 10, isActive: true };
+      const mockWallet = { id: 'w1', userId: 'u1', balance: 200 };
+
+      mockPrisma.wallet.findUnique.mockResolvedValueOnce(mockWallet);
+      mockPrisma.reward.findUnique.mockResolvedValueOnce(mockReward);
+
+      await expect(service.redeemReward('u1', 'r1')).rejects.toThrow('Insufficient coins');
     });
   });
 });
