@@ -377,7 +377,6 @@ export class RewardsService {
       ).sort((a, b) => a.localeCompare(b));
 
       if (uniqueDates.length > 0) {
-      if (uniqueDates.length > 0) {
         const metrics = this.calculateStreakMetrics(uniqueDates);
         calculatedCurrentStreak = metrics.currentStreak;
         calculatedLongestStreak = metrics.longestStreak;
