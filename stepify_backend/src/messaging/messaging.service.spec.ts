@@ -6,7 +6,7 @@ describe('MessagingService', () => {
   let service: MessagingService;
   let prisma: PrismaService;
 
-  const mockPrisma = {
+  const mockPrisma: any = {
     $transaction: jest.fn(async (cb) => cb(mockPrisma)),
     conversation: {
       count: jest.fn(),

@@ -25,21 +25,22 @@ describe('SentryExceptionFilter', () => {
     jest.spyOn(BaseExceptionFilter.prototype, 'catch').mockImplementation(jest.fn());
   });
 
-  const mockArgumentsHost = (requestExtras = {}): any => ({
-    switchToHttp: () => ({
-      getRequest: () => ({
-        url: '/test',
-        headers: { 'accept-language': 'en' },
-        ...requestExtras,
+  const mockArgumentsHost = (requestExtras = {}): any => {
+    const res: any = {};
+    res.status = jest.fn().mockReturnValue(res);
+    res.json = jest.fn().mockReturnValue(res);
+    
+    return {
+      switchToHttp: () => ({
+        getRequest: () => ({
+          url: '/test',
+          headers: { 'accept-language': 'en' },
+          ...requestExtras,
+        }),
+        getResponse: () => res,
       }),
-      getResponse: () => {
-        const res: any = {};
-        res.status = jest.fn().mockReturnValue(res);
-        res.json = jest.fn().mockReturnValue(res);
-        return res;
-      },
-    }),
-  });
+    };
+  };
 
   it('should capture 500 exceptions in Sentry and format response', () => {
     const error = new HttpException('Internal error', 500);

@@ -1,0 +1,502 @@
+﻿[
+    {
+        "component":  "AbdulRaheem1308_Stepify:src/common/filters/sentry-exception.filter.ts",
+        "line":  43,
+        "message":  "Unexpected `await` of a non-Promise (non-\"Thenable\") value."
+    },
+    {
+        "component":  "AbdulRaheem1308_Stepify:src/friends/friends.service.ts",
+        "line":  256,
+        "message":  "Move this array \"sort\" operation to a separate statement or replace it with \"toSorted\"."
+    },
+    {
+        "component":  "AbdulRaheem1308_Stepify:src/notifications/notifications.service.ts",
+        "line":  197,
+        "message":  "Prefer `.at(â¦)` over `[â¦.length - index]`."
+    },
+    {
+        "component":  "AbdulRaheem1308_Stepify:src/rewards/rewards.service.ts",
+        "line":  90,
+        "message":  "Prefer using nullish coalescing operator (`??=`) instead of an assignment expression, as it is simpler to read."
+    },
+    {
+        "component":  "AbdulRaheem1308_Stepify:src/users/users.service.ts",
+        "line":  528,
+        "message":  "Prefer using nullish coalescing operator (`??=`) instead of an assignment expression, as it is simpler to read."
+    },
+    {
+        "component":  "AbdulRaheem1308_Stepify:test/api-routes.e2e-spec.ts",
+        "line":  182,
+        "message":  "Add at least one assertion to this test case."
+    },
+    {
+        "component":  "AbdulRaheem1308_Stepify:test/api-routes.e2e-spec.ts",
+        "line":  204,
+        "message":  "Add at least one assertion to this test case."
+    },
+    {
+        "component":  "AbdulRaheem1308_Stepify:test/api-routes.e2e-spec.ts",
+        "line":  241,
+        "message":  "Add at least one assertion to this test case."
+    },
+    {
+        "component":  "AbdulRaheem1308_Stepify:test/auth.e2e-spec.ts",
+        "line":  38,
+        "message":  "Add at least one assertion to this test case."
+    },
+    {
+        "component":  "AbdulRaheem1308_Stepify:test/auth.e2e-spec.ts",
+        "line":  60,
+        "message":  "Add at least one assertion to this test case."
+    },
+    {
+        "component":  "AbdulRaheem1308_Stepify:test/auth.e2e-spec.ts",
+        "line":  67,
+        "message":  "Add at least one assertion to this test case."
+    },
+    {
+        "component":  "AbdulRaheem1308_Stepify:test/auth.e2e-spec.ts",
+        "line":  94,
+        "message":  "Add at least one assertion to this test case."
+    },
+    {
+        "component":  "AbdulRaheem1308_Stepify:src/activities/activities.service.ts",
+        "line":  21,
+        "message":  "Member \u0027prisma: PrismaService\u0027 is never reassigned; mark it as `readonly`."
+    },
+    {
+        "component":  "AbdulRaheem1308_Stepify:src/activities/activities.service.ts",
+        "line":  160,
+        "message":  "Unexpected negated condition."
+    },
+    {
+        "component":  "AbdulRaheem1308_Stepify:src/activities/activities.service.ts",
+        "line":  168,
+        "message":  "Prefer using nullish coalescing operator (`??`) instead of a ternary expression, as it is simpler to read."
+    },
+    {
+        "component":  "AbdulRaheem1308_Stepify:src/activities/activities.service.ts",
+        "line":  168,
+        "message":  "Unexpected negated condition."
+    },
+    {
+        "component":  "AbdulRaheem1308_Stepify:src/activities/activities.service.ts",
+        "line":  168,
+        "message":  "Don\u0027t use a zero fraction in the number."
+    },
+    {
+        "component":  "AbdulRaheem1308_Stepify:src/activities/constants/activities.constants.ts",
+        "line":  23,
+        "message":  "Don\u0027t use a zero fraction in the number."
+    },
+    {
+        "component":  "AbdulRaheem1308_Stepify:src/activities/constants/activities.constants.ts",
+        "line":  24,
+        "message":  "Don\u0027t use a zero fraction in the number."
+    },
+    {
+        "component":  "AbdulRaheem1308_Stepify:src/activities/constants/activities.constants.ts",
+        "line":  28,
+        "message":  "Don\u0027t use a zero fraction in the number."
+    },
+    {
+        "component":  "AbdulRaheem1308_Stepify:src/activities/constants/activities.constants.ts",
+        "line":  29,
+        "message":  "Don\u0027t use a zero fraction in the number."
+    },
+    {
+        "component":  "AbdulRaheem1308_Stepify:src/auth/otp.service.ts",
+        "line":  4,
+        "message":  "Prefer `node:crypto` over `crypto`."
+    },
+    {
+        "component":  "AbdulRaheem1308_Stepify:src/common/filters/sentry-exception.filter.ts",
+        "line":  46,
+        "message":  "Handle this exception or don\u0027t catch it at all."
+    },
+    {
+        "component":  "AbdulRaheem1308_Stepify:src/community/leaderboard.gateway.ts",
+        "line":  60,
+        "message":  "Handle this exception or don\u0027t catch it at all."
+    },
+    {
+        "component":  "AbdulRaheem1308_Stepify:src/companies/companies.service.ts",
+        "line":  8,
+        "message":  "Prefer `node:crypto` over `crypto`."
+    },
+    {
+        "component":  "AbdulRaheem1308_Stepify:src/friends/friends.service.ts",
+        "line":  9,
+        "message":  "Prefer `node:crypto` over `crypto`."
+    },
+    {
+        "component":  "AbdulRaheem1308_Stepify:src/main.ts",
+        "line":  25,
+        "message":  "\u0027/home/runner/work/Stepify/Stepify/stepify_backend/node_modules/@nestjs/common/index.js\u0027 imported multiple times."
+    },
+    {
+        "component":  "AbdulRaheem1308_Stepify:src/notifications/notifications.service.ts",
+        "line":  193,
+        "message":  "Remove this useless assignment to variable \"hasMore\"."
+    },
+    {
+        "component":  "AbdulRaheem1308_Stepify:src/redis/redis.service.ts",
+        "line":  14,
+        "message":  "Member \u0027sweepInterval\u0027 is never reassigned; mark it as `readonly`."
+    },
+    {
+        "component":  "AbdulRaheem1308_Stepify:src/steps/steps.service.ts",
+        "line":  456,
+        "message":  "Remove this commented out code."
+    },
+    {
+        "component":  "AbdulRaheem1308_Stepify:src/users/users.controller.ts",
+        "line":  82,
+        "message":  "Prefer `Number.parseInt` over `parseInt`."
+    },
+    {
+        "component":  "AbdulRaheem1308_Stepify:src/users/users.service.ts",
+        "line":  452,
+        "message":  "This assertion is unnecessary since it does not change the type of the expression."
+    },
+    {
+        "component":  "AbdulRaheem1308_Stepify:src/app.module.ts",
+        "line":  81,
+        "message":  "Handle this exception or don\u0027t catch it at all."
+    },
+    {
+        "component":  "AbdulRaheem1308_Stepify:src/app.module.ts",
+        "line":  8,
+        "message":  "Prefer `node:path` over `path`."
+    },
+    {
+        "component":  "AbdulRaheem1308_Stepify:src/ads/ads.service.ts",
+        "line":  19,
+        "message":  "Prefer `Number.parseInt` over `parseInt`."
+    },
+    {
+        "component":  "AbdulRaheem1308_Stepify:src/ads/ads.service.ts",
+        "line":  23,
+        "message":  "Prefer `Number.parseInt` over `parseInt`."
+    },
+    {
+        "component":  "AbdulRaheem1308_Stepify:src/auth/auth.service.ts",
+        "line":  241,
+        "message":  "Handle this exception or don\u0027t catch it at all."
+    },
+    {
+        "component":  "AbdulRaheem1308_Stepify:src/auth/social-auth.service.ts",
+        "line":  27,
+        "message":  "Prefer `String#replaceAll()` over `String#replace()`."
+    },
+    {
+        "component":  "AbdulRaheem1308_Stepify:src/friends/friends.service.ts",
+        "line":  15,
+        "message":  "Member \u0027redis: RedisService\u0027 is never reassigned; mark it as `readonly`."
+    },
+    {
+        "component":  "AbdulRaheem1308_Stepify:src/main.ts",
+        "line":  6,
+        "message":  "\u0027/home/runner/work/Stepify/Stepify/stepify_backend/node_modules/@nestjs/common/index.js\u0027 imported multiple times."
+    },
+    {
+        "component":  "AbdulRaheem1308_Stepify:src/notifications/notifications.service.ts",
+        "line":  52,
+        "message":  "Prefer `Number.parseInt` over `parseInt`."
+    },
+    {
+        "component":  "AbdulRaheem1308_Stepify:src/offers/offers.service.ts",
+        "line":  47,
+        "message":  "Prefer using an optional chain expression instead, as it\u0027s more concise and easier to read."
+    },
+    {
+        "component":  "AbdulRaheem1308_Stepify:src/rewards/rewards.service.ts",
+        "line":  18,
+        "message":  "Prefer `Number.parseFloat` over `parseFloat`."
+    },
+    {
+        "component":  "AbdulRaheem1308_Stepify:src/rewards/rewards.service.ts",
+        "line":  564,
+        "message":  "Refactor this function to reduce its Cognitive Complexity from 18 to the 15 allowed."
+    },
+    {
+        "component":  "AbdulRaheem1308_Stepify:src/steps/steps.controller.ts",
+        "line":  58,
+        "message":  "Prefer `Number.parseInt` over `parseInt`."
+    },
+    {
+        "component":  "AbdulRaheem1308_Stepify:src/steps/steps.controller.ts",
+        "line":  59,
+        "message":  "Prefer `Number.parseInt` over `parseInt`."
+    },
+    {
+        "component":  "AbdulRaheem1308_Stepify:src/steps/steps.service.ts",
+        "line":  31,
+        "message":  "Member \u0027stepsQueue: Queue\u0027 is never reassigned; mark it as `readonly`."
+    },
+    {
+        "component":  "AbdulRaheem1308_Stepify:src/steps/steps.service.ts",
+        "line":  33,
+        "message":  "Prefer `Number.parseFloat` over `parseFloat`."
+    },
+    {
+        "component":  "AbdulRaheem1308_Stepify:src/steps/steps.service.ts",
+        "line":  36,
+        "message":  "Prefer `Number.parseFloat` over `parseFloat`."
+    },
+    {
+        "component":  "AbdulRaheem1308_Stepify:src/steps/steps.service.ts",
+        "line":  46,
+        "message":  "Refactor this function to reduce its Cognitive Complexity from 16 to the 15 allowed."
+    },
+    {
+        "component":  "AbdulRaheem1308_Stepify:src/steps/steps.service.ts",
+        "line":  155,
+        "message":  "Prefer `Number.parseFloat` over `parseFloat`."
+    },
+    {
+        "component":  "AbdulRaheem1308_Stepify:src/app.module.ts",
+        "line":  76,
+        "message":  "Prefer `Number.parseInt` over `parseInt`."
+    },
+    {
+        "component":  "AbdulRaheem1308_Stepify:src/community/community.service.ts",
+        "line":  8,
+        "message":  "Member \u0027prisma: PrismaService\u0027 is never reassigned; mark it as `readonly`."
+    },
+    {
+        "component":  "AbdulRaheem1308_Stepify:src/community/community.service.ts",
+        "line":  9,
+        "message":  "Member \u0027redis: RedisService\u0027 is never reassigned; mark it as `readonly`."
+    },
+    {
+        "component":  "AbdulRaheem1308_Stepify:src/main.ts",
+        "line":  22,
+        "message":  "Don\u0027t use a zero fraction in the number."
+    },
+    {
+        "component":  "AbdulRaheem1308_Stepify:src/notifications/notifications.service.ts",
+        "line":  19,
+        "message":  "Member \u0027transporter\u0027 is never reassigned; mark it as `readonly`."
+    },
+    {
+        "component":  "AbdulRaheem1308_Stepify:src/redis/redis.service.ts",
+        "line":  220,
+        "message":  "Handle this exception or don\u0027t catch it at all."
+    },
+    {
+        "component":  "AbdulRaheem1308_Stepify:src/rewards/rewards.service.ts",
+        "line":  16,
+        "message":  "Member \u0027questsService: QuestsService\u0027 is never reassigned; mark it as `readonly`."
+    },
+    {
+        "component":  "AbdulRaheem1308_Stepify:src/steps/steps.processor.ts",
+        "line":  15,
+        "message":  "Member \u0027prisma: PrismaService\u0027 is never reassigned; mark it as `readonly`."
+    },
+    {
+        "component":  "AbdulRaheem1308_Stepify:src/steps/steps.processor.ts",
+        "line":  16,
+        "message":  "Member \u0027rewardsService: RewardsService\u0027 is never reassigned; mark it as `readonly`."
+    },
+    {
+        "component":  "AbdulRaheem1308_Stepify:src/steps/steps.processor.ts",
+        "line":  17,
+        "message":  "Member \u0027postHog: PostHogService\u0027 is never reassigned; mark it as `readonly`."
+    },
+    {
+        "component":  "AbdulRaheem1308_Stepify:src/steps/steps.processor.ts",
+        "line":  18,
+        "message":  "Member \u0027leaderboardGateway: LeaderboardGateway\u0027 is never reassigned; mark it as `readonly`."
+    },
+    {
+        "component":  "AbdulRaheem1308_Stepify:src/steps/steps.processor.ts",
+        "line":  28,
+        "message":  "Replace this \"switch\" statement by \"if\" statements to increase readability."
+    },
+    {
+        "component":  "AbdulRaheem1308_Stepify:src/steps/steps.service.ts",
+        "line":  30,
+        "message":  "Member \u0027redisService: RedisService\u0027 is never reassigned; mark it as `readonly`."
+    },
+    {
+        "component":  "AbdulRaheem1308_Stepify:src/teams/teams.service.ts",
+        "line":  268,
+        "message":  "Prefer using an optional chain expression instead, as it\u0027s more concise and easier to read."
+    },
+    {
+        "component":  "AbdulRaheem1308_Stepify:src/users/users.service.ts",
+        "line":  10,
+        "message":  "Member \u0027prisma: PrismaService\u0027 is never reassigned; mark it as `readonly`."
+    },
+    {
+        "component":  "AbdulRaheem1308_Stepify:src/users/users.service.ts",
+        "line":  11,
+        "message":  "Member \u0027redis: RedisService\u0027 is never reassigned; mark it as `readonly`."
+    },
+    {
+        "component":  "AbdulRaheem1308_Stepify:src/analytics/posthog.service.ts",
+        "line":  21,
+        "message":  "Member \u0027configService: ConfigService\u0027 is never reassigned; mark it as `readonly`."
+    },
+    {
+        "component":  "AbdulRaheem1308_Stepify:src/analytics/posthog.service.ts",
+        "line":  29,
+        "message":  "Unexpected negated condition."
+    },
+    {
+        "component":  "AbdulRaheem1308_Stepify:src/notifications/notifications.service.ts",
+        "line":  21,
+        "message":  "Member \u0027prisma: PrismaService\u0027 is never reassigned; mark it as `readonly`."
+    },
+    {
+        "component":  "AbdulRaheem1308_Stepify:src/steps/steps.service.ts",
+        "line":  29,
+        "message":  "Member \u0027postHog: PostHogService\u0027 is never reassigned; mark it as `readonly`."
+    },
+    {
+        "component":  "AbdulRaheem1308_Stepify:src/friends/friends.service.ts",
+        "line":  14,
+        "message":  "Member \u0027prisma: PrismaService\u0027 is never reassigned; mark it as `readonly`."
+    },
+    {
+        "component":  "AbdulRaheem1308_Stepify:src/main.ts",
+        "line":  74,
+        "message":  "`allowedOrigins` should be a `Set`, and use `allowedOrigins.has()` to check existence or non-existence."
+    },
+    {
+        "component":  "AbdulRaheem1308_Stepify:src/rewards/rewards.service.ts",
+        "line":  352,
+        "message":  "Refactor this function to reduce its Cognitive Complexity from 22 to the 15 allowed."
+    },
+    {
+        "component":  "AbdulRaheem1308_Stepify:src/rewards/rewards.service.ts",
+        "line":  411,
+        "message":  "Prefer `.at(â¦)` over `[â¦.length - index]`."
+    },
+    {
+        "component":  "AbdulRaheem1308_Stepify:src/rewards/rewards.service.ts",
+        "line":  424,
+        "message":  "Review this redundant assignment: \"calculatedCurrentStreak\" already holds the assigned value along all execution paths."
+    },
+    {
+        "component":  "AbdulRaheem1308_Stepify:src/auth/auth.service.ts",
+        "line":  37,
+        "message":  "Member \u0027jwtService: JwtService\u0027 is never reassigned; mark it as `readonly`."
+    },
+    {
+        "component":  "AbdulRaheem1308_Stepify:src/auth/auth.service.ts",
+        "line":  38,
+        "message":  "Member \u0027configService: ConfigService\u0027 is never reassigned; mark it as `readonly`."
+    },
+    {
+        "component":  "AbdulRaheem1308_Stepify:src/auth/auth.service.ts",
+        "line":  39,
+        "message":  "Member \u0027prisma: PrismaService\u0027 is never reassigned; mark it as `readonly`."
+    },
+    {
+        "component":  "AbdulRaheem1308_Stepify:src/auth/auth.service.ts",
+        "line":  40,
+        "message":  "Member \u0027redis: RedisService\u0027 is never reassigned; mark it as `readonly`."
+    },
+    {
+        "component":  "AbdulRaheem1308_Stepify:src/auth/auth.service.ts",
+        "line":  41,
+        "message":  "Member \u0027otpService: OtpService\u0027 is never reassigned; mark it as `readonly`."
+    },
+    {
+        "component":  "AbdulRaheem1308_Stepify:src/auth/auth.service.ts",
+        "line":  42,
+        "message":  "Member \u0027socialAuth: SocialAuthService\u0027 is never reassigned; mark it as `readonly`."
+    },
+    {
+        "component":  "AbdulRaheem1308_Stepify:src/auth/auth.service.ts",
+        "line":  43,
+        "message":  "Member \u0027usersService: UsersService\u0027 is never reassigned; mark it as `readonly`."
+    },
+    {
+        "component":  "AbdulRaheem1308_Stepify:src/auth/auth.service.ts",
+        "line":  178,
+        "message":  "Unexpected negated condition."
+    },
+    {
+        "component":  "AbdulRaheem1308_Stepify:src/auth/auth.service.ts",
+        "line":  292,
+        "message":  "Prefer using an optional chain expression instead, as it\u0027s more concise and easier to read."
+    },
+    {
+        "component":  "AbdulRaheem1308_Stepify:src/auth/otp.service.ts",
+        "line":  9,
+        "message":  "Member \u0027twilioClient\u0027 is never reassigned; mark it as `readonly`."
+    },
+    {
+        "component":  "AbdulRaheem1308_Stepify:src/auth/otp.service.ts",
+        "line":  11,
+        "message":  "Member \u0027configService: ConfigService\u0027 is never reassigned; mark it as `readonly`."
+    },
+    {
+        "component":  "AbdulRaheem1308_Stepify:src/auth/strategies/jwt.strategy.ts",
+        "line":  10,
+        "message":  "Member \u0027configService: ConfigService\u0027 is never reassigned; mark it as `readonly`."
+    },
+    {
+        "component":  "AbdulRaheem1308_Stepify:src/auth/strategies/jwt.strategy.ts",
+        "line":  11,
+        "message":  "Member \u0027authService: AuthService\u0027 is never reassigned; mark it as `readonly`."
+    },
+    {
+        "component":  "AbdulRaheem1308_Stepify:src/messaging/messaging.service.ts",
+        "line":  6,
+        "message":  "Member \u0027prisma: PrismaService\u0027 is never reassigned; mark it as `readonly`."
+    },
+    {
+        "component":  "AbdulRaheem1308_Stepify:src/offers/offers.service.ts",
+        "line":  7,
+        "message":  "Member \u0027prisma: PrismaService\u0027 is never reassigned; mark it as `readonly`."
+    },
+    {
+        "component":  "AbdulRaheem1308_Stepify:src/quests/quests.service.ts",
+        "line":  6,
+        "message":  "Member \u0027prisma: PrismaService\u0027 is never reassigned; mark it as `readonly`."
+    },
+    {
+        "component":  "AbdulRaheem1308_Stepify:src/redis/redis.service.ts",
+        "line":  16,
+        "message":  "Member \u0027configService: ConfigService\u0027 is never reassigned; mark it as `readonly`."
+    },
+    {
+        "component":  "AbdulRaheem1308_Stepify:src/redis/redis.service.ts",
+        "line":  138,
+        "message":  "Handle this exception or don\u0027t catch it at all."
+    },
+    {
+        "component":  "AbdulRaheem1308_Stepify:src/redis/redis.service.ts",
+        "line":  183,
+        "message":  "Handle this exception or don\u0027t catch it at all."
+    },
+    {
+        "component":  "AbdulRaheem1308_Stepify:src/rewards/rewards.controller.ts",
+        "line":  27,
+        "message":  "Member \u0027rewardsService: RewardsService\u0027 is never reassigned; mark it as `readonly`."
+    },
+    {
+        "component":  "AbdulRaheem1308_Stepify:src/rewards/rewards.service.ts",
+        "line":  14,
+        "message":  "Member \u0027prisma: PrismaService\u0027 is never reassigned; mark it as `readonly`."
+    },
+    {
+        "component":  "AbdulRaheem1308_Stepify:src/rewards/rewards.service.ts",
+        "line":  15,
+        "message":  "Member \u0027configService: ConfigService\u0027 is never reassigned; mark it as `readonly`."
+    },
+    {
+        "component":  "AbdulRaheem1308_Stepify:src/rewards/rewards.service.ts",
+        "line":  117,
+        "message":  "Prefer `Number.parseInt` over `parseInt`."
+    },
+    {
+        "component":  "AbdulRaheem1308_Stepify:src/rewards/rewards.service.ts",
+        "line":  118,
+        "message":  "Prefer `Number.parseInt` over `parseInt`."
+    }
+]

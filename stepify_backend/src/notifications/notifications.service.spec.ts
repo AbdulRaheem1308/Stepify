@@ -3,6 +3,11 @@ import { NotificationsService } from './notifications.service';
 import { PrismaService } from '../prisma/prisma.service';
 import * as admin from 'firebase-admin';
 import * as nodemailer from 'nodemailer';
+import { Logger } from '@nestjs/common';
+
+jest.spyOn(Logger.prototype, 'error').mockImplementation(() => undefined);
+jest.spyOn(Logger.prototype, 'warn').mockImplementation(() => undefined);
+jest.spyOn(Logger.prototype, 'log').mockImplementation(() => undefined);
 
 jest.mock('firebase-admin', () => {
   const mMessaging = {

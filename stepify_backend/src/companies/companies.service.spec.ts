@@ -7,7 +7,7 @@ describe('CompaniesService', () => {
   let service: CompaniesService;
   let prisma: PrismaService;
 
-  const mockPrisma = {
+  const mockPrisma: any = {
     company: {
       create: jest.fn(),
       findMany: jest.fn(),
@@ -85,7 +85,8 @@ describe('CompaniesService', () => {
 
   it('should get user company', async () => {
     mockPrisma.companyMember.findUnique.mockResolvedValueOnce({ id: 'm1' });
-    const res = await service.getUserCompany('u1');
-    expect(res.id).toBe('m1');
+    const res = await service.getUserCompany("u1");
+    expect(res?.id).toBe("m1");
+    expect(mockPrisma.companyMember.findUnique).toHaveBeenCalled();
   });
 });

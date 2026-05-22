@@ -15,7 +15,7 @@ describe('StepsService', () => {
   let redis: RedisService;
   let queue: any;
 
-  const mockPrisma = {
+  const mockPrisma: any = {
     $transaction: jest.fn(async (cb) => cb(mockPrisma)),
     step: {
       findUnique: jest.fn(),

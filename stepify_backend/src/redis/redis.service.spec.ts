@@ -3,7 +3,7 @@ import { RedisService } from './redis.service';
 import { ConfigService } from '@nestjs/config';
 
 jest.mock('ioredis', () => {
-  return jest.fn().mockImplementation(() => {
+  const mRedis = jest.fn().mockImplementation(() => {
     return {
       on: jest.fn(),
       quit: jest.fn().mockResolvedValue('OK'),
@@ -18,6 +18,10 @@ jest.mock('ioredis', () => {
       set: jest.fn().mockResolvedValue('OK'),
     };
   });
+  return {
+    __esModule: true,
+    default: mRedis,
+  };
 });
 
 describe('RedisService', () => {

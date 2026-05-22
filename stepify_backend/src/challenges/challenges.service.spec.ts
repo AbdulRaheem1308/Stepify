@@ -13,7 +13,7 @@ const mockRedisService = {
   getClient: jest.fn(() => mockRedisClient),
 };
 
-const mockPrismaService = {
+const mockPrismaService: any = {
   challenge: { updateMany: jest.fn(), create: jest.fn(), findMany: jest.fn(), findUnique: jest.fn(), upsert: jest.fn() },
   userChallenge: { findMany: jest.fn(), findUnique: jest.fn(), create: jest.fn(), update: jest.fn() },
   wallet: { upsert: jest.fn() },

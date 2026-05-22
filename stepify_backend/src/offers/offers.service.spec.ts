@@ -6,7 +6,7 @@ describe('OffersService', () => {
   let service: OffersService;
   let prisma: PrismaService;
 
-  const mockPrisma = {
+  const mockPrisma: any = {
     $transaction: jest.fn(async (cb) => cb(mockPrisma)),
     offer: {
       findMany: jest.fn(),

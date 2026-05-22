@@ -10,7 +10,7 @@ describe('UsersService', () => {
   let prisma: PrismaService;
   let redis: RedisService;
 
-  const mockPrisma = {
+  const mockPrisma: any = {
     $transaction: jest.fn(async (cb) => cb(mockPrisma)),
     user: {
       findUnique: jest.fn(),
@@ -81,13 +81,13 @@ describe('UsersService', () => {
     it('should find user by id', async () => {
       mockPrisma.user.findUnique.mockResolvedValueOnce({ id: 'u1' });
       const res = await service.findById('u1');
-      expect(res.id).toBe('u1');
+      expect(res?.id).toBe('u1');
     });
 
     it('should find user by identifier', async () => {
       mockPrisma.user.findFirst.mockResolvedValueOnce({ id: 'u1' });
       const res = await service.findByIdentifier('test@test.com');
-      expect(res.id).toBe('u1');
+      expect(res?.id).toBe('u1');
     });
   });
 

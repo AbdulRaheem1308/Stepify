@@ -43,6 +43,7 @@ describe('ActivitiesService', () => {
           type: 'WALKING' as any,
           durationMinutes: 301,
           startTime: new Date().toISOString(),
+          caloriesBurned: 100,
         })
       ).rejects.toThrow(BadRequestException);
     });
@@ -54,6 +55,7 @@ describe('ActivitiesService', () => {
           durationMinutes: 10,
           distanceKm: 2.0,
           startTime: new Date().toISOString(),
+          caloriesBurned: 100,
         })
       ).rejects.toThrow(BadRequestException);
     });
@@ -67,6 +69,7 @@ describe('ActivitiesService', () => {
           durationMinutes: 30,
           distanceKm: 5,
           startTime: new Date().toISOString(),
+          caloriesBurned: 100,
         })
       ).rejects.toThrow(ConflictException);
     });
@@ -87,6 +90,7 @@ describe('ActivitiesService', () => {
         durationMinutes: 30,
         distanceKm: 5,
         startTime: new Date().toISOString(),
+        caloriesBurned: 100,
       });
 
       expect(result).toEqual({ id: 'act1' });
@@ -115,6 +119,7 @@ describe('ActivitiesService', () => {
         type: 'YOGA' as any,
         durationMinutes: 0,
         startTime: new Date().toISOString(),
+        caloriesBurned: 100,
       });
 
       expect(result).toEqual({ id: 'act2' });
@@ -138,6 +143,7 @@ describe('ActivitiesService', () => {
           durationMinutes: 30, 
           distanceKm: 100,
           startTime: new Date().toISOString(),
+          caloriesBurned: 100,
         });
   
         expect(result).toEqual({ id: 'act3' });
@@ -152,6 +158,7 @@ describe('ActivitiesService', () => {
           type: 'RUNNING' as any,
           durationMinutes: 30,
           startTime: new Date().toISOString(),
+          caloriesBurned: 100,
         })
       ).rejects.toThrow('Tx failed');
     });

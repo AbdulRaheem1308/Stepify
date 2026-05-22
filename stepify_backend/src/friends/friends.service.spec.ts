@@ -9,7 +9,7 @@ describe('FriendsService', () => {
   let prisma: PrismaService;
   let redis: RedisService;
 
-  const mockPrisma = {
+  const mockPrisma: any = {
     $transaction: jest.fn(async (cb) => cb(mockPrisma)),
     friendship: {
       findMany: jest.fn(),

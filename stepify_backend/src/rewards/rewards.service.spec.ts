@@ -9,7 +9,7 @@ describe('RewardsService', () => {
   let service: RewardsService;
   let prisma: PrismaService;
 
-  const mockPrisma = {
+  const mockPrisma: any = {
     $transaction: jest.fn(async (cb) => cb(mockPrisma)),
     user: {
       findMany: jest.fn(),
