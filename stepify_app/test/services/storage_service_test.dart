@@ -4,13 +4,17 @@
 // in-memory adapter for each test group and reset state between tests.
 import 'package:flutter_test/flutter_test.dart';
 import 'package:hive_flutter/hive_flutter.dart';
+import 'package:flutter_secure_storage/flutter_secure_storage.dart';
 import 'package:stepify_app/services/storage_service.dart';
+
+import 'dart:io';
 
 void main() {
   // Hive in-memory setup
   setUpAll(() async {
     // Register in-memory Hive for tests (no file I/O)
-    Hive.init('');
+    Hive.init(Directory.systemTemp.path);
+    FlutterSecureStorage.setMockInitialValues({});
   });
 
   setUp(() async {
