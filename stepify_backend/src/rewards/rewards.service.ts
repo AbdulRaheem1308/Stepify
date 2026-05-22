@@ -892,7 +892,7 @@ export class RewardsService {
       .toISOString()
       .split("T")[0];
 
-    const lastDateStr = uniqueDates.at(-1);
+    const lastDateStr = uniqueDates.at(-1)!;
     lastActiveDate = new Date(lastDateStr + "T00:00:00.000Z");
 
     if (
