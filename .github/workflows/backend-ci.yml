@@ -17,6 +17,17 @@ jobs:
       run:
         working-directory: ./stepify_backend
 
+    services:
+      redis:
+        image: redis:7-alpine
+        ports:
+          - 6379:6379
+        options: >-
+          --health-cmd "redis-cli ping"
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 5
+
     strategy:
       matrix:
         node-version: [22.x]
@@ -43,6 +54,9 @@ jobs:
       run: npm run lint
 
     - name: Run Unit & E2E Tests with Coverage
+      env:
+        REDIS_HOST: localhost
+        REDIS_PORT: 6379
       run: |
         npm run test:cov
         npm run test:e2e -- --passWithNoTests

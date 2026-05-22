@@ -1,22 +1,14 @@
 import { Test, TestingModule } from '@nestjs/testing';
 import { INestApplication, ValidationPipe } from '@nestjs/common';
 import * as request from 'supertest';
-import { ConfigModule } from '@nestjs/config';
-import { AuthModule } from './../src/auth/auth.module';
-import { PrismaModule } from './../src/prisma/prisma.module';
-import { RedisModule } from './../src/redis/redis.module';
+import { AppModule } from './../src/app.module';
 
 describe('AuthController (e2e)', () => {
   let app: INestApplication;
 
   beforeAll(async () => {
     const moduleFixture: TestingModule = await Test.createTestingModule({
-      imports: [
-        ConfigModule.forRoot({ isGlobal: true, envFilePath: '.env' }),
-        PrismaModule,
-        RedisModule,
-        AuthModule,
-      ],
+      imports: [AppModule],
     }).compile();
 
     app = moduleFixture.createNestApplication();
