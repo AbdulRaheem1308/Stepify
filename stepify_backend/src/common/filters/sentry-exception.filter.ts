@@ -39,12 +39,12 @@ export class SentryExceptionFilter extends BaseExceptionFilter {
 
       // Try to translate the message if it's a known string key (e.g. "errors.NOT_FOUND")
       if (typeof message === "string" && message.includes(".")) {
-        const translatePromise = this.i18n.translate(message, {
+        const translateResult = this.i18n.translate(message, {
           lang: (request.headers["accept-language"] as string) || "en",
-        }) as Promise<string>;
+        });
 
-        if (translatePromise && typeof translatePromise.then === 'function') {
-          translatePromise
+        if (typeof (translateResult as any)?.then === 'function') {
+          (translateResult as Promise<any>)
             .then((translated: any) => {
               response.status(status).json({
                 statusCode: status,
@@ -67,7 +67,7 @@ export class SentryExceptionFilter extends BaseExceptionFilter {
             statusCode: status,
             timestamp: new Date().toISOString(),
             path: request.url,
-            message: translatePromise,
+            message: translateResult,
           });
         }
         return;
