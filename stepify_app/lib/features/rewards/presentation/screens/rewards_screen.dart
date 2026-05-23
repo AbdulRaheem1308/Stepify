@@ -366,68 +366,24 @@ class _RewardsScreenState extends ConsumerState<RewardsScreen>
 
   // ==================== CATALOG TAB ====================
   Widget _buildCatalogTab() {
-    final catalogState = ref.watch(rewardsCatalogProvider);
-
-    return RefreshIndicator(
-      onRefresh: () => ref.read(rewardsCatalogProvider.notifier).fetchCatalog(),
+    return Center(
       child: Column(
+        mainAxisAlignment: MainAxisAlignment.center,
         children: [
-          // Category Filter
-          Container(
-            height: 50,
-            padding: const EdgeInsets.symmetric(vertical: 8),
-            child: ListView.builder(
-              scrollDirection: Axis.horizontal,
-              padding: const EdgeInsets.symmetric(horizontal: 16),
-              itemCount: rewardCategories.length,
-              itemBuilder: (context, index) {
-                final category = rewardCategories[index];
-                final isSelected = catalogState.selectedCategory == category;
-                return GestureDetector(
-                  onTap: () => ref.read(rewardsCatalogProvider.notifier).setCategory(category),
-                  child: Container(
-                    margin: const EdgeInsets.only(right: 8),
-                    padding: const EdgeInsets.symmetric(horizontal: 14),
-                    decoration: BoxDecoration(
-                      color: isSelected ? AppTheme.primaryGreen : AppTheme.neutral100,
-                      borderRadius: BorderRadius.circular(20),
-                    ),
-                    alignment: Alignment.center,
-                    child: Text(category, style: TextStyle(
-                      color: isSelected ? Colors.white : AppTheme.neutral600,
-                      fontWeight: isSelected ? FontWeight.bold : FontWeight.normal,
-                      fontSize: 12,
-                    )),
-                  ),
-                );
-              },
-            ),
+          const Icon(Icons.card_giftcard, size: 64, color: AppTheme.neutral300),
+          const SizedBox(height: 16),
+          const Text(
+            'Coming Soon!',
+            style: TextStyle(
+                fontSize: 20,
+                fontWeight: FontWeight.bold,
+                color: AppTheme.neutral700),
           ),
-          
-          // Rewards Grid
-          Expanded(
-            child: catalogState.isLoading
-                ? const Center(child: CircularProgressIndicator())
-                : catalogState.rewards.isEmpty
-                    ? Center(child: Text('No rewards available', style: TextStyle(color: AppTheme.neutral500)))
-                    : GridView.builder(
-                        padding: const EdgeInsets.all(16),
-                        gridDelegate: const SliverGridDelegateWithMaxCrossAxisExtent(
-                          maxCrossAxisExtent: 180, // Fixed max card width
-                          mainAxisExtent: 180,     // Fixed card height
-                          crossAxisSpacing: 12,
-                          mainAxisSpacing: 12,
-                        ),
-                        itemCount: catalogState.rewards.length,
-                        itemBuilder: (context, index) {
-                          final reward = catalogState.rewards[index];
-                          return RewardCard(
-                            reward: reward,
-                            onTap: () => _showRedemptionSheet(reward),
-                            onRedeem: () => _showRedemptionSheet(reward),
-                          ).animate(delay: (index * 50).ms).fadeIn(duration: 250.ms);
-                        },
-                      ),
+          const SizedBox(height: 8),
+          const Text(
+            'The Rewards Catalog will be unlocked\nonce we are fully live!',
+            textAlign: TextAlign.center,
+            style: TextStyle(color: AppTheme.neutral500),
           ),
         ],
       ),
