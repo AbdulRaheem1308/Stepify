@@ -157,14 +157,16 @@ class XpRulesScreen extends StatelessWidget {
     final xpReq = _getXpRequirement(level);
     final perks = _getLevelPerks(level);
     
-    return Container(
-      margin: const EdgeInsets.symmetric(horizontal: 20, vertical: 6),
-      decoration: BoxDecoration(
+    return Padding(
+      padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 6),
+      child: Material(
         color: Theme.of(context).cardColor,
-        borderRadius: BorderRadius.circular(12),
-        border: Border.all(color: Theme.of(context).dividerColor),
-      ),
-      child: ExpansionTile(
+        shape: RoundedRectangleBorder(
+          borderRadius: BorderRadius.circular(12),
+          side: BorderSide(color: Theme.of(context).dividerColor),
+        ),
+        clipBehavior: Clip.antiAlias,
+        child: ExpansionTile(
         leading: CircleAvatar(
           backgroundColor: AppTheme.primaryGreen.withValues(alpha: 0.1),
           child: Text('$level', style: const TextStyle(color: AppTheme.primaryGreen, fontWeight: FontWeight.bold)),
@@ -193,6 +195,7 @@ class XpRulesScreen extends StatelessWidget {
             ),
           ),
         ],
+      ),
       ),
     );
   }
