@@ -129,7 +129,7 @@ void main() {
 
     testWidgets('SettingsScreen meets tap target guideline', (WidgetTester tester) async {
       await tester.pumpWidget(createTestApp(const SettingsScreen()));
-      await tester.pumpAndSettle();
+      await tester.pump(const Duration(seconds: 1));
 
       // Toggle tiles onTap + Reset button must satisfy >= 48px
       await expectLater(tester, meetsGuideline(androidTapTargetGuideline));
@@ -138,14 +138,14 @@ void main() {
 
     testWidgets('SettingsScreen meets text contrast guideline', (WidgetTester tester) async {
       await tester.pumpWidget(createTestApp(const SettingsScreen()));
-      await tester.pumpAndSettle();
+      await tester.pump(const Duration(seconds: 1));
 
       await expectLater(tester, meetsGuideline(textContrastGuideline));
     });
 
     testWidgets('SettingsScreen has labeled tap targets', (WidgetTester tester) async {
       await tester.pumpWidget(createTestApp(const SettingsScreen()));
-      await tester.pumpAndSettle();
+      await tester.pump(const Duration(seconds: 1));
 
       await expectLater(tester, meetsGuideline(labeledTapTargetGuideline));
     });

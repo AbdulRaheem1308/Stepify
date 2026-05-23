@@ -138,8 +138,9 @@ class StorageService {
   /// Returns [defaultValue] if the key does not exist or the stored value
   /// cannot be cast to [T].
   static T? get<T>(String key, {T? defaultValue}) {
+    final box = _openBox;
     try {
-      final value = _openBox.get(key, defaultValue: defaultValue);
+      final value = box.get(key, defaultValue: defaultValue);
       if (value == null) return defaultValue;
       return value as T;
     } catch (e) {

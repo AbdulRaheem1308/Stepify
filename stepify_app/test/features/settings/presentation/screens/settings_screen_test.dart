@@ -62,7 +62,7 @@ void main() {
     );
 
     await tester.pumpWidget(createWidget(container));
-    await tester.pumpAndSettle();
+    await tester.pump(const Duration(seconds: 1));
 
     expect(find.text('Settings'), findsOneWidget);
     expect(find.text('Appearance'), findsOneWidget);
@@ -88,7 +88,7 @@ void main() {
     );
 
     await tester.pumpWidget(createWidget(container));
-    await tester.pumpAndSettle();
+    await tester.pump(const Duration(seconds: 1));
     
     // Trigger error state change
     testNotifier.state = testNotifier.state.copyWith(error: 'Failed to save settings');
@@ -97,6 +97,6 @@ void main() {
     expect(find.byType(SnackBar), findsOneWidget);
 
     // Let the SnackBar dismiss so we don't leave pending timers
-    await tester.pumpAndSettle();
+    await tester.pump(const Duration(seconds: 5));
   });
 }

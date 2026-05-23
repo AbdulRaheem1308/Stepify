@@ -13,7 +13,7 @@ void main() {
       ),
     );
 
-    await tester.pumpAndSettle();
+    await tester.pump(const Duration(seconds: 1));
 
     // Verify app bar title
     expect(find.byType(AppBar), findsOneWidget);

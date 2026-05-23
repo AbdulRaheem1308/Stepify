@@ -41,9 +41,13 @@ void main() {
   }
 
   testWidgets('ProfileScreen shows overview, badges, activity, settings tabs', (WidgetTester tester) async {
-    when(() => mockApiService.get(any())).thenAnswer(
-      (_) async => Response(requestOptions: RequestOptions(path: ''), data: {}, statusCode: 200),
-    );
+    when(() => mockApiService.get(any())).thenAnswer((invocation) async {
+      final path = invocation.positionalArguments[0] as String;
+      if (path.contains('achievements') || path.contains('badges')) {
+        return Response(requestOptions: RequestOptions(path: path), data: [], statusCode: 200);
+      }
+      return Response(requestOptions: RequestOptions(path: path), data: {}, statusCode: 200);
+    });
 
     final container = ProviderContainer(overrides: [
       apiServiceProvider.overrideWithValue(mockApiService),
@@ -68,5 +72,6 @@ void main() {
     // Dispose the widget tree to clean up any pending TabController timers
     await tester.pumpWidget(Container());
     await tester.pumpAndSettle();
+    container.dispose();
   });
 }
