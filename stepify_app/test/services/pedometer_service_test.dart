@@ -45,5 +45,22 @@ void main() {
       expect(() => service.stopListening(), returnsNormally);
       expect(service.isListening, isFalse);
     });
+
+    test('getCurrentSteps with mocked stream', () async {
+      final service = PedometerService();
+      service.mockStepCountStream = Stream.value(150);
+      final steps = await service.getCurrentSteps();
+      expect(steps, greaterThanOrEqualTo(0));
+    });
+
+    test('startListening with mocked stream', () async {
+      final service = PedometerService();
+      service.mockStepCountStream = Stream.value(150);
+      bool called = false;
+      await service.startListening(onStepsChanged: (s) => called = true);
+      await Future.delayed(const Duration(milliseconds: 100));
+      expect(called, isTrue);
+      service.stopListening();
+    });
   });
 }

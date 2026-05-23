@@ -17,6 +17,8 @@ class PedometerService {
   PedometerService._internal();
 
   final Pedometer _pedometer = Pedometer();
+  @visibleForTesting
+  Stream<int>? mockStepCountStream;
   StreamSubscription<int>? _subscription;
 
   void Function(int stepsToday)? _onStepsChanged;
@@ -56,7 +58,8 @@ class PedometerService {
     }
 
     try {
-      _subscription = _pedometer.stepCountStream().listen(
+      final stream = mockStepCountStream ?? _pedometer.stepCountStream();
+      _subscription = stream.listen(
         _onStepCountEvent,
         onError: _onStepCountError,
         cancelOnError: false,
@@ -84,7 +87,8 @@ class PedometerService {
 
     // Await the very first event from the hardware step stream (with timeout)
     try {
-      final sensorSteps = await _pedometer.stepCountStream().first.timeout(const Duration(seconds: 2));
+      final stream = mockStepCountStream ?? _pedometer.stepCountStream();
+      final sensorSteps = await stream.first.timeout(const Duration(seconds: 2));
       
       final todayStr = DateTime.now().toIso8601String().split('T')[0];
       final lastSyncDate = StorageService.get<String>(_lastDateKey) ?? '';

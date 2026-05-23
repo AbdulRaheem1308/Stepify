@@ -12,9 +12,17 @@ import 'package:safe_device/safe_device.dart';
 const String kBackgroundSyncTask = "stepify.backgroundSync";
 
 @pragma('vm:entry-point')
+@pragma('vm:entry-point')
 void callbackDispatcher() {
   Workmanager().executeTask((task, inputData) async {
-    
+    return await BackgroundService.runBackgroundSyncTask(task);
+  });
+}
+
+class BackgroundService {
+
+  @visibleForTesting
+  static Future<bool> runBackgroundSyncTask(String task) async {
     try {
       if (task == kBackgroundSyncTask) {
         final prefs = await SharedPreferences.getInstance();
@@ -27,13 +35,11 @@ void callbackDispatcher() {
         
         if (token == null) {
           await prefs.setString('bg_sync_status', 'Skipped: No access token found');
-          return Future.value(true);
+          return true;
         }
 
         // 2. Initialize Services
         final apiService = ApiService(); 
-
-        
         final healthService = HealthService();
         final pedometerService = PedometerService();
         final deviceUUID = await StorageService.getOrCreateDeviceUUID();
@@ -80,14 +86,11 @@ void callbackDispatcher() {
         final prefs = await SharedPreferences.getInstance();
         await prefs.setString('bg_sync_status', 'Fatal Error: $e');
       } catch (_) {}
-      return Future.value(false); // Task failed
+      return false; // Task failed
     }
 
-    return Future.value(true);
-  });
-}
-
-class BackgroundService {
+    return true;
+  }
   static bool _initialized = false;
 
   static Future<void> init() async {
