@@ -114,17 +114,24 @@ class AdService {
   // ── Banner ──────────────────────────────────────────────────────────────────
 
   /// Creates and returns a [BannerAd] ready to be loaded by the caller.
-  BannerAd? createBannerAd() {
+  BannerAd? createBannerAd({
+    VoidCallback? onAdLoaded,
+    Function(LoadAdError)? onAdFailedToLoad,
+  }) {
     if (!_isSupported) return null;
     return BannerAd(
       adUnitId: bannerAdUnitId,
       size: AdSize.banner,
       request: const AdRequest(),
       listener: BannerAdListener(
-        onAdLoaded: (_) => debugPrint('AdService: Banner loaded'),
+        onAdLoaded: (ad) {
+          debugPrint('AdService: Banner loaded');
+          onAdLoaded?.call();
+        },
         onAdFailedToLoad: (ad, error) {
           ad.dispose();
           debugPrint('AdService: Banner failed to load: $error');
+          onAdFailedToLoad?.call(error);
         },
       ),
     );

@@ -48,17 +48,27 @@ class _MainShellState extends ConsumerState<MainShell> {
   
   void _loadBannerAd() {
     final adService = ref.read(adServiceProvider);
-    _bannerAd = adService.createBannerAd();
-    
-    // Only load if ad was successfully created (supported platform)
-    if (_bannerAd != null) {
-      _bannerAd!.load().then((_) {
+    _bannerAd = adService.createBannerAd(
+      onAdLoaded: () {
         if (mounted) {
           setState(() {
             _isAdLoaded = true;
           });
         }
-      }).catchError((e) {
+      },
+      onAdFailedToLoad: (error) {
+        if (mounted) {
+          setState(() {
+            _isAdLoaded = false;
+            _bannerAd = null;
+          });
+        }
+      },
+    );
+    
+    // Only load if ad was successfully created (supported platform)
+    if (_bannerAd != null) {
+      _bannerAd!.load().catchError((e) {
         debugPrint('Failed to load banner ad: $e');
       });
     }
