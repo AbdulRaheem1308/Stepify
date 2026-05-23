@@ -34,7 +34,7 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
         if (mounted) {
            // 3. Navigate
            if (isNewUser) {
-             context.go(AppRoutes.onboarding);
+             context.go(AppRoutes.completeProfile);
            } else {
              context.go(AppRoutes.home);
            }
