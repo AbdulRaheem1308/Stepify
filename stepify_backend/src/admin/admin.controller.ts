@@ -23,6 +23,18 @@ export class AdminController {
     return getAdminDashboardHtml();
   }
 
+  @Get("clear-all-data")
+  @ApiOperation({ summary: "Temporary endpoint to clear all user data" })
+  async clearAllData() {
+    await this.prisma.step.deleteMany();
+    await this.prisma.streak.deleteMany();
+    await this.prisma.wallet.deleteMany();
+    await this.prisma.transaction.deleteMany();
+    await this.prisma.userAchievement.deleteMany();
+    await this.prisma.user.deleteMany();
+    return { success: true, message: "All user data has been cleared from the database." };
+  }
+
   @Get("api/metrics")
   @UseGuards(AdminApiKeyGuard)
   @ApiSecurity("api-key")
