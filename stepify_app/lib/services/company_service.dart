@@ -30,7 +30,7 @@ class CompanyService {
   Future<CompanyMember?> getMyCompany() async {
     try {
       final response = await _api.get('/companies/my-company/me');
-      if (response.data == null) return null;
+      if (response.data == null || response.data == '') return null;
       return CompanyMember.fromJson(
           Map<String, dynamic>.from(response.data as Map));
     } catch (e) {
