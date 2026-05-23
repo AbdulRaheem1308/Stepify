@@ -358,11 +358,7 @@ class DashboardNotifier extends StateNotifier<DashboardState> with WidgetsBindin
     });
   }
 
-  @override
-  void dispose() {
-    _uiBatchTimer?.cancel();
-    super.dispose();
-  }
+
 
   void _loadUser() {
     final user = StorageService.getUser();
