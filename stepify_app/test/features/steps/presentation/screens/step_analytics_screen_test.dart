@@ -1,4 +1,3 @@
-import 'dart:io';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_test/flutter_test.dart';
@@ -18,7 +17,7 @@ void main() {
   setUpAll(() async {
     TestWidgetsFlutterBinding.ensureInitialized();
 
-    // Mock path_provider so Hive can resolve a temp directory
+    // Mock path_provider so Hive can resolve a directory
     const pathChannel = MethodChannel('plugins.flutter.io/path_provider');
     TestDefaultBinaryMessengerBinding.instance.defaultBinaryMessenger
         .setMockMethodCallHandler(pathChannel, (_) async => '.');
@@ -29,18 +28,12 @@ void main() {
     TestDefaultBinaryMessengerBinding.instance.defaultBinaryMessenger
         .setMockMethodCallHandler(secureStorageChannel, (_) async => null);
 
-    // Mock Pedometer so it never throws in tests
-    const pedometerChannel =
-        MethodChannel('com.example.pedometer/stepCount');
-    TestDefaultBinaryMessengerBinding.instance.defaultBinaryMessenger
-        .setMockMethodCallHandler(pedometerChannel, (_) async => 0);
-
-    // Mock SafeDevice so integrity checks are safe no-ops
+    // Mock SafeDevice so integrity checks never crash
     const safeDeviceChannel = MethodChannel('safe_device');
     TestDefaultBinaryMessengerBinding.instance.defaultBinaryMessenger
         .setMockMethodCallHandler(safeDeviceChannel, (_) async => false);
 
-    // Initialise Hive + StorageService so DashboardNotifier doesn't crash
+    // Initialise Hive + StorageService so DashboardNotifier._loadUser() succeeds
     Hive.init('.');
     await StorageService.init();
 
@@ -59,11 +52,12 @@ void main() {
   testWidgets('StepAnalyticsScreen shows loading then data', (tester) async {
     final mockApiService = MockApiService();
 
-    // Stub every API call the DashboardNotifier makes on startup
+    // Stub every DashboardNotifier startup call to return empty success
     when(() => mockApiService.get(any())).thenAnswer((_) async => Response(
           requestOptions: RequestOptions(path: ''),
           statusCode: 200,
-          data: {},
+          data: {'dailyBreakdown': [], 'stepCount': 0, 'balance': 0,
+                 'lifetimePoints': 0, 'currentStreak': 0, 'longestStreak': 0},
         ));
     when(() => mockApiService.post(any(), data: any(named: 'data')))
         .thenAnswer((_) async => Response(
@@ -72,7 +66,7 @@ void main() {
               data: {},
             ));
 
-    // Override /steps/weekly with real test data
+    // Override /steps/weekly and /steps/monthly with test data
     when(() => mockApiService.get('/steps/weekly')).thenAnswer(
       (_) async => Response(
         requestOptions: RequestOptions(path: ''),
@@ -87,8 +81,6 @@ void main() {
         },
       ),
     );
-
-    // Override /steps/monthly with real test data
     when(() => mockApiService.get('/steps/monthly')).thenAnswer(
       (_) async => Response(
         requestOptions: RequestOptions(path: ''),
@@ -105,19 +97,25 @@ void main() {
     );
 
     final container = ProviderContainer(
-      overrides: [
-        apiServiceProvider.overrideWithValue(mockApiService),
-      ],
+      overrides: [apiServiceProvider.overrideWithValue(mockApiService)],
     );
 
-    // Initial load state
+    // IMPORTANT: cancel the DashboardNotifier's 5-second periodic timer at
+    // the end of the test. Without this, pumpAndSettle never settles and the
+    // framework throws "A Timer is still pending".
+    addTearDown(container.dispose);
+
+    // Pump the widget — should show a loading indicator immediately
     await tester.pumpWidget(createWidget(container));
     expect(find.byType(CircularProgressIndicator), findsOneWidget);
 
-    // Wait for Futures to complete and animations to settle
-    await tester.pumpAndSettle();
+    // Let microtasks and short futures complete (API mocks resolve instantly)
+    await tester.pump();
+    await tester.pump(const Duration(milliseconds: 100));
+    // Process the widget rebuild after state change
+    await tester.pump(const Duration(milliseconds: 100));
 
-    // Verify weekly data renders
+    // Verify weekly data is rendered
     expect(find.text('45,000', skipOffstage: false), findsOneWidget);
     expect(find.byType(WeeklyStepsChart), findsOneWidget);
     expect(find.byType(CalorieTrendChart), findsOneWidget);
@@ -127,7 +125,7 @@ void main() {
       (tester) async {
     final mockApiService = MockApiService();
 
-    // Stub startup calls made by DashboardNotifier
+    // All API calls fail after a short delay
     when(() => mockApiService.get(any())).thenAnswer((_) async {
       await Future.delayed(const Duration(milliseconds: 100));
       throw Exception('API Error');
@@ -140,24 +138,22 @@ void main() {
             ));
 
     final container = ProviderContainer(
-      overrides: [
-        apiServiceProvider.overrideWithValue(mockApiService),
-      ],
+      overrides: [apiServiceProvider.overrideWithValue(mockApiService)],
     );
 
+    // Cancel the periodic timer when the test ends
+    addTearDown(container.dispose);
+
     await tester.pumpWidget(createWidget(container));
-    await tester.pump(); // Start load
-    await tester.pump(const Duration(milliseconds: 200)); // Futures complete
+    await tester.pump(); // Start async load
+    await tester.pump(const Duration(milliseconds: 200)); // Futures reject
     await tester.pump(); // SnackBar starts animating
 
-    // Check error snackbar is shown
+    // Verify error snackbar is shown
     expect(find.byType(SnackBar), findsOneWidget);
     expect(find.textContaining('Failed to load analytics:'), findsOneWidget);
 
-    // Check fallback data renders 0s
+    // Verify fallback shows 0s
     expect(find.text('0'), findsWidgets);
-
-    // Let the SnackBar dismiss so we don't leave pending timers
-    await tester.pumpAndSettle();
   });
 }
