@@ -2,9 +2,9 @@ import { CurrentUser } from './current-user.decorator';
 import { ExecutionContext } from '@nestjs/common';
 import { ROUTE_ARGS_METADATA } from '@nestjs/common/constants';
 
-function getParamDecoratorFactory(decorator: Function) {
+function getParamDecoratorFactory(decorator: any) {
   class Test {
-    public test(@decorator() value) {}
+    public test(@decorator() _value: any) {}
   }
 
   const args = Reflect.getMetadata(ROUTE_ARGS_METADATA, Test, 'test');

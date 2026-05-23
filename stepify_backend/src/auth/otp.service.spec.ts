@@ -17,7 +17,6 @@ describe('OtpService', () => {
   let mockConfigService: any;
   let loggerLogSpy: jest.SpyInstance;
   let loggerWarnSpy: jest.SpyInstance;
-  let loggerErrorSpy: jest.SpyInstance;
 
   beforeEach(async () => {
     jest.clearAllMocks();
@@ -41,7 +40,6 @@ describe('OtpService', () => {
     
     loggerLogSpy = jest.spyOn((service as any).logger, 'log').mockImplementation();
     loggerWarnSpy = jest.spyOn((service as any).logger, 'warn').mockImplementation();
-    loggerErrorSpy = jest.spyOn((service as any).logger, 'error').mockImplementation();
   });
 
   afterEach(() => {
