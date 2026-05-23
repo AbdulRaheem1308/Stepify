@@ -33,6 +33,7 @@ jobs:
       run: |
         flutter clean
         flutter pub get
+        flutter precache --ios
 
     - name: Pre-populate podhelper.rb from Flutter SDK
       run: |
