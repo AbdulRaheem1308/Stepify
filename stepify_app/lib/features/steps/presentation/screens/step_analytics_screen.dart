@@ -235,6 +235,11 @@ class _StepAnalyticsScreenState extends ConsumerState<StepAnalyticsScreen>
       );
     }).toList();
 
+    // Use real daily step goal from dashboardProvider (default 10000 if not yet loaded)
+    final dashboardState = ref.watch(dashboardProvider);
+    final dailyGoal = dashboardState.todaySteps?.goal ?? 10000;
+    final weeklyGoalTarget = dailyGoal * 7;
+
     return SingleChildScrollView(
       physics: const BouncingScrollPhysics(),
       padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 8),
@@ -246,9 +251,8 @@ class _StepAnalyticsScreenState extends ConsumerState<StepAnalyticsScreen>
              context, 
              data['totalSteps'] ?? 0, 
              'This Week', 
-             trendPercentage: 12.5,
              goalLabel: 'Weekly Goal',
-             goalTarget: 70000,
+             goalTarget: weeklyGoalTarget,
            ),
            const SizedBox(height: 24),
            
@@ -569,16 +573,18 @@ class _StepAnalyticsScreenState extends ConsumerState<StepAnalyticsScreen>
     final data = _monthlyData!;
     final dailyBreakdown = List<Map<String, dynamic>>.from(data['dailyBreakdown'] ?? []);
     
-    // Convert backend data or generate dummy data if breakdown is missing (common for monthly aggregates)
+    // Convert backend data; use empty list if breakdown is missing (no fake fallback data)
     final monthlyHistory = dailyBreakdown.isNotEmpty 
       ? dailyBreakdown.map((day) => DailyStep(
           date: DateTime.parse(day['date']), 
           steps: day['stepCount']
         )).toList()
-      : List.generate(30, (index) { // Fallback dummy data if API doesn't return detailed monthly yet
-          final date = DateTime.now().subtract(Duration(days: 29 - index));
-          return DailyStep(date: date, steps: 4000 + (index * 100) % 5000); 
-        });
+      : <DailyStep>[];
+
+    // Use real daily step goal from dashboardProvider (default 10000 if not yet loaded)
+    final dashboardState = ref.watch(dashboardProvider);
+    final dailyGoal = dashboardState.todaySteps?.goal ?? 10000;
+    final monthlyGoalTarget = dailyGoal * 30;
 
     return SingleChildScrollView(
       physics: const BouncingScrollPhysics(),
@@ -590,9 +596,8 @@ class _StepAnalyticsScreenState extends ConsumerState<StepAnalyticsScreen>
               context, 
               data['totalSteps'] ?? 0, 
               'This Month', 
-              trendPercentage: -5.2,
               goalLabel: 'Monthly Goal',
-              goalTarget: 300000,
+              goalTarget: monthlyGoalTarget,
             ),
            const SizedBox(height: 24),
            
