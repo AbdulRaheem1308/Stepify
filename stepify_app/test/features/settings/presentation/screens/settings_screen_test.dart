@@ -40,6 +40,11 @@ void main() {
   }
 
   testWidgets('SettingsScreen displays settings toggles', (tester) async {
+    tester.view.physicalSize = const Size(1440, 2560);
+    tester.view.devicePixelRatio = 3.0;
+    addTearDown(tester.view.resetPhysicalSize);
+    addTearDown(tester.view.resetDevicePixelRatio);
+
     final mockApiService = MockApiService();
     when(() => mockApiService.get(any())).thenAnswer((_) async => Response(requestOptions: RequestOptions(path: ''), data: {}, statusCode: 200));
 
@@ -62,7 +67,7 @@ void main() {
     );
 
     await tester.pumpWidget(createWidget(container));
-    await tester.pump(const Duration(seconds: 1));
+    await tester.pumpAndSettle();
 
     expect(find.text('Settings'), findsOneWidget);
     expect(find.text('Appearance'), findsOneWidget);
@@ -74,6 +79,11 @@ void main() {
   });
 
   testWidgets('SettingsScreen shows error snackbar', (tester) async {
+    tester.view.physicalSize = const Size(1440, 2560);
+    tester.view.devicePixelRatio = 3.0;
+    addTearDown(tester.view.resetPhysicalSize);
+    addTearDown(tester.view.resetDevicePixelRatio);
+
     final mockApiService = MockApiService();
     when(() => mockApiService.get(any())).thenAnswer((_) async => Response(requestOptions: RequestOptions(path: ''), data: {}, statusCode: 200));
 
@@ -88,15 +98,15 @@ void main() {
     );
 
     await tester.pumpWidget(createWidget(container));
-    await tester.pump(const Duration(seconds: 1));
+    await tester.pumpAndSettle();
     
     // Trigger error state change
     testNotifier.state = testNotifier.state.copyWith(error: 'Failed to save settings');
     await tester.pump(); // Triggers listener
-    await tester.pump(); // Triggers SnackBar animation
+    await tester.pump(const Duration(milliseconds: 100)); // Triggers SnackBar animation
     expect(find.byType(SnackBar), findsOneWidget);
 
     // Let the SnackBar dismiss so we don't leave pending timers
-    await tester.pump(const Duration(seconds: 5));
+    await tester.pumpAndSettle();
   });
 }

@@ -119,6 +119,11 @@ void main() {
     });
 
     testWidgets('opens create team dialog', (tester) async {
+      tester.view.physicalSize = const Size(1440, 2560);
+      tester.view.devicePixelRatio = 3.0;
+      addTearDown(tester.view.resetPhysicalSize);
+      addTearDown(tester.view.resetDevicePixelRatio);
+
       when(() => mockApi.get('/teams/my-teams')).thenAnswer((_) async => Response(
         requestOptions: RequestOptions(path: ''),
         data: [],
