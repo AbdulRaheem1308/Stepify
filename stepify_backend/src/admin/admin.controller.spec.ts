@@ -18,11 +18,13 @@ describe('AdminController', () => {
 
   beforeEach(async () => {
     mockPrisma = {
-      user: { count: jest.fn(), findMany: jest.fn() },
-      step: { aggregate: jest.fn(), groupBy: jest.fn() },
-      wallet: { aggregate: jest.fn() },
-      transaction: { findMany: jest.fn() },
+      user: { count: jest.fn(), findMany: jest.fn(), deleteMany: jest.fn() },
+      step: { aggregate: jest.fn(), groupBy: jest.fn(), deleteMany: jest.fn() },
+      wallet: { aggregate: jest.fn(), deleteMany: jest.fn() },
+      transaction: { findMany: jest.fn(), deleteMany: jest.fn() },
       device: { findFirst: jest.fn(), create: jest.fn() },
+      streak: { deleteMany: jest.fn() },
+      userAchievement: { deleteMany: jest.fn() },
     };
 
     mockRedisClient = {
@@ -64,6 +66,22 @@ describe('AdminController', () => {
       const res = await controller.getDashboardHtml();
       expect(res).toBe('<html>Dashboard</html>');
       expect(adminView.getAdminDashboardHtml).toHaveBeenCalled();
+    });
+  });
+
+  describe('clearAllData', () => {
+    it('should delete all user data', async () => {
+      const res = await controller.clearAllData();
+      
+      expect(mockPrisma.step.deleteMany).toHaveBeenCalled();
+      expect(mockPrisma.streak.deleteMany).toHaveBeenCalled();
+      expect(mockPrisma.wallet.deleteMany).toHaveBeenCalled();
+      expect(mockPrisma.transaction.deleteMany).toHaveBeenCalled();
+      expect(mockPrisma.userAchievement.deleteMany).toHaveBeenCalled();
+      expect(mockPrisma.user.deleteMany).toHaveBeenCalled();
+      
+      expect(res.success).toBe(true);
+      expect(res.message).toContain('cleared');
     });
   });
 
