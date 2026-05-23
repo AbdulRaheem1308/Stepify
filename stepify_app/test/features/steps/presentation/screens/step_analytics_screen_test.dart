@@ -1,22 +1,52 @@
+import 'dart:io';
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:stepify_app/features/steps/presentation/screens/step_analytics_screen.dart';
 import 'package:mocktail/mocktail.dart';
 import 'package:dio/dio.dart';
+import 'package:hive/hive.dart';
 import 'package:stepify_app/services/api_service.dart';
-import 'package:stepify_app/features/dashboard/presentation/providers/dashboard_provider.dart';
+import 'package:stepify_app/services/storage_service.dart';
 import 'package:stepify_app/features/dashboard/presentation/widgets/weekly_steps_chart.dart';
 import 'package:stepify_app/features/dashboard/presentation/widgets/calorie_trend_chart.dart';
 
 class MockApiService extends Mock implements ApiService {}
 
-/// Stub DashboardNotifier that does nothing on construction (avoids StorageService/HealthService init)
-class _StubDashboardNotifier extends StateNotifier<DashboardState> {
-  _StubDashboardNotifier() : super(DashboardState());
-}
-
 void main() {
+  setUpAll(() async {
+    TestWidgetsFlutterBinding.ensureInitialized();
+
+    // Mock path_provider so Hive can resolve a temp directory
+    const pathChannel = MethodChannel('plugins.flutter.io/path_provider');
+    TestDefaultBinaryMessengerBinding.instance.defaultBinaryMessenger
+        .setMockMethodCallHandler(pathChannel, (_) async => '.');
+
+    // Mock FlutterSecureStorage so token reads/writes are no-ops
+    const secureStorageChannel =
+        MethodChannel('plugins.it_nomads.com/flutter_secure_storage');
+    TestDefaultBinaryMessengerBinding.instance.defaultBinaryMessenger
+        .setMockMethodCallHandler(secureStorageChannel, (_) async => null);
+
+    // Mock Pedometer so it never throws in tests
+    const pedometerChannel =
+        MethodChannel('com.example.pedometer/stepCount');
+    TestDefaultBinaryMessengerBinding.instance.defaultBinaryMessenger
+        .setMockMethodCallHandler(pedometerChannel, (_) async => 0);
+
+    // Mock SafeDevice so integrity checks are safe no-ops
+    const safeDeviceChannel = MethodChannel('safe_device');
+    TestDefaultBinaryMessengerBinding.instance.defaultBinaryMessenger
+        .setMockMethodCallHandler(safeDeviceChannel, (_) async => false);
+
+    // Initialise Hive + StorageService so DashboardNotifier doesn't crash
+    Hive.init('.');
+    await StorageService.init();
+
+    registerFallbackValue(RequestOptions(path: ''));
+  });
+
   Widget createWidget(ProviderContainer container) {
     return UncontrolledProviderScope(
       container: container,
@@ -29,7 +59,20 @@ void main() {
   testWidgets('StepAnalyticsScreen shows loading then data', (tester) async {
     final mockApiService = MockApiService();
 
-    // Mock the responses for /steps/weekly and /steps/monthly
+    // Stub every API call the DashboardNotifier makes on startup
+    when(() => mockApiService.get(any())).thenAnswer((_) async => Response(
+          requestOptions: RequestOptions(path: ''),
+          statusCode: 200,
+          data: {},
+        ));
+    when(() => mockApiService.post(any(), data: any(named: 'data')))
+        .thenAnswer((_) async => Response(
+              requestOptions: RequestOptions(path: ''),
+              statusCode: 200,
+              data: {},
+            ));
+
+    // Override /steps/weekly with real test data
     when(() => mockApiService.get('/steps/weekly')).thenAnswer(
       (_) async => Response(
         requestOptions: RequestOptions(path: ''),
@@ -45,6 +88,7 @@ void main() {
       ),
     );
 
+    // Override /steps/monthly with real test data
     when(() => mockApiService.get('/steps/monthly')).thenAnswer(
       (_) async => Response(
         requestOptions: RequestOptions(path: ''),
@@ -62,10 +106,7 @@ void main() {
 
     final container = ProviderContainer(
       overrides: [
-        // Override apiServiceProvider with mock — no real HTTP calls
         apiServiceProvider.overrideWithValue(mockApiService),
-        // Override dashboardProvider with a stub to avoid StorageService/HealthService init
-        dashboardProvider.overrideWith((_) => _StubDashboardNotifier()),
       ],
     );
 
@@ -73,7 +114,7 @@ void main() {
     await tester.pumpWidget(createWidget(container));
     expect(find.byType(CircularProgressIndicator), findsOneWidget);
 
-    // Wait for Futures to complete and animations to finish
+    // Wait for Futures to complete and animations to settle
     await tester.pumpAndSettle();
 
     // Verify weekly data renders
@@ -82,28 +123,34 @@ void main() {
     expect(find.byType(CalorieTrendChart), findsOneWidget);
   });
 
-  testWidgets('StepAnalyticsScreen shows error snackbar on failure', (tester) async {
+  testWidgets('StepAnalyticsScreen shows error snackbar on failure',
+      (tester) async {
     final mockApiService = MockApiService();
 
+    // Stub startup calls made by DashboardNotifier
     when(() => mockApiService.get(any())).thenAnswer((_) async {
       await Future.delayed(const Duration(milliseconds: 100));
       throw Exception('API Error');
     });
+    when(() => mockApiService.post(any(), data: any(named: 'data')))
+        .thenAnswer((_) async => Response(
+              requestOptions: RequestOptions(path: ''),
+              statusCode: 200,
+              data: {},
+            ));
 
     final container = ProviderContainer(
       overrides: [
         apiServiceProvider.overrideWithValue(mockApiService),
-        // Override dashboardProvider with a stub to avoid StorageService/HealthService init
-        dashboardProvider.overrideWith((_) => _StubDashboardNotifier()),
       ],
     );
 
     await tester.pumpWidget(createWidget(container));
     await tester.pump(); // Start load
-    await tester.pump(const Duration(milliseconds: 100)); // Future completes, SnackBar is triggered
+    await tester.pump(const Duration(milliseconds: 200)); // Futures complete
     await tester.pump(); // SnackBar starts animating
 
-    // Check error snackbar
+    // Check error snackbar is shown
     expect(find.byType(SnackBar), findsOneWidget);
     expect(find.textContaining('Failed to load analytics:'), findsOneWidget);
 
