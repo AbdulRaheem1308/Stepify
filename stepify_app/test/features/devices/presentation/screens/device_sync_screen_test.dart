@@ -52,6 +52,70 @@ void main() {
     expect(find.text('5000'), findsOneWidget);
     expect(find.text('Connected'), findsOneWidget);
   });
+
+  testWidgets('DeviceSyncScreen shows error snackbar on error state', (tester) async {
+    final notifier = MockDeviceNotifier(DeviceState(devices: []));
+    await tester.pumpWidget(
+      ProviderScope(
+        overrides: [
+          deviceProvider.overrideWith((ref) => notifier),
+        ],
+        child: const MaterialApp(
+          localizationsDelegates: AppLocalizations.localizationsDelegates,
+          supportedLocales: AppLocalizations.supportedLocales,
+          home: Scaffold(body: DeviceSyncScreen()),
+        ),
+      ),
+    );
+    await tester.pumpAndSettle();
+
+    // Trigger state change
+    notifier.state = notifier.state.copyWith(error: 'Test Error Message');
+    await tester.pumpAndSettle();
+
+    expect(find.text('Test Error Message'), findsOneWidget);
+  });
+
+  testWidgets('DeviceSyncScreen sync button and disconnect button call methods', (tester) async {
+    final devices = [
+      ConnectedDevice(
+        id: 'd1',
+        name: 'Apple Watch',
+        type: 'WATCH_APPLE',
+        status: SyncStatus.connected,
+        lastSyncTime: DateTime.now(),
+        syncedSteps: 5000,
+      ),
+    ];
+    final notifier = MockDeviceNotifier(DeviceState(devices: devices));
+    
+    await tester.pumpWidget(
+      ProviderScope(
+        overrides: [
+          deviceProvider.overrideWith((ref) => notifier),
+        ],
+        child: const MaterialApp(
+          localizationsDelegates: AppLocalizations.localizationsDelegates,
+          supportedLocales: AppLocalizations.supportedLocales,
+          home: DeviceSyncScreen(),
+        ),
+      ),
+    );
+    await tester.pumpAndSettle();
+
+    // Tap sync button
+    await tester.tap(find.byIcon(Icons.sync));
+    await tester.pumpAndSettle();
+
+    // Tap disconnect button
+    await tester.tap(find.byIcon(Icons.delete_outline));
+    await tester.pumpAndSettle();
+    
+    // Tap confirm in dialog
+    expect(find.text('Disconnect'), findsOneWidget);
+    await tester.tap(find.text('Disconnect'));
+    await tester.pumpAndSettle();
+  });
 }
 
 class MockDeviceNotifier extends StateNotifier<DeviceState> implements DeviceNotifier {

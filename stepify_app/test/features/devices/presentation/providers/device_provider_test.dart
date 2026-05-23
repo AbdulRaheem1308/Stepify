@@ -102,4 +102,45 @@ void main() {
     // Because it reloads, GET /devices should be called again
     verify(() => mockApi.get('/devices')).called(greaterThanOrEqualTo(2));
   });
-}
+
+  test('connectHealthDevice sets error on authorization failure', () async {
+    when(() => mockHealth.requestAuthorization()).thenAnswer((_) async => false);
+    
+    await Future.delayed(Duration.zero); // finish initial load
+    
+    await notifier.connectHealthDevice();
+    
+    expect(notifier.state.error, 'Permission denied');
+  });
+
+  test('connectHealthDevice sets error on exception', () async {
+    when(() => mockHealth.requestAuthorization()).thenThrow(Exception('test_error'));
+    
+    await Future.delayed(Duration.zero); // finish initial load
+    
+    await notifier.connectHealthDevice();
+    
+    expect(notifier.state.error, contains('test_error'));
+  });
+
+  test('addDevice sets error if device exists', () async {
+    await Future.delayed(Duration.zero); // finish initial load
+    
+    await notifier.addDevice('My Fitbit', 'FITBIT');
+    
+    expect(notifier.state.error, 'Device is already connected');
+  });
+
+  test('syncDevice fetches steps and calls API', () async {
+    when(() => mockHealth.getTodaySteps()).thenAnswer((_) async => 5000);
+    when(() => mockApi.post(any(), data: any(named: 'data'))).thenAnswer((_) async => Response(
+      requestOptions: RequestOptions(path: ''),
+      data: {},
+    ));
+    
+    await Future.delayed(Duration.zero); // finish initial load
+    
+    await notifier.syncDevice('d1');
+    
+    expect(notifier.state.error, isNull);
+  });

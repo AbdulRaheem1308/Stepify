@@ -62,5 +62,18 @@ void main() {
       expect(called, isTrue);
       service.stopListening();
     });
+
+    test('startListening handles error from stream', () async {
+      final service = PedometerService();
+      service.mockStepCountStream = Stream.error(Exception('stream_error'));
+      bool errorCalled = false;
+      await service.startListening(
+        onStepsChanged: (s) {},
+        onErrorOccurred: (e) => errorCalled = true,
+      );
+      await Future.delayed(const Duration(milliseconds: 100));
+      expect(errorCalled, isTrue);
+      service.stopListening();
+    });
   });
 }
