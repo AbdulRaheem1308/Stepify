@@ -108,6 +108,10 @@ export class StepsService {
       });
     });
 
+    this.logger.log(
+      `🟢 STEP SYNC: User ${userId} synced ${dto.stepCount} steps from ${dto.source || "manual"} (Effective count: ${step.stepCount}, Device: ${dto.deviceIdentifier})`
+    );
+
     // Queue background job for streaks, achievements, rewards, corporate leaderboard updates, and analytics
     await this.stepsQueue.add("process-sync", {
       userId,
