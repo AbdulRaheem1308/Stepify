@@ -79,12 +79,13 @@ class DeviceState {
     bool? isScanning,
     bool? isLoading,
     String? error,
+    bool clearError = false,
   }) {
     return DeviceState(
       devices: devices ?? this.devices,
       isScanning: isScanning ?? this.isScanning,
       isLoading: isLoading ?? this.isLoading,
-      error: error,
+      error: clearError ? null : (error ?? this.error),
     );
   }
 }
@@ -133,7 +134,10 @@ class DeviceNotifier extends StateNotifier<DeviceState> {
 
   /// connect to HealthKit or Google Fit
   Future<void> connectHealthDevice() async {
-    state = state.copyWith(isScanning: true);
+    // Clear previous errors so they can trigger again if the exact same error happens
+    state = state.copyWith(isScanning: true, clearError: true);
+    // Workaround for Riverpod state update delay to ensure error: null is registered before the actual error
+    await Future.delayed(const Duration(milliseconds: 50));
     try {
       final authorized = await _healthService.requestAuthorization();
       if (authorized) {
@@ -205,7 +209,10 @@ class DeviceNotifier extends StateNotifier<DeviceState> {
     try {
       // Check if already exists
       final exists = state.devices.any((d) => d.type == type);
-      if (exists) return;
+      if (exists) {
+        state = state.copyWith(error: 'Device is already connected');
+        return;
+      }
 
       final deviceUUID = await StorageService.getOrCreateDeviceUUID();
       await _apiService.post('/devices', data: {

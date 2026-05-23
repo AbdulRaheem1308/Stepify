@@ -16,6 +16,17 @@ class DeviceSyncScreen extends ConsumerWidget {
     final l10n = AppLocalizations.of(context)!;
     final state = ref.watch(deviceProvider);
 
+    ref.listen(deviceProvider, (previous, next) {
+      if (next.error != null && next.error != previous?.error) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text(next.error!),
+            backgroundColor: AppTheme.error,
+          ),
+        );
+      }
+    });
+
     return Scaffold(
       appBar: AppBar(
         title: Text(l10n.deviceManagement),
@@ -71,10 +82,12 @@ class DeviceSyncScreen extends ConsumerWidget {
             
             // Add Device Button
             ElevatedButton.icon(
-              onPressed: () {
+              onPressed: state.isScanning ? null : () {
                 ref.read(deviceProvider.notifier).connectHealthDevice();
               },
-              icon: const Icon(Icons.add),
+              icon: state.isScanning 
+                  ? const SizedBox(width: 20, height: 20, child: CircularProgressIndicator(strokeWidth: 2))
+                  : const Icon(Icons.add),
               label: Text(l10n.connectHealthApp), // More accurate label
             ),
             const SizedBox(height: 20),
