@@ -100,11 +100,6 @@ void main() {
       overrides: [apiServiceProvider.overrideWithValue(mockApiService)],
     );
 
-    // IMPORTANT: cancel the DashboardNotifier's 5-second periodic timer at
-    // the end of the test. Without this, pumpAndSettle never settles and the
-    // framework throws "A Timer is still pending".
-    addTearDown(container.dispose);
-
     // Pump the widget — should show a loading indicator immediately
     await tester.pumpWidget(createWidget(container));
     expect(find.byType(CircularProgressIndicator), findsOneWidget);
@@ -119,6 +114,10 @@ void main() {
     expect(find.text('45,000', skipOffstage: false), findsOneWidget);
     expect(find.byType(WeeklyStepsChart), findsOneWidget);
     expect(find.byType(CalorieTrendChart), findsOneWidget);
+    
+    // Explicitly dispose container inside the test body to clear the 5s periodic timer
+    // BEFORE Flutter test framework checks for pending timers.
+    container.dispose();
   });
 
   testWidgets('StepAnalyticsScreen shows error snackbar on failure',
@@ -141,9 +140,6 @@ void main() {
       overrides: [apiServiceProvider.overrideWithValue(mockApiService)],
     );
 
-    // Cancel the periodic timer when the test ends
-    addTearDown(container.dispose);
-
     await tester.pumpWidget(createWidget(container));
     await tester.pump(); // Start async load
     await tester.pump(const Duration(milliseconds: 200)); // Futures reject
@@ -155,5 +151,9 @@ void main() {
 
     // Verify fallback shows 0s
     expect(find.text('0'), findsWidgets);
+    
+    // Explicitly dispose container inside the test body to clear the 5s periodic timer
+    // BEFORE Flutter test framework checks for pending timers.
+    container.dispose();
   });
 }
