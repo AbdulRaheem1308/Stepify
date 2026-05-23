@@ -27,7 +27,7 @@ import '../../features/gamification/presentation/screens/streak_screen.dart';
 import '../../features/devices/presentation/screens/device_sync_screen.dart';
 import '../../features/offers/presentation/screens/offers_screen.dart';
 import '../../features/offers/presentation/screens/my_offers_screen.dart';
-import '../../features/rewards/presentation/screens/wallet_screen.dart';
+import '../../features/wallet/presentation/screens/wallet_screen.dart';
 import '../../features/community/presentation/screens/community_screen.dart';
 import '../../features/teams/presentation/screens/teams_screen.dart';
 import '../../features/teams/presentation/screens/team_detail_screen.dart';
