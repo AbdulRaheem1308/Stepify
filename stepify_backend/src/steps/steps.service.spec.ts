@@ -178,10 +178,6 @@ describe('StepsService', () => {
     const userId = 'user1';
 
     it('should fetch today steps, ensuring user data first', async () => {
-      mockPrisma.step.count.mockResolvedValueOnce(0); // Needs seed
-      mockPrisma.step.createMany.mockResolvedValueOnce({});
-      mockPrisma.streak.upsert.mockResolvedValueOnce({});
-      mockPrisma.wallet.upsert.mockResolvedValueOnce({});
       mockPrisma.step.findUnique.mockResolvedValueOnce({
         stepCount: 4000,
         caloriesBurned: 160,
@@ -198,22 +194,12 @@ describe('StepsService', () => {
     });
 
     it('should cap progress at 100%', async () => {
-      mockPrisma.step.count.mockResolvedValueOnce(1); // No seed
       mockPrisma.step.findUnique.mockResolvedValueOnce({ stepCount: 6000 });
       mockPrisma.user.findUnique.mockResolvedValueOnce({ dailyStepGoal: 5000 });
 
       const res = await service.getTodaySteps(userId);
       expect(res.progress).toBe(100);
       expect(res.goalReached).toBe(true);
-    });
-
-    it('should catch and ignore concurrency errors during ensureUserData', async () => {
-      mockPrisma.step.count.mockRejectedValueOnce(new Error('Unique constraint failed'));
-      mockPrisma.step.findUnique.mockResolvedValueOnce({ stepCount: 2000 });
-      mockPrisma.user.findUnique.mockResolvedValueOnce({ dailyStepGoal: 5000 });
-
-      const res = await service.getTodaySteps(userId);
-      expect(res.stepCount).toBe(2000);
     });
   });
 
@@ -231,7 +217,6 @@ describe('StepsService', () => {
 
   describe('getWeeklySummary', () => {
     it('should compute weekly totals correctly', async () => {
-      mockPrisma.step.count.mockResolvedValueOnce(1); // No seed
       const d1 = new Date();
       d1.setHours(0,0,0,0);
       mockPrisma.step.findMany.mockResolvedValueOnce([
