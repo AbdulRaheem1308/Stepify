@@ -2,7 +2,7 @@ import { Test, TestingModule } from '@nestjs/testing';
 import { ActivitiesController } from './activities.controller';
 import { ActivitiesService } from './activities.service';
 import { LogActivityDto } from './dto/log-activity.dto';
-import { ActivityType } from '../enums/activity-type.enum';
+import { ActivityType } from './enums/activity-type.enum';
 
 describe('ActivitiesController', () => {
   let controller: ActivitiesController;
