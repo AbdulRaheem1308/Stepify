@@ -89,7 +89,7 @@ class DeviceSyncScreen extends ConsumerWidget {
               icon: state.isScanning 
                   ? const SizedBox(width: 20, height: 20, child: CircularProgressIndicator(strokeWidth: 2))
                   : const Icon(Icons.add),
-              label: const Text('Connect Health / Fit'),
+              label: Text(l10n.connectHealthApp), // More accurate label
             ),
             const SizedBox(height: 20),
           ],
