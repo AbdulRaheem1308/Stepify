@@ -82,9 +82,9 @@ class PedometerService {
       await _requestActivityPermission();
     }
 
-    // Await the very first event from the hardware step stream
+    // Await the very first event from the hardware step stream (with timeout)
     try {
-      final sensorSteps = await _pedometer.stepCountStream().first;
+      final sensorSteps = await _pedometer.stepCountStream().first.timeout(const Duration(seconds: 2));
       
       final todayStr = DateTime.now().toIso8601String().split('T')[0];
       final lastSyncDate = StorageService.get<String>(_lastDateKey) ?? '';

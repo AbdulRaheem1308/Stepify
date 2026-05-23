@@ -7,6 +7,7 @@ import 'package:stepify_app/services/health_service.dart';
 import 'package:stepify_app/services/storage_service.dart';
 import 'package:hive_flutter/hive_flutter.dart';
 import 'package:flutter/services.dart';
+import 'package:flutter/widgets.dart';
 
 class MockApiService extends Mock implements ApiService {}
 class MockHealthService extends Mock implements HealthService {}
@@ -33,7 +34,7 @@ void main() {
       safeDeviceChannel,
       (MethodCall methodCall) async => false,
     );
-    await Hive.initFlutter('.');
+    await Hive.initFlutter('.test_dash');
     await StorageService.init();
   });
 
@@ -110,6 +111,18 @@ void main() {
       print('Error in update: ${notifier.state.error}');
       expect(notifier.state.todaySteps?.goal, 12000);
       verify(() => mockApi.put('/users/me', data: {'dailyStepGoal': 12000})).called(1);
+    });
+
+    test('didChangeAppLifecycleState resumed triggers refresh', () async {
+      when(() => mockApi.get('/steps/today')).thenAnswer((_) async => Response(
+        requestOptions: RequestOptions(path: '/steps/today'),
+        data: <String, dynamic>{'stepCount': 5000},
+      ));
+      
+      notifier.didChangeAppLifecycleState(AppLifecycleState.resumed);
+      
+      await Future.delayed(const Duration(milliseconds: 100));
+      verify(() => mockApi.get('/steps/today')).called(greaterThanOrEqualTo(1));
     });
   });
 }
