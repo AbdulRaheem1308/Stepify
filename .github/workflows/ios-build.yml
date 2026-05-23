@@ -5,10 +5,12 @@ on:
     branches: [ "main" ]
     paths:
       - 'stepify_app/**'
+      - '.github/workflows/ios-build.yml'
   pull_request:
     branches: [ "main" ]
     paths:
       - 'stepify_app/**'
+      - '.github/workflows/ios-build.yml'
   workflow_dispatch:
 
 jobs:
