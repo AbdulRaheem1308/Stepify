@@ -5,6 +5,11 @@ import 'package:stepify_app/l10n/app_localizations.dart';
 
 void main() {
   testWidgets('XpRulesScreen renders correctly', (tester) async {
+    tester.view.physicalSize = const Size(1440, 2560);
+    tester.view.devicePixelRatio = 3.0;
+    addTearDown(tester.view.resetPhysicalSize);
+    addTearDown(tester.view.resetDevicePixelRatio);
+
     await tester.pumpWidget(
       MaterialApp(
         localizationsDelegates: AppLocalizations.localizationsDelegates,
@@ -13,7 +18,7 @@ void main() {
       ),
     );
 
-    await tester.pump(const Duration(seconds: 1));
+    await tester.pumpAndSettle();
 
     // Verify app bar title
     expect(find.byType(AppBar), findsOneWidget);
