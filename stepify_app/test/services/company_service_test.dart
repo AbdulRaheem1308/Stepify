@@ -1,17 +1,19 @@
 import 'package:dio/dio.dart';
 import 'package:flutter_test/flutter_test.dart';
-import 'package:mockito/annotations.dart';
-import 'package:mockito/mockito.dart';
+import 'package:mocktail/mocktail.dart';
 import 'package:stepify_app/features/companies/domain/models/company_model.dart';
 import 'package:stepify_app/services/api_service.dart';
 import 'package:stepify_app/services/company_service.dart';
 
-import 'company_service_test.mocks.dart';
+class MockApiService extends Mock implements ApiService {}
 
-@GenerateMocks([ApiService])
 void main() {
   late MockApiService mockApi;
   late CompanyService service;
+
+  setUpAll(() {
+    registerFallbackValue(RequestOptions(path: ''));
+  });
 
   setUp(() {
     mockApi = MockApiService();
@@ -38,7 +40,7 @@ void main() {
     };
 
     test('joinCompany returns CompanyMember on success', () async {
-      when(mockApi.post(any, data: anyNamed('data'))).thenAnswer(
+      when(() => mockApi.post(any(), data: any(named: 'data'))).thenAnswer(
         (_) async => Response(
           requestOptions: RequestOptions(path: ''),
           data: mockMemberData,
@@ -49,17 +51,17 @@ void main() {
 
       expect(result.id, 'mem_1');
       expect(result.companyId, mockCompanyId);
-      verify(mockApi.post('/companies/TEST12/join', data: {})).called(1);
+      verify(() => mockApi.post('/companies/TEST12/join', data: {})).called(1);
     });
 
     test('joinCompany throws ApiError on failure', () async {
-      when(mockApi.post(any, data: anyNamed('data'))).thenThrow(Exception('error'));
+      when(() => mockApi.post(any(), data: any(named: 'data'))).thenThrow(Exception('error'));
 
       expect(() => service.joinCompany('TEST12'), throwsA(isA<ApiError>()));
     });
 
     test('getMyCompany returns CompanyMember if found', () async {
-      when(mockApi.get(any)).thenAnswer(
+      when(() => mockApi.get(any())).thenAnswer(
         (_) async => Response(
           requestOptions: RequestOptions(path: ''),
           data: mockMemberData,
@@ -70,11 +72,11 @@ void main() {
 
       expect(result, isNotNull);
       expect(result!.id, 'mem_1');
-      verify(mockApi.get('/companies/my-company/me')).called(1);
+      verify(() => mockApi.get('/companies/my-company/me')).called(1);
     });
 
     test('getMyCompany returns null if data is empty string', () async {
-      when(mockApi.get(any)).thenAnswer(
+      when(() => mockApi.get(any())).thenAnswer(
         (_) async => Response(
           requestOptions: RequestOptions(path: ''),
           data: '',
@@ -87,7 +89,7 @@ void main() {
     });
 
     test('getMyCompany returns null if 404', () async {
-      when(mockApi.get(any)).thenThrow(DioException(
+      when(() => mockApi.get(any())).thenThrow(DioException(
         requestOptions: RequestOptions(path: ''),
         response: Response(requestOptions: RequestOptions(path: ''), statusCode: 404),
       ));
@@ -98,13 +100,13 @@ void main() {
     });
 
     test('getMyCompany throws ApiError on other errors', () async {
-      when(mockApi.get(any)).thenThrow(Exception('error'));
+      when(() => mockApi.get(any())).thenThrow(Exception('error'));
 
       expect(() => service.getMyCompany(), throwsA(isA<ApiError>()));
     });
 
     test('getLeaderboard returns list of members', () async {
-      when(mockApi.get(any)).thenAnswer(
+      when(() => mockApi.get(any())).thenAnswer(
         (_) async => Response(
           requestOptions: RequestOptions(path: ''),
           data: [mockMemberData],
@@ -115,11 +117,11 @@ void main() {
 
       expect(result.length, 1);
       expect(result.first.id, 'mem_1');
-      verify(mockApi.get('/companies/$mockCompanyId/leaderboard')).called(1);
+      verify(() => mockApi.get('/companies/$mockCompanyId/leaderboard')).called(1);
     });
 
     test('getLeaderboard throws ApiError on failure', () async {
-      when(mockApi.get(any)).thenThrow(Exception('error'));
+      when(() => mockApi.get(any())).thenThrow(Exception('error'));
 
       expect(() => service.getLeaderboard(mockCompanyId), throwsA(isA<ApiError>()));
     });
