@@ -348,23 +348,24 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen>
                     painter: _BmiGaugePainter(
                         bmi: bmiValue,
                         needleColor: bmiColor()),
-                    child: Center(
+                    child: Align(
+                      alignment: Alignment.bottomCenter,
                       child: Padding(
-                        padding: const EdgeInsets.only(top: 60),
+                        padding: const EdgeInsets.only(bottom: 12),
                         child: Column(
                           mainAxisSize: MainAxisSize.min,
                           children: [
                             Text(
                               bmiValue.toStringAsFixed(1),
                               style: TextStyle(
-                                  fontSize: 28,
+                                  fontSize: 32,
                                   fontWeight: FontWeight.bold,
                                   color: bmiColor()),
                             ).animate().fadeIn(duration: 600.ms),
                             Text(
                               fitness.bmiCategory,
                               style: TextStyle(
-                                  fontSize: 13,
+                                  fontSize: 14,
                                   color: bmiColor(),
                                   fontWeight: FontWeight.w600),
                             ),
@@ -1117,9 +1118,14 @@ class _BmiGaugePainter extends CustomPainter {
 
   @override
   void paint(Canvas canvas, Size size) {
-    final cx     = size.width / 2;
-    final cy     = size.height * 0.85;
-    final radius = size.width * 0.42;
+    const strokeWidth = 18.0;
+    // Fit radius within the canvas height and width
+    final maxRadiusByHeight = size.height - strokeWidth;
+    final maxRadiusByWidth = (size.width - strokeWidth) / 2;
+    final radius = math.min(maxRadiusByHeight, maxRadiusByWidth);
+
+    final cx = size.width / 2;
+    final cy = size.height - (strokeWidth / 2); // Pivot at the bottom
 
     // Arc from 180° to 0° (left to right semicircle)
     const startAngle = math.pi;
@@ -1136,7 +1142,7 @@ class _BmiGaugePainter extends CustomPainter {
     // Draw track background
     final trackPaint = Paint()
       ..color = const Color(0xFFE5E7EB)
-      ..strokeWidth = 18
+      ..strokeWidth = strokeWidth
       ..style = PaintingStyle.stroke
       ..strokeCap = StrokeCap.round;
 
@@ -1150,7 +1156,7 @@ class _BmiGaugePainter extends CustomPainter {
       final (color, from, to) = zone;
       final paint = Paint()
         ..color = color
-        ..strokeWidth = 16
+        ..strokeWidth = strokeWidth - 2
         ..style = PaintingStyle.stroke
         ..strokeCap = StrokeCap.butt;
 
@@ -1171,19 +1177,18 @@ class _BmiGaugePainter extends CustomPainter {
     final needleX = cx + needleLength * math.cos(needleAngle);
     final needleY = cy + needleLength * math.sin(needleAngle);
 
+    // Start needle outside the text area to prevent overlap
+    final innerRadius = 45.0;
+    final startX = cx + innerRadius * math.cos(needleAngle);
+    final startY = cy + innerRadius * math.sin(needleAngle);
+
     // Draw needle
     final needlePaint = Paint()
       ..color = needleColor
-      ..strokeWidth = 3
+      ..strokeWidth = 4
       ..strokeCap = StrokeCap.round;
 
-    canvas.drawLine(Offset(cx, cy), Offset(needleX, needleY), needlePaint);
-
-    // Draw needle pivot circle
-    final pivotPaint = Paint()..color = needleColor;
-    canvas.drawCircle(Offset(cx, cy), 7, pivotPaint);
-    final pivotInner = Paint()..color = Colors.white;
-    canvas.drawCircle(Offset(cx, cy), 4, pivotInner);
+    canvas.drawLine(Offset(startX, startY), Offset(needleX, needleY), needlePaint);
   }
 
   @override
