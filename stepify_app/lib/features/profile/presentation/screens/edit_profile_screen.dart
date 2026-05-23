@@ -241,39 +241,33 @@ class _EditProfileScreenState extends ConsumerState<EditProfileScreen> {
                 ),
                 const SizedBox(height: 24),
                 
-                // Physical Stats
-                Row(
-                  children: [
-                    Expanded(
-                      child: _buildTextField(
-                        context: context,
-                        label: 'Age',
-                        controller: _ageController,
-                        keyboardType: TextInputType.number,
-                        icon: Icons.cake_outlined,
-                      ),
-                    ),
-                    const SizedBox(width: 16),
-                    Expanded(
-                      child: _buildTextField(
-                        context: context,
-                        label: 'Weight (kg)',
-                        controller: _weightController,
-                        keyboardType: TextInputType.number,
-                        icon: Icons.monitor_weight_outlined,
-                      ),
-                    ),
-                    const SizedBox(width: 16),
-                    Expanded(
-                      child: _buildTextField(
-                        context: context,
-                        label: 'Height (cm)',
-                        controller: _heightController,
-                        keyboardType: TextInputType.number,
-                        icon: Icons.height,
-                      ),
-                    ),
-                  ],
+                // Age
+                _buildTextField(
+                  context: context,
+                  label: 'Age',
+                  controller: _ageController,
+                  keyboardType: TextInputType.number,
+                  icon: Icons.cake_outlined,
+                ),
+                const SizedBox(height: 16),
+                
+                // Weight
+                _buildTextField(
+                  context: context,
+                  label: 'Weight (kg)',
+                  controller: _weightController,
+                  keyboardType: TextInputType.number,
+                  icon: Icons.monitor_weight_outlined,
+                ),
+                const SizedBox(height: 16),
+                
+                // Height
+                _buildTextField(
+                  context: context,
+                  label: 'Height (cm)',
+                  controller: _heightController,
+                  keyboardType: TextInputType.number,
+                  icon: Icons.height,
                 ),
                 const SizedBox(height: 24),
                 
