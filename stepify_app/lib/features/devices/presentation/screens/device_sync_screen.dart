@@ -18,6 +18,7 @@ class DeviceSyncScreen extends ConsumerWidget {
 
     ref.listen(deviceProvider, (previous, next) {
       if (next.error != null && next.error != previous?.error) {
+        ScaffoldMessenger.of(context).clearSnackBars();
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
             content: Text(next.error!),
@@ -88,7 +89,7 @@ class DeviceSyncScreen extends ConsumerWidget {
               icon: state.isScanning 
                   ? const SizedBox(width: 20, height: 20, child: CircularProgressIndicator(strokeWidth: 2))
                   : const Icon(Icons.add),
-              label: Text(l10n.connectHealthApp), // More accurate label
+              label: const Text('Connect Health / Fit'),
             ),
             const SizedBox(height: 20),
           ],

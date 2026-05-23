@@ -221,8 +221,12 @@ class DeviceNotifier extends StateNotifier<DeviceState> {
         'identifier': deviceUUID,
       });
       await loadDevices();
+      
+      // Since we don't have a dedicated success message field, we can use a special prefix
+      // or just show it in the UI directly. Let's add a success field to the state!
     } catch (e) {
-      state = state.copyWith(error: ApiError.from(e).message);
+      final msg = ApiError.from(e).message;
+      state = state.copyWith(error: msg.isNotEmpty ? msg : 'Failed to connect device');
     }
   }
 
