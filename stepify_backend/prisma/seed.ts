@@ -9,13 +9,8 @@ async function main() {
     const tablenames = ['feed_comments', 'feed_reactions', 'feed_posts', 'friendships', 'user_challenges', 'user_redemptions', 'user_achievements', 'challenges', 'offers', 'rewards', 'avatars', 'steps', 'transactions', 'wallets', 'streaks', 'users'];
     // Truncate/Delete logic - careful with FKs. Deleting Users cascades to most.
     // For simplicity, we delete specific tables or just upsert.
-    // Let's delete Demo User if exists to reset their data.
-    const demoEmail = 'demo@stepify.com';
-    await prisma.user.deleteMany({
-        where: {
-            email: { in: [demoEmail, 'alice@example.com'] }
-        }
-    });
+    // Delete ALL Users (which will cascade and delete all steps, wallets, transactions, etc.)
+    await prisma.user.deleteMany({});
 
     // Also clean up common tables to avoid duplicates if re-running
     await prisma.userAchievement.deleteMany();
