@@ -75,5 +75,37 @@ void main() {
       expect(errorCalled, isTrue);
       service.stopListening();
     });
+
+    test('_requestActivityPermission retry error handling', () async {
+      // Mock permission handler to throw an error so it hits the catch block
+      TestDefaultBinaryMessengerBinding.instance.defaultBinaryMessenger.setMockMethodCallHandler(
+        const MethodChannel('flutter.baseflow.com/permissions/methods'),
+        (MethodCall methodCall) async {
+          throw PlatformException(code: 'ERROR', message: 'Test error');
+        },
+      );
+      
+      final service = PedometerService();
+      bool errorCalled = false;
+      
+      // Start listening should call requestActivityPermission
+      await service.startListening(
+        onStepsChanged: (s) {},
+        onErrorOccurred: (e) => errorCalled = true,
+      );
+      
+      await Future.delayed(const Duration(seconds: 2)); // wait for retry delay
+      
+      // The onErrorOccurred should be called from the catch block
+      expect(errorCalled, isTrue);
+      service.stopListening();
+      
+      // Restore the original mock handler for other tests
+      TestDefaultBinaryMessengerBinding.instance.defaultBinaryMessenger.setMockMethodCallHandler(
+        const MethodChannel('flutter.baseflow.com/permissions/methods'),
+        (MethodCall methodCall) async => {19: 1}, // ACTIVITY_RECOGNITION granted
+      );
+    });
   });
 }
+

@@ -16,8 +16,24 @@ void main() {
     const secureStorageChannel = MethodChannel('plugins.it_nomads.com/flutter_secure_storage');
     TestDefaultBinaryMessengerBinding.instance.defaultBinaryMessenger.setMockMethodCallHandler(
       secureStorageChannel,
-      (MethodCall methodCall) async => null,
+      (MethodCall methodCall) async {
+        if (methodCall.method == 'read' && methodCall.arguments['key'] == 'access_token') {
+          return 'fake_token'; // Returning a token makes the test proceed further
+        }
+        return null;
+      },
     );
+    
+    // Mock SafeDevice MethodChannel
+    const safeDeviceChannel = MethodChannel('safe_device');
+    TestDefaultBinaryMessengerBinding.instance.defaultBinaryMessenger.setMockMethodCallHandler(
+      safeDeviceChannel,
+      (MethodCall methodCall) async {
+        if (methodCall.method == 'isRealDevice') return true;
+        return false;
+      },
+    );
+
     await Hive.initFlutter('.test_bg');
     await StorageService.init();
   });
@@ -39,8 +55,16 @@ void main() {
       // Mocking preferences to avoid crashes
       SharedPreferences.setMockInitialValues({});
       
+      // Let it run and fail gracefully if API call fails due to no mocked http client. 
+      // The goal is just line coverage.
       final res = await BackgroundService.runBackgroundSyncTask(kBackgroundSyncTask);
-      expect(res, isTrue); // Will return true because token is null
+      
+      // It returns true unless a fatal error occurs before the try-catch or during the catch block
+      expect(res, isTrue); 
+      
+      final prefs = await SharedPreferences.getInstance();
+      final status = prefs.getString('bg_sync_status');
+      expect(status, isNotNull);
     });
   });
 }
