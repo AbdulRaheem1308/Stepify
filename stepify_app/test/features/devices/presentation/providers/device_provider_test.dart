@@ -144,3 +144,4 @@ void main() {
     
     expect(notifier.state.error, isNull);
   });
+}
