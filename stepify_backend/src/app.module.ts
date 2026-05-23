@@ -34,6 +34,9 @@ import { ActivitiesModule } from "./activities/activities.module";
 // Controllers
 import { HealthController } from "./health.controller";
 
+// Services
+import { KeepAwakeService } from "./keep-awake.service";
+
 @Module({
   imports: [
     // Configuration
@@ -121,6 +124,7 @@ import { HealthController } from "./health.controller";
   ],
   controllers: [HealthController],
   providers: [
+    KeepAwakeService,
     {
       provide: APP_GUARD,
       useClass: ThrottlerGuard,
