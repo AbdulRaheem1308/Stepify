@@ -264,11 +264,11 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
     required IconData icon,
     required List<Widget> children,
   }) {
-    return Container(
-      decoration: BoxDecoration(
-        color: Theme.of(context).colorScheme.surface,
+    return Material(
+      color: Theme.of(context).colorScheme.surface,
+      shape: RoundedRectangleBorder(
         borderRadius: BorderRadius.circular(AppTheme.defaultRadius),
-        border: Border.all(color: AppTheme.neutral200),
+        side: BorderSide(color: AppTheme.neutral200),
       ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
