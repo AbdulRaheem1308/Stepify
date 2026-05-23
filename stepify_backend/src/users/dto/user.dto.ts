@@ -117,4 +117,39 @@ export class UpdateSettingsDto {
   @IsOptional()
   @IsBoolean()
   pushNotifications?: boolean;
+
+  @ApiPropertyOptional({ example: true })
+  @IsOptional()
+  @IsBoolean()
+  dailyReminders?: boolean;
+
+  @ApiPropertyOptional({ example: true })
+  @IsOptional()
+  @IsBoolean()
+  soundEnabled?: boolean;
+
+  @ApiPropertyOptional({ example: false })
+  @IsOptional()
+  @IsBoolean()
+  dataSyncOverCellular?: boolean;
+
+  @ApiPropertyOptional({ example: "km" })
+  @IsOptional()
+  @IsString()
+  distanceUnit?: string;
+
+  @ApiPropertyOptional({ example: true })
+  @IsOptional()
+  @IsBoolean()
+  isPublic?: boolean;
+
+  @ApiPropertyOptional({ example: true })
+  @IsOptional()
+  @IsBoolean()
+  showOnLeaderboard?: boolean;
+
+  @ApiPropertyOptional({ example: true })
+  @IsOptional()
+  @IsBoolean()
+  showMilestones?: boolean;
 }
