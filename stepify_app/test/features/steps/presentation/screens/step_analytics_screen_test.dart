@@ -115,6 +115,10 @@ void main() {
     expect(find.byType(WeeklyStepsChart), findsOneWidget);
     expect(find.byType(CalorieTrendChart), findsOneWidget);
     
+    // Advance time by 4.5 seconds to allow flutter_animate animations 
+    // to complete and dismiss, clearing all short-lived non-periodic timers.
+    await tester.pump(const Duration(milliseconds: 4500));
+    
     // Explicitly dispose container inside the test body to clear the 5s periodic timer
     // BEFORE Flutter test framework checks for pending timers.
     container.dispose();
@@ -151,6 +155,10 @@ void main() {
 
     // Verify fallback shows 0s
     expect(find.text('0'), findsWidgets);
+    
+    // Advance time by 4.5 seconds to allow flutter_animate animations and SnackBar
+    // to complete and dismiss, clearing all short-lived non-periodic timers.
+    await tester.pump(const Duration(milliseconds: 4500));
     
     // Explicitly dispose container inside the test body to clear the 5s periodic timer
     // BEFORE Flutter test framework checks for pending timers.
