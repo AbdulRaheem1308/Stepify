@@ -38,7 +38,10 @@ describe("Tracing", () => {
     // Simulate SIGTERM event
     const sigtermListeners = process.listeners("SIGTERM");
     const listener = sigtermListeners[sigtermListeners.length - 1]; // get the last added listener
-    await listener("SIGTERM");
+    listener("SIGTERM");
+
+    // Wait for the microtask queue to drain (the .then and .finally)
+    await new Promise(process.nextTick);
 
     expect(shutdownMock).toHaveBeenCalled();
     expect(consoleInfoSpy).toHaveBeenCalledWith("OpenTelemetry SDK shut down successfully");
@@ -53,7 +56,10 @@ describe("Tracing", () => {
     // Simulate SIGTERM event
     const sigtermListeners = process.listeners("SIGTERM");
     const listener = sigtermListeners[sigtermListeners.length - 1]; // get the last added listener
-    await listener("SIGTERM");
+    listener("SIGTERM");
+
+    // Wait for the microtask queue to drain (the .then and .finally)
+    await new Promise(process.nextTick);
 
     expect(shutdownMock).toHaveBeenCalled();
     expect(consoleErrorSpy).toHaveBeenCalledWith("Error shutting down OpenTelemetry SDK", error);
