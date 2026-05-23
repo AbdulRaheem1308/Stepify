@@ -256,4 +256,43 @@ describe('UsersService', () => {
       expect(res.id).toBe('s1');
     });
   });
+  describe('deleteSettings', () => {
+    it('should delete user settings', async () => {
+      mockPrisma.userSettings.delete.mockResolvedValueOnce({ id: 's1' });
+      await service.deleteSettings('u1');
+      expect(mockPrisma.userSettings.delete).toHaveBeenCalledWith({ where: { userId: 'u1' } });
+    });
+  });
+
+  describe('computeFitnessLevel', () => {
+    it('should return beginner if no steps', async () => {
+      mockPrisma.step.findMany.mockResolvedValueOnce([]);
+      const res = await service.computeFitnessLevel('u1');
+      expect(res).toBe('beginner');
+    });
+
+    it('should return elite if >= 12000', async () => {
+      mockPrisma.step.findMany.mockResolvedValueOnce([{ stepCount: 15000 }, { stepCount: 10000 }]);
+      const res = await service.computeFitnessLevel('u1');
+      expect(res).toBe('elite');
+    });
+
+    it('should return athlete if >= 8000', async () => {
+      mockPrisma.step.findMany.mockResolvedValueOnce([{ stepCount: 9000 }, { stepCount: 7000 }]);
+      const res = await service.computeFitnessLevel('u1');
+      expect(res).toBe('athlete');
+    });
+
+    it('should return active if >= 5000', async () => {
+      mockPrisma.step.findMany.mockResolvedValueOnce([{ stepCount: 6000 }, { stepCount: 4000 }]);
+      const res = await service.computeFitnessLevel('u1');
+      expect(res).toBe('active');
+    });
+
+    it('should return beginner if < 5000', async () => {
+      mockPrisma.step.findMany.mockResolvedValueOnce([{ stepCount: 3000 }, { stepCount: 4000 }]);
+      const res = await service.computeFitnessLevel('u1');
+      expect(res).toBe('beginner');
+    });
+  });
 });
