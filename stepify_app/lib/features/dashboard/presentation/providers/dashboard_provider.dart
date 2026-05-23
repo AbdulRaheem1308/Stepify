@@ -1,5 +1,6 @@
 import 'dart:async';
 import 'package:flutter/foundation.dart';
+import 'package:flutter/widgets.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:uuid/uuid.dart';
 import 'package:safe_device/safe_device.dart';
@@ -222,7 +223,7 @@ final dashboardProvider = StateNotifierProvider<DashboardNotifier, DashboardStat
   );
 });
 
-class DashboardNotifier extends StateNotifier<DashboardState> {
+class DashboardNotifier extends StateNotifier<DashboardState> with WidgetsBindingObserver {
   final ApiService _apiService;
   final HealthService _healthService;
   final PedometerService _pedometerService = PedometerService();
@@ -239,6 +240,28 @@ class DashboardNotifier extends StateNotifier<DashboardState> {
   DashboardNotifier(this._apiService, this._healthService) : super(DashboardState()) {
     _loadUser();
     _initHardwarePedometer();
+    WidgetsBinding.instance.addObserver(this);
+  }
+
+  @override
+  void dispose() {
+    WidgetsBinding.instance.removeObserver(this);
+    _uiBatchTimer?.cancel();
+    _pedometerService.stopListening();
+    super.dispose();
+  }
+
+  @override
+  void didChangeAppLifecycleState(AppLifecycleState state) {
+    if (state == AppLifecycleState.resumed) {
+      // Forcibly restart the pedometer listener to ensure it wasn't killed by the OS in the background.
+      debugPrint("DashboardNotifier: App resumed. Reviving pedometer listener...");
+      _pedometerService.stopListening();
+      _initHardwarePedometer();
+      
+      // Also fetch the latest data from the backend to sync any background progress
+      fetchTodayData();
+    }
   }
 
   void _initHardwarePedometer() {

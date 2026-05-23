@@ -75,6 +75,41 @@ class PedometerService {
     _isListening = false;
   }
 
+  /// Retrieves a single point-in-time "steps today" count. 
+  /// Useful for background isolate/WorkManager jobs where we don't want to keep a stream open forever.
+  Future<int> getCurrentSteps() async {
+    if (defaultTargetPlatform == TargetPlatform.android) {
+      await _requestActivityPermission();
+    }
+
+    // Await the very first event from the hardware step stream
+    try {
+      final sensorSteps = await _pedometer.stepCountStream().first;
+      
+      final todayStr = DateTime.now().toIso8601String().split('T')[0];
+      final lastSyncDate = StorageService.get<String>(_lastDateKey) ?? '';
+      int baseline = StorageService.get<int>(_baselineKey) ?? -1;
+
+      if (lastSyncDate != todayStr || baseline == -1) {
+        baseline = sensorSteps;
+        await StorageService.put(_baselineKey, baseline);
+        await StorageService.put(_lastDateKey, todayStr);
+      }
+
+      int stepsToday = sensorSteps - baseline;
+      if (stepsToday < 0) {
+        baseline = sensorSteps;
+        await StorageService.put(_baselineKey, baseline);
+        stepsToday = 0;
+      }
+
+      return stepsToday;
+    } catch (e) {
+      debugPrint('PedometerService: Failed to get current steps: $e');
+      return 0; // Fallback to 0 if sensor fails (e.g. permission denied or no hardware sensor)
+    }
+  }
+
   // ── Permission ─────────────────────────────────────────────────────────────
 
   Future<void> _requestActivityPermission() async {

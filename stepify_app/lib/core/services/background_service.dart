@@ -3,6 +3,7 @@ import 'package:shared_preferences/shared_preferences.dart';
 import 'package:flutter/foundation.dart';
 import 'dart:io';
 import '../../services/health_service.dart';
+import '../../services/pedometer_service.dart';
 import '../../services/api_service.dart';
 import '../../services/storage_service.dart';
 import 'package:uuid/uuid.dart';
@@ -34,12 +35,16 @@ void callbackDispatcher() {
 
         
         final healthService = HealthService();
+        final pedometerService = PedometerService();
         final deviceUUID = await StorageService.getOrCreateDeviceUUID();
 
-        // 3. Fetch Steps
-        // We need permissions to be already granted.
-        final steps = await healthService.getTodaySteps();
+        // 3. Fetch Steps (Try both Health API and direct pedometer)
+        final healthSteps = await healthService.getTodaySteps();
+        final pedometerSteps = await pedometerService.getCurrentSteps();
         
+        final steps = healthSteps > pedometerSteps ? healthSteps : pedometerSteps;
+        final source = healthSteps > pedometerSteps ? 'BACKGROUND_WEARABLE' : 'BACKGROUND_SENSOR';
+
         if (steps > 0) {
            // 4. Send to Backend
            try {
@@ -51,7 +56,7 @@ void callbackDispatcher() {
                'deviceIdentifier': deviceUUID,
                'stepCount': steps,
                'date': DateTime.now().toIso8601String().split('T')[0],
-               'source': 'BACKGROUND_WEARABLE',
+               'source': source,
                'nonce': const Uuid().v4(),
                'timestamp': DateTime.now().millisecondsSinceEpoch,
                'integrity': {
