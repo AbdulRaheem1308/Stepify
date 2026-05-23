@@ -15,7 +15,7 @@ import { ApiProperty, ApiPropertyOptional } from "@nestjs/swagger";
 export class CreateUserDto {
   @ApiPropertyOptional({ example: "+1234567890" })
   @IsOptional()
-  @IsPhoneNumber()
+  @IsString()
   phone?: string;
 
   @ApiPropertyOptional({ example: "user@example.com" })
@@ -75,7 +75,7 @@ export class UpdateUserDto {
 
   @ApiPropertyOptional({ example: "+1234567890" })
   @IsOptional()
-  @IsPhoneNumber()
+  @IsString()
   phone?: string;
 
   @ApiPropertyOptional({ example: "user@example.com" })
