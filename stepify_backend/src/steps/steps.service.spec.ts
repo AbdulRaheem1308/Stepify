@@ -130,6 +130,21 @@ describe('StepsService', () => {
       await expect(service.syncSteps(userId, dto as any)).rejects.toThrow(BadRequestException);
     });
 
+    it('should pass if timestamp, nonce, and clean integrity are provided', async () => {
+      mockPrisma.device.findFirst.mockResolvedValueOnce({ id: 'd1' });
+      mockRedisService.setNonce.mockResolvedValueOnce(true);
+      const dto = { 
+        ...baseDto, 
+        timestamp: Date.now(), 
+        nonce: 'valid-nonce',
+        integrity: { isJailBroken: false, isMockLocation: false, isRealDevice: true }
+      };
+      mockPrisma.step.findUnique.mockResolvedValueOnce(null);
+      mockPrisma.step.upsert.mockResolvedValueOnce({ stepCount: 5000, source: 'google_fit' });
+
+      await expect(service.syncSteps(userId, dto as any)).resolves.toBeDefined();
+    });
+
     it('should throw if steps > MAX_STEPS_PER_DAY', async () => {
       mockPrisma.device.findFirst.mockResolvedValueOnce({ id: 'd1' });
       const dto = { ...baseDto, stepCount: 65000 };
