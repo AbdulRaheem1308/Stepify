@@ -34,7 +34,7 @@ describe('AuthController', () => {
 
   describe('sendOtp', () => {
     it('should call authService.sendOtp', async () => {
-      const dto: SendOtpDto = { identifier: 'test@test.com', channel: 'email' };
+      const dto: SendOtpDto = { email: 'test@test.com' };
       const expectedResult = { message: 'OTP sent' };
       (authService.sendOtp as jest.Mock).mockResolvedValueOnce(expectedResult);
 
@@ -47,7 +47,7 @@ describe('AuthController', () => {
 
   describe('verifyOtp', () => {
     it('should call authService.verifyOtp', async () => {
-      const dto: VerifyOtpDto = { identifier: 'test@test.com', otp: '123456' };
+      const dto: VerifyOtpDto = { email: 'test@test.com', otp: '123456' };
       const expectedResult = { accessToken: 'access', refreshToken: 'refresh', user: {} as any };
       (authService.verifyOtp as jest.Mock).mockResolvedValueOnce(expectedResult);
 
@@ -60,7 +60,7 @@ describe('AuthController', () => {
 
   describe('socialLogin', () => {
     it('should call authService.loginWithSocial', async () => {
-      const dto: SocialLoginDto = { idToken: 'token', provider: 'google' };
+      const dto: SocialLoginDto = { idToken: 'token' };
       const expectedResult = { accessToken: 'access', refreshToken: 'refresh', user: {} as any };
       (authService.loginWithSocial as jest.Mock).mockResolvedValueOnce(expectedResult);
 

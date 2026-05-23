@@ -2,6 +2,7 @@ import { Test, TestingModule } from '@nestjs/testing';
 import { ActivitiesController } from './activities.controller';
 import { ActivitiesService } from './activities.service';
 import { LogActivityDto } from './dto/log-activity.dto';
+import { ActivityType } from '../enums/activity-type.enum';
 
 describe('ActivitiesController', () => {
   let controller: ActivitiesController;
@@ -33,11 +34,11 @@ describe('ActivitiesController', () => {
     it('should call logActivity', async () => {
       const user = { id: 'u1' };
       const dto: LogActivityDto = {
-        type: 'RUNNING',
+        type: ActivityType.RUNNING,
         durationMinutes: 30,
         distanceKm: 5,
+        caloriesBurned: 300,
         startTime: new Date().toISOString(),
-        endTime: new Date().toISOString(),
       };
       
       await controller.logActivity(user, dto);
