@@ -37,27 +37,6 @@ jobs:
         flutter pub get
         flutter precache --ios
 
-    - name: Pre-populate podhelper.rb from Flutter SDK
-      run: |
-        mkdir -p ${{ env.PROJECT_DIR }}/ios/Flutter
-        cp ${{ env.FLUTTER_ROOT }}/packages/flutter_tools/bin/podhelper.rb ${{ env.PROJECT_DIR }}/ios/Flutter/
-
-    - name: Generate Flutter iOS configuration files
-      working-directory: ${{ env.PROJECT_DIR }}
-      run: |
-        flutter build ios --config-only --no-codesign || {
-          echo "⚠️ flutter build ios failed! Running verbose pod install to print detailed errors..."
-          cd ios
-          pod install --verbose
-          exit 1
-        }
-
-    - name: Install CocoaPods
-      working-directory: ${{ env.PROJECT_DIR }}/ios
-      run: |
-        pod repo update
-        pod install
-
     - name: Build iOS IPA (Unsigned)
       working-directory: ${{ env.PROJECT_DIR }}
       run: |
