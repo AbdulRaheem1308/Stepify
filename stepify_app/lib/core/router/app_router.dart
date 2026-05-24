@@ -101,7 +101,10 @@ final appRouterProvider = Provider<GoRouter>((ref) {
       
       // Main App Shell with Bottom Navigation
       ShellRoute(
-        builder: (context, state, child) => MainShell(child: child),
+        builder: (context, state, child) => MainShell(
+          location: state.uri.path,
+          child: child,
+        ),
         routes: [
           GoRoute(
             path: '/home',

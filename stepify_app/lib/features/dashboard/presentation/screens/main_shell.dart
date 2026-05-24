@@ -11,8 +11,13 @@ import '../../../../services/ad_service.dart';
 /// Main Shell with Bottom Navigation
 class MainShell extends ConsumerStatefulWidget {
   final Widget child;
+  final String location;
 
-  const MainShell({super.key, required this.child});
+  const MainShell({
+    super.key,
+    required this.child,
+    required this.location,
+  });
 
   @override
   ConsumerState<MainShell> createState() => _MainShellState();
@@ -84,7 +89,7 @@ class _MainShellState extends ConsumerState<MainShell> {
   Widget build(BuildContext context) {
     final l10n = AppLocalizations.of(context)!;
     final navItems = _getNavItems(l10n);
-    final location = GoRouterState.of(context).uri.path;
+    final location = widget.location;
     final selectedIndex = _getSelectedIndex(navItems, location);
     final isHome = location == '/home';
 
