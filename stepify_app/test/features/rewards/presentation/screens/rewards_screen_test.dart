@@ -2,6 +2,8 @@ import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:stepify_app/features/rewards/presentation/screens/rewards_screen.dart';
+import 'package:stepify_app/l10n/app_localizations.dart';
+import 'package:flutter_localizations/flutter_localizations.dart';
 
 // Provide a fake mock scope so real APIs aren't called by providers if they load data on init
 void main() {
@@ -9,6 +11,13 @@ void main() {
     await tester.pumpWidget(
       const ProviderScope(
         child: MaterialApp(
+          localizationsDelegates: const [
+            AppLocalizations.delegate,
+            GlobalMaterialLocalizations.delegate,
+            GlobalWidgetsLocalizations.delegate,
+            GlobalCupertinoLocalizations.delegate,
+          ],
+          supportedLocales: const [Locale('en', '')],
           home: RewardsScreen(),
         ),
       ),
@@ -29,6 +38,6 @@ void main() {
       find.text('The Rewards Catalog will be unlocked\nonce we are fully live!'),
       findsOneWidget,
     );
-    expect(find.byIcon(Icons.card_giftcard), findsOneWidget);
+    expect(find.byIcon(Icons.card_giftcard), findsNWidgets(2));
   });
 }
