@@ -1,3 +1,4 @@
+import 'package:flutter/foundation.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:stepify_app/services/health_service.dart';
@@ -5,6 +6,14 @@ import 'package:health/health.dart';
 
 void main() {
   TestWidgetsFlutterBinding.ensureInitialized();
+  
+  setUpAll(() {
+    debugDefaultTargetPlatformOverride = TargetPlatform.android;
+  });
+
+  tearDownAll(() {
+    debugDefaultTargetPlatformOverride = null;
+  });
 
   group('HealthService', () {
     late HealthService healthService;
@@ -21,6 +30,42 @@ void main() {
           return 5000;
         } else if (methodCall.method == 'getHealthDataFromTypes') {
           return [];
+        } else if (methodCall.method == 'getHealthConnectSdkStatus') {
+          return 3; // sdkAvailable
+        } else if (methodCall.method == 'hasPermissions') {
+          return true;
+        }
+        return null;
+      });
+
+      // Mock device_info_plus channel
+      TestDefaultBinaryMessengerBinding.instance.defaultBinaryMessenger
+          .setMockMethodCallHandler(const MethodChannel('dev.fluttercommunity.plus/device_info'), (MethodCall methodCall) async {
+        if (methodCall.method == 'getDeviceInfo') {
+          return {
+            'id': 'test_device_id', // For Android
+            // For iOS
+            'name': 'Test Device',
+            'systemName': 'iOS',
+            'systemVersion': '15.0',
+            'model': 'iPhone',
+            'modelName': 'iPhone 13',
+            'localizedModel': 'iPhone',
+            'identifierForVendor': 'test_vendor_id',
+            'isPhysicalDevice': true,
+            'freeDiskSize': 10000000,
+            'totalDiskSize': 20000000,
+            'physicalRamSize': 4000000,
+            'availableRamSize': 2000000,
+            'isiOSAppOnMac': false,
+            'utsname': {
+              'sysname': 'Darwin',
+              'nodename': 'test',
+              'release': '20.0.0',
+              'version': '1',
+              'machine': 'iPhone10,1'
+            }
+          };
         }
         return null;
       });
@@ -29,7 +74,14 @@ void main() {
       TestDefaultBinaryMessengerBinding.instance.defaultBinaryMessenger
           .setMockMethodCallHandler(const MethodChannel('flutter.baseflow.com/permissions/methods'), (MethodCall methodCall) async {
         if (methodCall.method == 'requestPermissions') {
-          return {29: 1}; // 29 is activityRecognition, 1 is granted
+          final List<dynamic> args = methodCall.arguments as List<dynamic>;
+          final Map<int, int> result = {};
+          for (var item in args) {
+            result[item as int] = 1; // 1 means granted
+          }
+          return result;
+        } else if (methodCall.method == 'checkPermissionStatus') {
+          return 1; // granted
         }
         return null;
       });
@@ -40,6 +92,8 @@ void main() {
           .setMockMethodCallHandler(const MethodChannel('flutter_health'), null);
       TestDefaultBinaryMessengerBinding.instance.defaultBinaryMessenger
           .setMockMethodCallHandler(const MethodChannel('flutter.baseflow.com/permissions/methods'), null);
+      TestDefaultBinaryMessengerBinding.instance.defaultBinaryMessenger
+          .setMockMethodCallHandler(const MethodChannel('dev.fluttercommunity.plus/device_info'), null);
     });
 
     test('requestAuthorization succeeds', () async {

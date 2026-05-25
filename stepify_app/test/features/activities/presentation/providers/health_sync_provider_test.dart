@@ -50,16 +50,7 @@ class MockActivityNotifier extends StateNotifier<ActivityState> implements Activ
   }
 
   @override
-  void addActivity(Activity activity) {}
-
-  @override
   Future<void> fetchActivities() async {}
-
-  @override
-  void removeActivity(String id) {}
-
-  @override
-  void updateActivity(Activity activity) {}
 }
 
 void main() {

@@ -12,6 +12,14 @@ class HealthService {
   HealthService._internal();
 
   final Health _health = Health();
+  bool _isConfigured = false;
+
+  Future<void> _ensureConfigured() async {
+    if (!_isConfigured) {
+      await _health.configure();
+      _isConfigured = true;
+    }
+  }
 
   /// Data types we request read access for.
   static const List<HealthDataType> _types = [
@@ -36,6 +44,7 @@ class HealthService {
   /// On Android, also requests the `activityRecognition` permission first.
   /// Returns `true` if authorization was granted.
   Future<bool> requestAuthorization() async {
+    await _ensureConfigured();
     if (defaultTargetPlatform == TargetPlatform.android) {
       PermissionStatus status;
       try {
@@ -68,6 +77,7 @@ class HealthService {
 
   /// Returns the total step count for today (midnight → now).
   Future<int> getTodaySteps() async {
+    await _ensureConfigured();
     final now = DateTime.now();
     final midnight = DateTime(now.year, now.month, now.day);
     try {
@@ -82,6 +92,7 @@ class HealthService {
   ///
   /// Uses [Future.wait] to parallelise day queries for better performance.
   Future<Map<DateTime, int>> getStepHistory(int days) async {
+    await _ensureConfigured();
     assert(days > 0, 'days must be positive');
     final now = DateTime.now();
 
@@ -112,6 +123,7 @@ class HealthService {
 
   /// Fetches workouts from the past [days].
   Future<List<HealthDataPoint>> getRecentWorkouts(int days) async {
+    await _ensureConfigured();
     assert(days > 0, 'days must be positive');
     final now = DateTime.now();
     final startTime = now.subtract(Duration(days: days));
