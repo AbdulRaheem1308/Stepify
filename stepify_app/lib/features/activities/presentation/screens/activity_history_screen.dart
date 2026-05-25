@@ -50,17 +50,21 @@ class _ActivityHistoryScreenState extends ConsumerState<ActivityHistoryScreen> {
         elevation: 0,
         backgroundColor: Colors.transparent,
       ),
-      body: activities.isEmpty
-          ? _buildEmptyState(context, l10n)
-          : ListView.separated(
-              padding: const EdgeInsets.fromLTRB(16, 8, 16, 32),
-              itemCount: activities.length,
-              separatorBuilder: (_, __) => const SizedBox(height: 12),
-              itemBuilder: (context, index) {
-                final activity = activities[index];
-                return _buildActivityCard(context, activity, index, l10n);
-              },
-            ),
+      body: state.isLoading && activities.isEmpty
+          ? const Center(child: CircularProgressIndicator())
+          : state.error != null && activities.isEmpty
+              ? Center(child: Text(state.error!, style: const TextStyle(color: Colors.red)))
+              : activities.isEmpty
+                  ? _buildEmptyState(context, l10n)
+                  : ListView.separated(
+                      padding: const EdgeInsets.fromLTRB(16, 8, 16, 32),
+                      itemCount: activities.length,
+                      separatorBuilder: (_, __) => const SizedBox(height: 12),
+                      itemBuilder: (context, index) {
+                        final activity = activities[index];
+                        return _buildActivityCard(context, activity, index, l10n);
+                      },
+                    ),
     );
   }
 

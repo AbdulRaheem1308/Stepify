@@ -5,13 +5,23 @@ import '../../domain/models/activity_model.dart';
 class ActivityState {
   final List<Activity> recentActivities;
   final bool isLoading;
+  final String? error;
 
-  const ActivityState({this.recentActivities = const [], this.isLoading = false});
+  const ActivityState({
+    this.recentActivities = const [], 
+    this.isLoading = false,
+    this.error,
+  });
   
-  ActivityState copyWith({List<Activity>? recentActivities, bool? isLoading}) {
+  ActivityState copyWith({
+    List<Activity>? recentActivities, 
+    bool? isLoading,
+    String? error,
+  }) {
     return ActivityState(
       recentActivities: recentActivities ?? this.recentActivities,
       isLoading: isLoading ?? this.isLoading,
+      error: error != null ? (error.isEmpty ? null : error) : this.error,
     );
   }
 }
