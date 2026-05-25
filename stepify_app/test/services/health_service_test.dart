@@ -58,6 +58,7 @@ void main() {
             'physicalRamSize': 4000000,
             'availableRamSize': 2000000,
             'isiOSAppOnMac': false,
+            'isiOSAppOnVision': false,
             'utsname': {
               'sysname': 'Darwin',
               'nodename': 'test',
