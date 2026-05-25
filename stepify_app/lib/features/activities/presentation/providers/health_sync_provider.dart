@@ -85,13 +85,13 @@ class HealthSyncNotifier extends StateNotifier<bool> {
     switch (type) {
       case HealthWorkoutActivityType.RUNNING:
         return ActivityType.running;
-      case HealthWorkoutActivityType.CYCLING:
       case HealthWorkoutActivityType.BIKING:
         return ActivityType.cycling;
       case HealthWorkoutActivityType.WALKING:
         return ActivityType.walking;
       case HealthWorkoutActivityType.SWIMMING:
-      case HealthWorkoutActivityType.POOL_SWIMMING:
+      case HealthWorkoutActivityType.SWIMMING_POOL:
+      case HealthWorkoutActivityType.SWIMMING_OPEN_WATER:
         return ActivityType.swimming;
       case HealthWorkoutActivityType.YOGA:
         return ActivityType.yoga;

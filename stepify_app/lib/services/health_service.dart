@@ -118,9 +118,9 @@ class HealthService {
 
     try {
       final workouts = await _health.getHealthDataFromTypes(
-        startTime,
-        now,
-        [HealthDataType.WORKOUT],
+        startTime: startTime,
+        endTime: now,
+        types: [HealthDataType.WORKOUT],
       );
       // Sort by start time descending (newest first)
       workouts.sort((a, b) => b.dateFrom.compareTo(a.dateFrom));
