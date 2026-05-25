@@ -335,4 +335,5 @@ class AppRoutes {
   static const String companyJoin = '/company/join';
   static const String companyDashboard = '/company/dashboard';
   static const String sensorDiagnostics = '/sensor-diagnostics';
+  static const String chat = '/messages/:id';
 }
