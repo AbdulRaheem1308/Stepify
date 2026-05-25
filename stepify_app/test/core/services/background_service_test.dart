@@ -67,8 +67,8 @@ void main() {
       expect(status, isNotNull);
     });
 
-    test('callbackDispatcher calls Workmanager', () {
-      expect(() => callbackDispatcher(), throwsA(anything));
+    test('callbackDispatcher executes cleanly', () {
+      expect(() => callbackDispatcher(), returnsNormally);
     });
   });
 }
