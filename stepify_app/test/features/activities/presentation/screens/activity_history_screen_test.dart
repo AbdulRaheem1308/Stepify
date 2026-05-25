@@ -8,11 +8,11 @@ import 'package:stepify_app/l10n/app_localizations.dart';
 import 'package:flutter_localizations/flutter_localizations.dart';
 
 void main() {
-  Widget createWidgetUnderTest(List<Activity> mockActivities) {
+  Widget createWidgetUnderTest(List<Activity> mockActivities, {bool isLoading = false, String? error}) {
     return ProviderScope(
       overrides: [
         activityProvider.overrideWith(
-          (ref) => _MockActivityNotifier(mockActivities),
+          (ref) => _MockActivityNotifier(mockActivities, isLoading: isLoading, error: error),
         ),
       ],
       child: const MaterialApp(
@@ -80,12 +80,21 @@ void main() {
       expect(find.byIcon(Icons.directions_run_rounded), findsOneWidget);
       expect(find.byIcon(Icons.directions_walk_rounded), findsOneWidget);
     });
+    testWidgets('shows loading state', (tester) async {
+      await tester.pumpWidget(createWidgetUnderTest([], isLoading: true));
+      expect(find.byType(CircularProgressIndicator), findsOneWidget);
+    });
+
+    testWidgets('shows error state', (tester) async {
+      await tester.pumpWidget(createWidgetUnderTest([], error: 'Network error'));
+      expect(find.text('Network error'), findsOneWidget);
+    });
   });
 }
 
 class _MockActivityNotifier extends StateNotifier<ActivityState> implements ActivityNotifier {
-  _MockActivityNotifier(List<Activity> mockActivities) 
-      : super(ActivityState(recentActivities: mockActivities));
+  _MockActivityNotifier(List<Activity> mockActivities, {bool isLoading = false, String? error}) 
+      : super(ActivityState(recentActivities: mockActivities, isLoading: isLoading, error: error));
 
   @override
   Future<void> fetchActivities() async {}

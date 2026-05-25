@@ -34,10 +34,12 @@ void main() {
     });
 
     test('getCurrentSteps handles error safely', () async {
+      debugDefaultTargetPlatformOverride = TargetPlatform.android;
       final service = PedometerService();
       // Without proper mocking of pedometer channel, this should hit catch and return 0
       final steps = await service.getCurrentSteps();
       expect(steps, 0);
+      debugDefaultTargetPlatformOverride = null;
     });
     
     test('stopListening resets state safely', () {

@@ -130,7 +130,7 @@ void main() {
           await consentServiceProvider.requestConsentInfoUpdate();
           final canInitAds = await consentServiceProvider.canInitializeAds();
           if (canInitAds) {
-            await remoteConfigServiceProvider.initialize();
+            await container.read(remoteConfigServiceProvider).initialize();
             container.read(adServiceProvider).initialize();
           }
         }

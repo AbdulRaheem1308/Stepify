@@ -1,4 +1,5 @@
 import 'package:flutter_test/flutter_test.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:mocktail/mocktail.dart';
 import 'package:dio/dio.dart';
 import 'package:stepify_app/services/api_service.dart';
@@ -143,5 +144,15 @@ void main() {
     await notifier.syncDevice('d1');
     
     expect(notifier.state.error, isNull);
+  });
+
+  test('Providers initialize correctly', () {
+    final container = ProviderContainer(
+      overrides: [
+        apiServiceProvider.overrideWithValue(mockApi),
+      ],
+    );
+    expect(container.read(healthServiceProvider), isA<HealthService>());
+    expect(container.read(deviceProvider), isA<DeviceState>());
   });
 }

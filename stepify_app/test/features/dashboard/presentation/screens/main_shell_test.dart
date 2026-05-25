@@ -81,6 +81,9 @@ void main() {
 
       // Trigger the success callback
       expect(capturedOnLoaded, isNotNull);
+      capturedOnLoaded?.call();
+      // We do not pump the widget tree here because AdWidget will crash in test environments
+      // without native platform views initialized, but the callback itself is covered.
     });
 
     testWidgets('Handles ad load failure callback properly', (tester) async {

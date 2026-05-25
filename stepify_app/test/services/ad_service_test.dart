@@ -1,4 +1,5 @@
 import 'package:flutter_test/flutter_test.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:mocktail/mocktail.dart';
 import 'package:google_mobile_ads/google_mobile_ads.dart';
 import 'package:stepify_app/services/ad_service.dart';
@@ -47,6 +48,16 @@ void main() {
       // We can't trigger onAdFailedToLoad easily with a mocked LoadAdError 
       // without it throwing or being complex, but we can check it exists.
       expect(listener.onAdFailedToLoad, isNotNull);
+    });
+
+    test('adServiceProvider initializes correctly', () {
+      final container = ProviderContainer(
+        overrides: [
+          remoteConfigServiceProvider.overrideWithValue(mockConfigService),
+        ],
+      );
+      final service = container.read(adServiceProvider);
+      expect(service, isA<AdService>());
     });
   });
 }

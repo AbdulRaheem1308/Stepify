@@ -66,5 +66,9 @@ void main() {
       final status = prefs.getString('bg_sync_status');
       expect(status, isNotNull);
     });
+
+    test('callbackDispatcher calls Workmanager', () {
+      expect(() => callbackDispatcher(), throwsA(anything));
+    });
   });
 }

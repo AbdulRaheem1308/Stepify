@@ -304,7 +304,7 @@ class AdService {
 
 /// Riverpod provider for [AdService].
 final adServiceProvider = Provider<AdService>((ref) {
-  final service = AdService(remoteConfigServiceProvider);
+  final service = AdService(ref.watch(remoteConfigServiceProvider));
   ref.onDispose(service.dispose);
   return service;
 });

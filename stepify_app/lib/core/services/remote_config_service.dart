@@ -1,5 +1,6 @@
 import 'package:firebase_remote_config/firebase_remote_config.dart';
 import 'package:flutter/foundation.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 class RemoteConfigService {
   FirebaseRemoteConfig? _remoteConfig;
@@ -45,4 +46,4 @@ class RemoteConfigService {
   }
 }
 
-final remoteConfigServiceProvider = RemoteConfigService();
+final remoteConfigServiceProvider = Provider<RemoteConfigService>((ref) => RemoteConfigService());
