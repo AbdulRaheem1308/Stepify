@@ -91,7 +91,7 @@ class _MockActivityNotifier extends StateNotifier<ActivityState> implements Acti
   Future<void> fetchActivities() async {}
 
   @override
-  Future<String?> logActivity({required ActivityType type, required Duration duration, double? distanceKm}) async {
+  Future<String?> logActivity({required ActivityType type, required Duration duration, double? distanceKm, String? source}) async {
     return null;
   }
 }
