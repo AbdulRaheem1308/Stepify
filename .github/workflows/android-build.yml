@@ -93,3 +93,21 @@ jobs:
       with:
         name: stepify-aab
         path: ${{ env.PROJECT_DIR }}/build/app/outputs/bundle/release/*.aab
+
+    - name: Build Debug APK for Test Lab
+      working-directory: ${{ env.PROJECT_DIR }}
+      run: flutter build apk --debug
+
+    - name: Build Android Test APK
+      working-directory: ${{ env.PROJECT_DIR }}/android
+      run: |
+        chmod +x gradlew
+        ./gradlew app:assembleAndroidTest -Ptarget=integration_test/app_test.dart
+
+    - name: Upload Firebase Test Lab APKs
+      uses: actions/upload-artifact@v4
+      with:
+        name: stepify-firebase-test-apks
+        path: |
+          ${{ env.PROJECT_DIR }}/build/app/outputs/flutter-apk/app-debug.apk
+          ${{ env.PROJECT_DIR }}/build/app/outputs/apk/androidTest/debug/app-debug-androidTest.apk
