@@ -34,6 +34,55 @@ void main() {
       },
     );
 
+    // Mock device_info_plus channel
+    TestDefaultBinaryMessengerBinding.instance.defaultBinaryMessenger
+        .setMockMethodCallHandler(const MethodChannel('dev.fluttercommunity.plus/device_info'), (MethodCall methodCall) async {
+      if (methodCall.method == 'getDeviceInfo') {
+        return {
+          'id': 'test_device_id', // For Android
+          // For iOS
+          'name': 'Test Device',
+          'systemName': 'iOS',
+          'systemVersion': '15.0',
+          'model': 'iPhone',
+          'modelName': 'iPhone 13',
+          'localizedModel': 'iPhone',
+          'identifierForVendor': 'test_vendor_id',
+          'isPhysicalDevice': true,
+          'freeDiskSize': 10000000,
+          'totalDiskSize': 20000000,
+          'physicalRamSize': 4000000,
+          'availableRamSize': 2000000,
+          'isiOSAppOnMac': false,
+          'isiOSAppOnVision': false,
+          'utsname': {
+            'sysname': 'Darwin',
+            'nodename': 'test',
+            'release': '20.0.0',
+            'version': '1',
+            'machine': 'iPhone10,1'
+          }
+        };
+      }
+      return null;
+    });
+
+    // Mock permission_handler channel
+    TestDefaultBinaryMessengerBinding.instance.defaultBinaryMessenger
+        .setMockMethodCallHandler(const MethodChannel('flutter.baseflow.com/permissions/methods'), (MethodCall methodCall) async {
+      if (methodCall.method == 'requestPermissions') {
+        final List<dynamic> args = methodCall.arguments as List<dynamic>;
+        final Map<int, int> result = {};
+        for (var item in args) {
+          result[item as int] = 1; // 1 means granted
+        }
+        return result;
+      } else if (methodCall.method == 'checkPermissionStatus') {
+        return 1; // granted
+      }
+      return null;
+    });
+
     await Hive.initFlutter('.test_bg');
     await StorageService.init();
   });
