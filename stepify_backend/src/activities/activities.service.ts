@@ -62,7 +62,8 @@ export class ActivitiesService {
       );
     }
 
-    const multiplier = this.getPointsMultiplier(dto.type);
+    const isManual = !dto.source || dto.source === "manual";
+    const multiplier = this.getPointsMultiplier(dto.type) * (isManual ? 0.5 : 1.0);
     const rawPoints = Math.floor(dto.durationMinutes * multiplier);
     const pointsEarned = Math.min(
       rawPoints,

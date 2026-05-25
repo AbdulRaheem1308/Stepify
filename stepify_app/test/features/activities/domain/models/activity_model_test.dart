@@ -57,11 +57,11 @@ void main() {
     });
 
     test('getPointsMultiplier returns correct values', () {
-      expect(Activity.getPointsMultiplier(ActivityType.walking), 1.0);
-      expect(Activity.getPointsMultiplier(ActivityType.yoga), 1.5);
-      expect(Activity.getPointsMultiplier(ActivityType.cycling), 2.0);
+      expect(Activity.getPointsMultiplier(ActivityType.walking), 1.5);
+      expect(Activity.getPointsMultiplier(ActivityType.yoga), 1.0);
+      expect(Activity.getPointsMultiplier(ActivityType.cycling), 2.5);
       expect(Activity.getPointsMultiplier(ActivityType.gym), 2.5);
-      expect(Activity.getPointsMultiplier(ActivityType.hiking), 2.5);
+      expect(Activity.getPointsMultiplier(ActivityType.hiking), 2.0);
       expect(Activity.getPointsMultiplier(ActivityType.swimming), 3.0);
       expect(Activity.getPointsMultiplier(ActivityType.running), 3.0);
     });

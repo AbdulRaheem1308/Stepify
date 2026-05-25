@@ -28,7 +28,7 @@ class _ActivityLoggingScreenState extends ConsumerState<ActivityLoggingScreen> {
   @override
   Widget build(BuildContext context) {
     final state = ref.watch(activityProvider);
-    final double multiplier = Activity.getPointsMultiplier(_selectedType);
+    final double multiplier = Activity.getPointsMultiplier(_selectedType) * 0.5;
     final l10n = AppLocalizations.of(context)!;
 
     return Scaffold(

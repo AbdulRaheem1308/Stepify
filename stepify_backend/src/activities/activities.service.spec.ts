@@ -74,27 +74,78 @@ describe('ActivitiesService', () => {
       ).rejects.toThrow(ConflictException);
     });
 
-    it('should successfully log activity and award points', async () => {
+    it('should successfully log a verified activity with 100% points', async () => {
       mockPrismaService.activity.findFirst.mockResolvedValueOnce(null);
+      const activityCreateSpy = jest.fn().mockResolvedValue({ id: 'act_verified' });
+      const transactionCreateSpy = jest.fn().mockResolvedValue({});
+      const walletUpsertSpy = jest.fn().mockResolvedValue({});
       mockPrismaService.$transaction.mockImplementationOnce(async (cb) => {
         const tx = {
-          activity: { create: jest.fn().mockResolvedValue({ id: 'act1' }) },
-          transaction: { create: jest.fn().mockResolvedValue({}) },
-          wallet: { upsert: jest.fn().mockResolvedValue({}) },
+          activity: { create: activityCreateSpy },
+          transaction: { create: transactionCreateSpy },
+          wallet: { upsert: walletUpsertSpy },
         };
         return cb(tx);
       });
 
       const result = await service.logActivity('user1', {
-        type: 'RUNNING' as any,
+        type: 'running' as any,
         durationMinutes: 30,
         distanceKm: 5,
         startTime: new Date().toISOString(),
         caloriesBurned: 100,
+        source: 'google_fit',
       });
 
-      expect(result).toEqual({ id: 'act1' });
-      expect(mockPrismaService.$transaction).toHaveBeenCalled();
+      expect(result).toEqual({ id: 'act_verified' });
+      expect(activityCreateSpy).toHaveBeenCalledWith(expect.objectContaining({
+        data: expect.objectContaining({
+          pointsEarned: 90,
+          source: 'google_fit',
+        }),
+      }));
+      expect(transactionCreateSpy).toHaveBeenCalledWith(expect.objectContaining({
+        data: expect.objectContaining({
+          points: 90,
+        }),
+      }));
+    });
+
+    it('should successfully log a manual activity with 50% points', async () => {
+      mockPrismaService.activity.findFirst.mockResolvedValueOnce(null);
+      const activityCreateSpy = jest.fn().mockResolvedValue({ id: 'act_manual' });
+      const transactionCreateSpy = jest.fn().mockResolvedValue({});
+      const walletUpsertSpy = jest.fn().mockResolvedValue({});
+      mockPrismaService.$transaction.mockImplementationOnce(async (cb) => {
+        const tx = {
+          activity: { create: activityCreateSpy },
+          transaction: { create: transactionCreateSpy },
+          wallet: { upsert: walletUpsertSpy },
+        };
+        return cb(tx);
+      });
+
+      const result = await service.logActivity('user1', {
+        type: 'running' as any,
+        durationMinutes: 30,
+        distanceKm: 5,
+        startTime: new Date().toISOString(),
+        caloriesBurned: 100,
+        source: 'manual',
+      });
+
+      expect(result).toEqual({ id: 'act_manual' });
+      expect(activityCreateSpy).toHaveBeenCalledWith(expect.objectContaining({
+        data: expect.objectContaining({
+          pointsEarned: 45,
+          source: 'manual',
+        }),
+      }));
+      expect(transactionCreateSpy).toHaveBeenCalledWith(expect.objectContaining({
+        data: expect.objectContaining({
+          points: 45,
+        }),
+      }));
     });
 
     it('should handle activity with no points', async () => {

@@ -89,17 +89,17 @@ class Activity {
   static double getPointsMultiplier(ActivityType type) {
     switch (type) {
       case ActivityType.walking:
-        return 1.0;
+        return 1.5;
       case ActivityType.yoga:
-        return 1.5; // Harder
+        return 1.0;
       case ActivityType.cycling:
-        return 2.0;
+        return 2.5;
       case ActivityType.gym:
         return 2.5;
       case ActivityType.hiking:
-        return 2.5;
+        return 2.0;
       case ActivityType.swimming:
-        return 3.0; // High effort
+        return 3.0;
       case ActivityType.running:
         return 3.0;
     }

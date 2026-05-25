@@ -78,7 +78,8 @@ class ActivityNotifier extends StateNotifier<ActivityState> {
 
     state = state.copyWith(isLoading: true);
 
-    final multiplier = Activity.getPointsMultiplier(type);
+    final isManual = source == null || source == 'manual';
+    final multiplier = Activity.getPointsMultiplier(type) * (isManual ? 0.5 : 1.0);
     final rawPoints = (duration.inMinutes * multiplier).toInt();
     final points = rawPoints.clamp(0, _maxPointsPerSession);
     final calories = _calculateCalories(type, duration.inMinutes);
