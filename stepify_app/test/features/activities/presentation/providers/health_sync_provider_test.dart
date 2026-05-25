@@ -33,8 +33,8 @@ class MockHealthService implements HealthService {
   Future<int> getTodaySteps() async => 0;
 }
 
-class MockActivityNotifier extends StateNotifier<AsyncValue<List<Activity>>> implements ActivityNotifier {
-  MockActivityNotifier() : super(const AsyncValue.data([]));
+class MockActivityNotifier extends StateNotifier<ActivityState> implements ActivityNotifier {
+  MockActivityNotifier() : super(const ActivityState(recentActivities: []));
 
   int logActivityCalledCount = 0;
 
@@ -108,7 +108,7 @@ void main() {
         HealthWorkoutActivityType.HIKING,
       ];
       
-      final workouts = healthTypes.map((type) => HealthDataPoint(
+      final workouts = healthTypes.map<HealthDataPoint>((type) => HealthDataPoint(
         value: WorkoutHealthValue(
           workoutActivityType: type,
           totalEnergyBurned: 100,
@@ -120,7 +120,8 @@ void main() {
         unit: HealthDataUnit.NO_UNIT,
         dateFrom: DateTime.now().subtract(const Duration(hours: 1)),
         dateTo: DateTime.now(),
-        sourcePlatform: PlatformType.IOS,
+        uuid: 'dummy-uuid',
+        sourcePlatform: HealthPlatformType.appleHealth,
         sourceDeviceId: 'device1',
         sourceId: 'source1',
         sourceName: 'Apple Health',
@@ -147,7 +148,8 @@ void main() {
           unit: HealthDataUnit.NO_UNIT,
           dateFrom: DateTime.now().subtract(const Duration(hours: 1)),
           dateTo: DateTime.now(),
-          sourcePlatform: PlatformType.IOS,
+          uuid: 'dummy-uuid',
+          sourcePlatform: HealthPlatformType.appleHealth,
           sourceDeviceId: 'device1',
           sourceId: 'source1',
           sourceName: 'Apple Health',
