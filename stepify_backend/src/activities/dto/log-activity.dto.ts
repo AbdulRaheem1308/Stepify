@@ -5,10 +5,11 @@ import {
   IsOptional,
   IsString,
   IsISO8601,
+  IsIn,
 } from "class-validator";
 import { ApiProperty, ApiPropertyOptional } from "@nestjs/swagger";
 import { ActivityType } from "../enums/activity-type.enum";
-import { ACTIVITIES_CONSTANTS } from "../constants/activities.constants";
+import { ACTIVITIES_CONSTANTS, VALID_ACTIVITY_SOURCES } from "../constants/activities.constants";
 
 export class LogActivityDto {
   @ApiProperty({
@@ -62,5 +63,6 @@ export class LogActivityDto {
   })
   @IsOptional()
   @IsString()
+  @IsIn(VALID_ACTIVITY_SOURCES)
   source?: string;
 }

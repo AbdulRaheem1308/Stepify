@@ -18,10 +18,12 @@ class HealthService {
     HealthDataType.STEPS,
     HealthDataType.ACTIVE_ENERGY_BURNED,
     HealthDataType.DISTANCE_DELTA,
+    HealthDataType.WORKOUT,
   ];
 
   /// Matching read-only permissions for each type above.
   static const List<HealthDataAccess> _permissions = [
+    HealthDataAccess.READ,
     HealthDataAccess.READ,
     HealthDataAccess.READ,
     HealthDataAccess.READ,
@@ -104,5 +106,28 @@ class HealthService {
 
     final entries = await Future.wait(futures);
     return Map.fromEntries(entries);
+  }
+
+  // ── Workout Queries ───────────────────────────────────────────────────────
+
+  /// Fetches workouts from the past [days].
+  Future<List<HealthDataPoint>> getRecentWorkouts(int days) async {
+    assert(days > 0, 'days must be positive');
+    final now = DateTime.now();
+    final startTime = now.subtract(Duration(days: days));
+
+    try {
+      final workouts = await _health.getHealthDataFromTypes(
+        startTime,
+        now,
+        [HealthDataType.WORKOUT],
+      );
+      // Sort by start time descending (newest first)
+      workouts.sort((a, b) => b.dateFrom.compareTo(a.dateFrom));
+      return workouts;
+    } catch (e) {
+      debugPrint('HealthService: Error fetching workouts: $e');
+      return [];
+    }
   }
 }

@@ -6,12 +6,26 @@ import 'package:stepify_app/core/theme/app_theme.dart';
 import 'package:stepify_app/l10n/app_localizations.dart';
 import '../../domain/models/activity_model.dart';
 import '../providers/activity_provider.dart';
+import '../providers/health_sync_provider.dart';
 
-class ActivityHistoryScreen extends ConsumerWidget {
+class ActivityHistoryScreen extends ConsumerStatefulWidget {
   const ActivityHistoryScreen({super.key});
 
   @override
-  Widget build(BuildContext context, WidgetRef ref) {
+  ConsumerState<ActivityHistoryScreen> createState() => _ActivityHistoryScreenState();
+}
+
+class _ActivityHistoryScreenState extends ConsumerState<ActivityHistoryScreen> {
+  @override
+  void initState() {
+    super.initState();
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      ref.read(healthSyncProvider.notifier).syncRecentWorkouts();
+    });
+  }
+
+  @override
+  Widget build(BuildContext context) {
     final state = ref.watch(activityProvider);
     final activities = state.recentActivities;
     final l10n = AppLocalizations.of(context)!;
@@ -136,12 +150,23 @@ class ActivityHistoryScreen extends ConsumerWidget {
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  Text(
-                    activityName,
-                    style: const TextStyle(
-                      fontWeight: FontWeight.bold,
-                      fontSize: 16,
-                    ),
+                  Row(
+                    children: [
+                      Text(
+                        activityName,
+                        style: const TextStyle(
+                          fontWeight: FontWeight.bold,
+                          fontSize: 16,
+                        ),
+                      ),
+                      if (activity.isVerified) ...[
+                        const SizedBox(width: 6),
+                        Tooltip(
+                          message: 'Verified by Apple Health / Google Fit',
+                          child: Icon(Icons.verified, size: 16, color: AppTheme.primaryGreen),
+                        ),
+                      ],
+                    ],
                   ),
                   const SizedBox(height: 4),
                   Text(

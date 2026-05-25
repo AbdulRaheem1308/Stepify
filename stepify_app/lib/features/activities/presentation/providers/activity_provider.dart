@@ -47,6 +47,7 @@ class ActivityNotifier extends StateNotifier<ActivityState> {
     required ActivityType type,
     required Duration duration,
     double? distanceKm,
+    String? source,
   }) async {
     // ── Security validation ──────────────────────────────────────────────
     if (duration.inMinutes < _minDurationMinutes) {
@@ -80,6 +81,7 @@ class ActivityNotifier extends StateNotifier<ActivityState> {
         'distanceKm': distanceKm ?? 0,
         'caloriesBurned': calories,
         'startTime': DateTime.now().toUtc().toIso8601String(),
+        'source': source ?? 'manual',
       });
       
       // If the backend returns the newly created activity, we use it.
@@ -96,6 +98,7 @@ class ActivityNotifier extends StateNotifier<ActivityState> {
           caloriesBurned: calories,
           distanceKm: distanceKm ?? 0,
           pointsEarned: points,
+          source: source ?? 'manual',
         );
       }
 

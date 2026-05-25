@@ -18,6 +18,7 @@ class Activity {
   final double caloriesBurned;
   final double distanceKm; // 0 for non-distance activities
   final int pointsEarned;
+  final String source;
 
   const Activity({
     required this.id,
@@ -27,7 +28,10 @@ class Activity {
     required this.caloriesBurned,
     this.distanceKm = 0,
     required this.pointsEarned,
+    this.source = 'manual',
   });
+
+  bool get isVerified => source == 'google_fit' || source == 'apple_health';
 
   factory Activity.fromJson(Map<String, dynamic> json) {
     return Activity(
@@ -38,6 +42,7 @@ class Activity {
       caloriesBurned: _parseDouble(json['caloriesBurned']),
       distanceKm: _parseDouble(json['distanceKm']),
       pointsEarned: json['pointsEarned'] as int? ?? 0,
+      source: json['source'] as String? ?? 'manual',
     );
   }
 
@@ -112,7 +117,8 @@ class Activity {
       other.duration == duration &&
       other.caloriesBurned == caloriesBurned &&
       other.distanceKm == distanceKm &&
-      other.pointsEarned == pointsEarned;
+      other.pointsEarned == pointsEarned &&
+      other.source == source;
   }
 
   @override
@@ -125,6 +131,7 @@ class Activity {
       caloriesBurned,
       distanceKm,
       pointsEarned,
+      source,
     );
   }
 }
