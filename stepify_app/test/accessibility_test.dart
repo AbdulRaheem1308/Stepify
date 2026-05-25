@@ -16,6 +16,7 @@ import 'package:flutter_localizations/flutter_localizations.dart';
 import 'package:stepify_app/l10n/app_localizations.dart';
 import 'package:stepify_app/services/api_service.dart';
 import 'package:dio/dio.dart';
+import 'package:stepify_app/features/activities/presentation/providers/health_sync_provider.dart';
 
 class MockApiService extends ApiService {
   @override
@@ -26,6 +27,13 @@ class MockApiService extends ApiService {
       statusCode: 200,
     );
   }
+}
+
+class MockHealthSyncNotifier extends StateNotifier<bool> implements HealthSyncNotifier {
+  MockHealthSyncNotifier() : super(false);
+
+  @override
+  Future<void> syncRecentWorkouts() async {}
 }
 
 void main() {
@@ -39,6 +47,7 @@ void main() {
     return ProviderScope(
       overrides: [
         apiServiceProvider.overrideWithValue(MockApiService()),
+        healthSyncProvider.overrideWith((ref) => MockHealthSyncNotifier()),
       ],
       child: MaterialApp(
         localizationsDelegates: const [
