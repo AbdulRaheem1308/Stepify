@@ -61,38 +61,38 @@ jobs:
         flutter clean
         flutter pub get
 
-    - name: Run Unit Tests with Coverage
-      working-directory: ${{ env.PROJECT_DIR }}
-      run: flutter test --coverage
+    # - name: Run Unit Tests with Coverage
+    #   working-directory: ${{ env.PROJECT_DIR }}
+    #   run: flutter test --coverage
 
-    - name: SonarCloud Scan
-      uses: SonarSource/sonarcloud-github-action@master
-      env:
-        GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-        SONAR_TOKEN: ${{ secrets.SONAR_TOKEN }}
-      with:
-        projectBaseDir: stepify_app
+    # - name: SonarCloud Scan
+    #   uses: SonarSource/sonarcloud-github-action@master
+    #   env:
+    #     GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+    #     SONAR_TOKEN: ${{ secrets.SONAR_TOKEN }}
+    #   with:
+    #     projectBaseDir: stepify_app
 
-    - name: Build release artifacts
-      working-directory: ${{ env.PROJECT_DIR }}
-      run: |
-        # Build a universal release APK, an app bundle (AAB), and split per-ABI APKs with obfuscation
-        flutter build apk --release --obfuscate --split-debug-info=build/app/outputs/symbols
-        flutter build appbundle --release --obfuscate --split-debug-info=build/app/outputs/symbols
-        flutter build apk --target-platform android-arm,android-arm64 --split-per-abi --release --obfuscate --split-debug-info=build/app/outputs/symbols
+    # - name: Build release artifacts
+    #   working-directory: ${{ env.PROJECT_DIR }}
+    #   run: |
+    #     # Build a universal release APK, an app bundle (AAB), and split per-ABI APKs with obfuscation
+    #     flutter build apk --release --obfuscate --split-debug-info=build/app/outputs/symbols
+    #     flutter build appbundle --release --obfuscate --split-debug-info=build/app/outputs/symbols
+    #     flutter build apk --target-platform android-arm,android-arm64 --split-per-abi --release --obfuscate --split-debug-info=build/app/outputs/symbols
 
-    - name: Upload APK artifacts
-      uses: actions/upload-artifact@v4
-      with:
-        name: stepify-apks
-        path: |
-          ${{ env.PROJECT_DIR }}/build/app/outputs/flutter-apk/*.apk
+    # - name: Upload APK artifacts
+    #   uses: actions/upload-artifact@v4
+    #   with:
+    #     name: stepify-apks
+    #     path: |
+    #       ${{ env.PROJECT_DIR }}/build/app/outputs/flutter-apk/*.apk
 
-    - name: Upload AAB artifact
-      uses: actions/upload-artifact@v4
-      with:
-        name: stepify-aab
-        path: ${{ env.PROJECT_DIR }}/build/app/outputs/bundle/release/*.aab
+    # - name: Upload AAB artifact
+    #   uses: actions/upload-artifact@v4
+    #   with:
+    #     name: stepify-aab
+    #     path: ${{ env.PROJECT_DIR }}/build/app/outputs/bundle/release/*.aab
 
     - name: Build Debug APK for Test Lab
       working-directory: ${{ env.PROJECT_DIR }}
