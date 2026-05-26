@@ -6,6 +6,7 @@ import {
   ForbiddenException,
   NotFoundException,
 } from "@nestjs/common";
+import { NotificationsService } from "../notifications/notifications.service";
 
 const mockPrismaService: any = {
   teamMember: {
@@ -40,6 +41,7 @@ describe("TeamsService", () => {
       providers: [
         TeamsService,
         { provide: PrismaService, useValue: mockPrismaService },
+        { provide: NotificationsService, useValue: { createAndNotify: jest.fn() } },
       ],
     }).compile();
     service = module.get<TeamsService>(TeamsService);

@@ -64,36 +64,41 @@ class StreakBanner extends StatelessWidget {
               child: const Icon(Icons.local_fire_department, color: Colors.white, size: 28),
             ),
             const SizedBox(width: 16),
-            Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Row(
-                  children: [
-                    Text(
-                      '$streakDays days',
-                      style: const TextStyle(
-                        color: Colors.white,
-                        fontSize: 22,
-                        fontWeight: FontWeight.bold,
+            Expanded(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Row(
+                    children: [
+                      Flexible(
+                        child: Text(
+                          '$streakDays days',
+                          style: const TextStyle(
+                            color: Colors.white,
+                            fontSize: 22,
+                            fontWeight: FontWeight.bold,
+                          ),
+                          overflow: TextOverflow.ellipsis,
+                        ),
                       ),
-                    ),
-                    const SizedBox(width: 8),
-                    GestureDetector(
-                      onTap: () => _showExplainer(context),
-                      child: const Icon(Icons.info_outline, color: Colors.white70, size: 18),
-                    ),
-                  ],
-                ),
-                const Text(
-                  'Current Streak',
-                  style: TextStyle(
-                    color: Colors.white70,
-                    fontSize: 12,
+                      const SizedBox(width: 8),
+                      GestureDetector(
+                        onTap: () => _showExplainer(context),
+                        child: const Icon(Icons.info_outline, color: Colors.white70, size: 18),
+                      ),
+                    ],
                   ),
-                ),
-              ],
+                  const Text(
+                    'Current Streak',
+                    style: TextStyle(
+                      color: Colors.white70,
+                      fontSize: 12,
+                    ),
+                  ),
+                ],
+              ),
             ),
-            const Spacer(),
+            const SizedBox(width: 16),
             Column(
               crossAxisAlignment: CrossAxisAlignment.end,
               children: [

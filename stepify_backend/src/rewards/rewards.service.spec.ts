@@ -77,6 +77,7 @@ describe("RewardsService", () => {
 
   const mockNotificationsService = {
     sendPushNotification: jest.fn(),
+    createAndNotify: jest.fn(),
   };
 
   beforeEach(async () => {
@@ -162,6 +163,7 @@ describe("RewardsService", () => {
   describe("processStepRewards", () => {
     it("should award points and process dependencies correctly", async () => {
       mockPrisma.user.findUnique.mockResolvedValue({ dailyStepGoal: 5000 });
+      mockPrisma.transaction.findMany.mockResolvedValue([]);
       mockPrisma.transaction.create.mockResolvedValue({});
       mockPrisma.wallet.upsert.mockResolvedValue({});
 
