@@ -141,7 +141,7 @@ class QuestDetailScreen extends ConsumerWidget {
                             // Check if the quest enrollment was successful (no error in final state)
                             if (ref.read(questsProvider).error == null) {
                               messenger.showSnackBar(
-                                const SnackBar(content: Text('Quest Joined! Good luck!')),
+                                const SnackBar(content: Text('Quest Joined! Your daily steps now automatically count towards this quest.')),
                               );
                             }
                           },
@@ -158,8 +158,12 @@ class QuestDetailScreen extends ConsumerWidget {
                   )
                 else if (quest.status == QuestStatus.inProgress)
                   OutlinedButton(
-                    onPressed: () {},
-                    child: const Text('Continue Journey'),
+                    onPressed: () {
+                      if (Navigator.of(context).canPop()) {
+                        Navigator.of(context).pop();
+                      }
+                    },
+                    child: const Text('Continue Journey (Go Walk!)'),
                   ),
                   
                   const SizedBox(height: 40),
