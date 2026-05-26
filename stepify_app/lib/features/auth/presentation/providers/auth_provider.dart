@@ -6,6 +6,7 @@ import '../../../../services/storage_service.dart';
 
 import '../../domain/models/user_model.dart';
 import '../../services/social_auth_service.dart';
+import '../../../../core/services/push_notification_service.dart';
 
 /// Auth state
 class AuthState {
@@ -41,6 +42,7 @@ final authProvider = StateNotifierProvider<AuthNotifier, AuthState>((ref) {
   return AuthNotifier(
     ref.watch(apiServiceProvider),
     ref.watch(socialAuthServiceProvider),
+    ref.watch(pushNotificationServiceProvider),
   );
 });
 
@@ -54,8 +56,10 @@ final currentUserProvider = Provider<User?>((ref) {
 class AuthNotifier extends StateNotifier<AuthState> {
   final ApiService _apiService;
   final SocialAuthService _socialAuth;
+  final PushNotificationService _pushService;
 
-  AuthNotifier(this._apiService, this._socialAuth) : super(AuthState()) {
+  AuthNotifier(this._apiService, this._socialAuth, this._pushService)
+      : super(AuthState()) {
     _apiService.onAuthFailure = logout;
     _checkAuth();
   }
@@ -122,7 +126,10 @@ class AuthNotifier extends StateNotifier<AuthState> {
         isAuthenticated: true,
         user: data['user'],
       );
-      
+
+      // Register FCM token now that we have a valid session
+      _pushService.registerTokenAfterLogin().ignore();
+
       return data['isNewUser'] == true;
     } catch (e) {
       final error = ApiError.from(e);
@@ -158,7 +165,10 @@ class AuthNotifier extends StateNotifier<AuthState> {
         isAuthenticated: true,
         user: data['user'],
       );
-      
+
+      // Register FCM token now that we have a valid session
+      _pushService.registerTokenAfterLogin().ignore();
+
       return data['isNewUser'] == true;
     } catch (e) {
       final error = ApiError.from(e);
@@ -184,10 +194,12 @@ class AuthNotifier extends StateNotifier<AuthState> {
     try {
       await _socialAuth.signOut();
     } catch (e) {
-      // Avoid printing directly in production, but capture if logging system exists
       debugPrint('Social Sign-out error: $e');
     }
-    
+
+    // Clear FCM token from backend so no stale notifications are sent
+    _pushService.clearTokenOnLogout().ignore();
+
     await StorageService.clearTokens();
     await StorageService.clearUser();
     

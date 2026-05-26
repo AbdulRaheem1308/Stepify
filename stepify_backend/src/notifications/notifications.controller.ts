@@ -48,6 +48,13 @@ export class NotificationsController {
     return this.notificationsService.registerFcmToken(req.user.sub, dto.token);
   }
 
+  @Post("all/read")
+  @ApiOperation({ summary: "Mark all notifications as read" })
+  @ApiResponse({ status: 201, description: "All notifications marked as read" })
+  async markAllAsRead(@Request() req: any) {
+    return this.notificationsService.markAsRead(req.user.sub, "all");
+  }
+
   @Post(":id/read")
   @ApiOperation({ summary: "Mark a notification as read" })
   @ApiResponse({ status: 201, description: "Notification marked as read" })
