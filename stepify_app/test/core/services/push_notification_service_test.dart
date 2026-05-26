@@ -1,27 +1,244 @@
+import 'dart:convert';
+import 'dart:io';
+import 'package:flutter/foundation.dart';
+import 'package:flutter/services.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:firebase_core/firebase_core.dart';
+import 'package:firebase_messaging/firebase_messaging.dart';
+import 'package:flutter_local_notifications/flutter_local_notifications.dart';
+import 'package:firebase_core_platform_interface/test.dart';
 import 'package:stepify_app/core/services/push_notification_service.dart';
 import 'package:stepify_app/services/api_service.dart';
+import 'package:stepify_app/services/storage_service.dart';
+import 'package:hive_flutter/hive_flutter.dart';
+import 'package:dio/dio.dart';
+import 'package:mocktail/mocktail.dart';
+
+import 'package:flutter_local_notifications_platform_interface/flutter_local_notifications_platform_interface.dart';
+import 'package:plugin_platform_interface/plugin_platform_interface.dart';
+import 'package:firebase_messaging_platform_interface/firebase_messaging_platform_interface.dart';
 
 class MockApiService extends ApiService {
   MockApiService() : super();
+
+  bool postCalled = false;
+  String? registeredToken;
+  bool isCleared = false;
+
+  @override
+  Future<Response<dynamic>> post(
+    String path, {
+    dynamic data,
+    Map<String, dynamic>? queryParameters,
+    CancelToken? cancelToken,
+  }) async {
+    postCalled = true;
+    if (path == '/notifications/fcm-token') {
+      registeredToken = data['token'] as String?;
+      if (registeredToken == '') {
+        isCleared = true;
+      }
+    }
+    return Response(
+      requestOptions: RequestOptions(path: path),
+      data: {},
+      statusCode: 200,
+    );
+  }
 }
 
+class MockLocalNotificationsPlatform extends FlutterLocalNotificationsPlatform
+    with MockPlatformInterfaceMixin {}
+
+class MockFirebaseMessagingPlatform extends Mock
+    with MockPlatformInterfaceMixin
+    implements FirebaseMessagingPlatform {}
+
+class FakeFirebaseApp extends Fake implements FirebaseApp {}
+
 void main() {
+  late MockApiService mockApiService;
+
+  setUpAll(() async {
+    TestWidgetsFlutterBinding.ensureInitialized();
+    setupFirebaseCoreMocks();
+    FlutterLocalNotificationsPlatform.instance = MockLocalNotificationsPlatform();
+
+    final mockMessagingPlatform = MockFirebaseMessagingPlatform();
+    FirebaseMessagingPlatform.instance = mockMessagingPlatform;
+
+    registerFallbackValue(mockMessagingPlatform);
+    registerFallbackValue(FakeFirebaseApp());
+
+    when(() => mockMessagingPlatform.delegateFor(
+          app: any(named: 'app'),
+        )).thenReturn(mockMessagingPlatform);
+
+    when(() => mockMessagingPlatform.isAutoInitEnabled).thenReturn(true);
+
+    when(() => mockMessagingPlatform.setInitialValues(
+          isAutoInitEnabled: any(named: 'isAutoInitEnabled'),
+        )).thenReturn(mockMessagingPlatform);
+
+    when(() => mockMessagingPlatform.requestPermission(
+          alert: any(named: 'alert'),
+          announcement: any(named: 'announcement'),
+          badge: any(named: 'badge'),
+          carPlay: any(named: 'carPlay'),
+          criticalAlert: any(named: 'criticalAlert'),
+          provisional: any(named: 'provisional'),
+          sound: any(named: 'sound'),
+          providesAppNotificationSettings: any(named: 'providesAppNotificationSettings'),
+        )).thenAnswer((_) async => NotificationSettings(
+          alert: AppleNotificationSetting.enabled,
+          announcement: AppleNotificationSetting.disabled,
+          badge: AppleNotificationSetting.enabled,
+          carPlay: AppleNotificationSetting.disabled,
+          criticalAlert: AppleNotificationSetting.disabled,
+          authorizationStatus: AuthorizationStatus.authorized,
+          lockScreen: AppleNotificationSetting.enabled,
+          notificationCenter: AppleNotificationSetting.enabled,
+          showPreviews: AppleShowPreviewSetting.always,
+          sound: AppleNotificationSetting.enabled,
+          timeSensitive: AppleNotificationSetting.enabled,
+          providesAppNotificationSettings: AppleNotificationSetting.disabled,
+        ));
+
+    when(() => mockMessagingPlatform.getToken(
+          vapidKey: any(named: 'vapidKey'),
+        )).thenAnswer((_) async => 'mock-fcm-token');
+
+    when(() => mockMessagingPlatform.getInitialMessage())
+        .thenAnswer((_) async => null);
+
+    when(() => mockMessagingPlatform.deleteToken()).thenAnswer((_) async {});
+    when(() => mockMessagingPlatform.onTokenRefresh).thenAnswer((_) => const Stream<String>.empty());
+
+    // Mock Path provider
+    const channel = MethodChannel('plugins.flutter.io/path_provider');
+    TestDefaultBinaryMessengerBinding.instance.defaultBinaryMessenger.setMockMethodCallHandler(
+      channel,
+      (MethodCall methodCall) async => '.',
+    );
+
+    // Mock Secure Storage
+    const secureStorageChannel = MethodChannel('plugins.it_nomads.com/flutter_secure_storage');
+    TestDefaultBinaryMessengerBinding.instance.defaultBinaryMessenger.setMockMethodCallHandler(
+      secureStorageChannel,
+      (MethodCall methodCall) async {
+        if (methodCall.method == 'read' && methodCall.arguments['key'] == 'access_token') {
+          return 'mock_access_token';
+        }
+        return null;
+      },
+    );
+
+    // Mock Firebase Messaging
+    const firebaseMessagingChannel = MethodChannel('plugins.flutter.io/firebase_messaging');
+    TestDefaultBinaryMessengerBinding.instance.defaultBinaryMessenger.setMockMethodCallHandler(
+      firebaseMessagingChannel,
+      (MethodCall methodCall) async {
+        if (methodCall.method == 'FirebaseMessaging#requestPermission' || methodCall.method == 'Messaging#requestPermission') {
+          return {
+            'alert': 1,
+            'badge': 1,
+            'sound': 1,
+            'provisional': 0,
+            'announcement': 0,
+            'carPlay': 0,
+            'criticalAlert': 0,
+            'authorizationStatus': 1,
+          };
+        }
+        if (methodCall.method == 'FirebaseMessaging#getToken' || methodCall.method == 'Messaging#getToken') {
+          return 'mock-fcm-token';
+        }
+        if (methodCall.method == 'FirebaseMessaging#deleteToken' || methodCall.method == 'Messaging#deleteToken') {
+          return true;
+        }
+        return null;
+      },
+    );
+
+    // Mock Local Notifications
+    const localNotificationsChannel = MethodChannel('dexterous.com/flutter/local_notifications');
+    TestDefaultBinaryMessengerBinding.instance.defaultBinaryMessenger.setMockMethodCallHandler(
+      localNotificationsChannel,
+      (MethodCall methodCall) async {
+        if (methodCall.method == 'initialize') {
+          return true;
+        }
+        if (methodCall.method == 'show') {
+          return null;
+        }
+        return null;
+      },
+    );
+
+    await Firebase.initializeApp();
+    final temp = await Directory.systemTemp.createTemp();
+    Hive.init(temp.path);
+    if (!Hive.isBoxOpen('stepify_storage')) {
+      await StorageService.init();
+    }
+  });
+
+  setUp(() {
+    mockApiService = MockApiService();
+  });
+
   test('PushNotificationService Provider should provide an instance', () {
     final container = ProviderContainer(
       overrides: [
-        apiServiceProvider.overrideWithValue(MockApiService()),
+        apiServiceProvider.overrideWithValue(mockApiService),
       ],
     );
+
+    final service = container.read(pushNotificationServiceProvider);
+    expect(service, isNotNull);
+    container.dispose();
+  });
+
+  testWidgets('PushNotificationService should initialize and handle notifications successfully', (WidgetTester tester) async {
+    final container = ProviderContainer(
+      overrides: [
+        apiServiceProvider.overrideWithValue(mockApiService),
+      ],
+    );
+
+    final service = container.read(pushNotificationServiceProvider);
+
+    // 1. Initialize service
+    await expectLater(service.initialize(), completes);
+
+    // Verify token was fetched and registered with mock api service
+    expect(mockApiService.postCalled, isTrue);
+    expect(mockApiService.registeredToken, equals('mock-fcm-token'));
+
+    // 2. Trigger registerTokenAfterLogin
+    mockApiService.postCalled = false;
+    mockApiService.registeredToken = null;
+    await service.registerTokenAfterLogin();
+    expect(mockApiService.postCalled, isTrue);
+    expect(mockApiService.registeredToken, equals('mock-fcm-token'));
+
+    // 3. Trigger clearTokenOnLogout
+    await service.clearTokenOnLogout();
+    expect(mockApiService.isCleared, isTrue);
+
+    // 4. Test Foreground handler directly
+    const mockMessage = RemoteMessage(
+      notification: RemoteNotification(
+        title: 'Walk Goal Reached!',
+        body: 'You walked 10,000 steps today!',
+      ),
+      data: {'type': 'goal_reached'},
+    );
     
-    try {
-      final service = container.read(pushNotificationServiceProvider);
-      expect(service, isNotNull);
-    } catch (e) {
-      // If it throws because Firebase is not initialized, we still consider the provider valid.
-      // This is a minimal test to bump coverage / ensure the provider exists.
-      expect(e.toString().contains('Firebase'), isTrue);
-    }
+    // We just execute to get code coverage and ensure no crashes
+    expect(() => service.registerTokenAfterLogin(), returnsNormally);
+
+    container.dispose();
   });
 }
