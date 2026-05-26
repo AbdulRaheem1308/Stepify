@@ -1,3 +1,4 @@
+import 'dart:async';
 import 'dart:convert';
 import 'dart:io';
 import 'package:flutter/foundation.dart';
@@ -53,19 +54,29 @@ class MockLocalNotificationsPlatform extends FlutterLocalNotificationsPlatform
 
 class MockFirebaseMessagingPlatform extends Mock
     with MockPlatformInterfaceMixin
-    implements FirebaseMessagingPlatform {}
+    implements FirebaseMessagingPlatform {
+  @override
+  Stream<RemoteMessage> get onMessage => const Stream<RemoteMessage>.empty();
+
+  @override
+  Stream<RemoteMessage> get onMessageOpenedApp => const Stream<RemoteMessage>.empty();
+}
 
 class FakeFirebaseApp extends Fake implements FirebaseApp {}
 
 void main() {
   late MockApiService mockApiService;
+  late MockFirebaseMessagingPlatform mockMessagingPlatform;
+  late StreamController<RemoteMessage> onMessageController;
+  late StreamController<RemoteMessage> onMessageOpenedAppController;
+  late StreamController<String> onTokenRefreshController;
 
   setUpAll(() async {
     TestWidgetsFlutterBinding.ensureInitialized();
     setupFirebaseCoreMocks();
     FlutterLocalNotificationsPlatform.instance = MockLocalNotificationsPlatform();
 
-    final mockMessagingPlatform = MockFirebaseMessagingPlatform();
+    mockMessagingPlatform = MockFirebaseMessagingPlatform();
     FirebaseMessagingPlatform.instance = mockMessagingPlatform;
 
     registerFallbackValue(mockMessagingPlatform);
@@ -109,11 +120,7 @@ void main() {
           vapidKey: any(named: 'vapidKey'),
         )).thenAnswer((_) async => 'mock-fcm-token');
 
-    when(() => mockMessagingPlatform.getInitialMessage())
-        .thenAnswer((_) async => null);
-
     when(() => mockMessagingPlatform.deleteToken()).thenAnswer((_) async {});
-    when(() => mockMessagingPlatform.onTokenRefresh).thenAnswer((_) => const Stream<String>.empty());
 
     // Mock Path provider
     const channel = MethodChannel('plugins.flutter.io/path_provider');
@@ -134,7 +141,7 @@ void main() {
       },
     );
 
-    // Mock Firebase Messaging
+    // Mock Firebase Messaging Channels
     const firebaseMessagingChannel = MethodChannel('plugins.flutter.io/firebase_messaging');
     TestDefaultBinaryMessengerBinding.instance.defaultBinaryMessenger.setMockMethodCallHandler(
       firebaseMessagingChannel,
@@ -161,7 +168,7 @@ void main() {
       },
     );
 
-    // Mock Local Notifications
+    // Mock Local Notifications Channels
     const localNotificationsChannel = MethodChannel('dexterous.com/flutter/local_notifications');
     TestDefaultBinaryMessengerBinding.instance.defaultBinaryMessenger.setMockMethodCallHandler(
       localNotificationsChannel,
@@ -186,6 +193,24 @@ void main() {
 
   setUp(() {
     mockApiService = MockApiService();
+    
+    // Set up active StreamControllers for listeners
+    onMessageController = StreamController<RemoteMessage>.broadcast();
+    onMessageOpenedAppController = StreamController<RemoteMessage>.broadcast();
+    onTokenRefreshController = StreamController<String>.broadcast();
+
+    when(() => mockMessagingPlatform.onMessage).thenAnswer((_) => onMessageController.stream);
+    when(() => mockMessagingPlatform.onMessageOpenedApp).thenAnswer((_) => onMessageOpenedAppController.stream);
+    when(() => mockMessagingPlatform.onTokenRefresh).thenAnswer((_) => onTokenRefreshController.stream);
+    
+    // Default initial message is null
+    when(() => mockMessagingPlatform.getInitialMessage()).thenAnswer((_) async => null);
+  });
+
+  tearDown(() {
+    onMessageController.close();
+    onMessageOpenedAppController.close();
+    onTokenRefreshController.close();
   });
 
   test('PushNotificationService Provider should provide an instance', () {
@@ -227,7 +252,15 @@ void main() {
     await service.clearTokenOnLogout();
     expect(mockApiService.isCleared, isTrue);
 
-    // 4. Test Foreground handler directly
+    // 4. Test onTokenRefresh stream event
+    mockApiService.postCalled = false;
+    mockApiService.registeredToken = null;
+    onTokenRefreshController.add('refreshed-token');
+    await tester.pump(Duration.zero);
+    expect(mockApiService.postCalled, isTrue);
+    expect(mockApiService.registeredToken, equals('refreshed-token'));
+
+    // 5. Test Foreground handler via stream
     const mockMessage = RemoteMessage(
       notification: RemoteNotification(
         title: 'Walk Goal Reached!',
@@ -235,9 +268,73 @@ void main() {
       ),
       data: {'type': 'goal_reached'},
     );
+    onMessageController.add(mockMessage);
+    await tester.pump(Duration.zero);
+
+    // 6. Test onMessageOpenedApp via stream
+    onMessageOpenedAppController.add(mockMessage);
+    await tester.pump(Duration.zero);
+
+    container.dispose();
+  });
+
+  testWidgets('PushNotificationService handles terminated state initial message', (WidgetTester tester) async {
+    // Mock getInitialMessage to return a mock remote message representing launching from terminated state
+    const terminatedMessage = RemoteMessage(
+      notification: RemoteNotification(
+        title: 'Launch Title',
+        body: 'Launch Body',
+      ),
+      data: {'type': 'badge_earned'},
+    );
+    when(() => mockMessagingPlatform.getInitialMessage()).thenAnswer((_) async => terminatedMessage);
+
+    final container = ProviderContainer(
+      overrides: [
+        apiServiceProvider.overrideWithValue(mockApiService),
+      ],
+    );
+
+    final service = container.read(pushNotificationServiceProvider);
     
-    // We just execute to get code coverage and ensure no crashes
-    expect(() => service.registerTokenAfterLogin(), returnsNormally);
+    // Initialize service and verify it completes without crashing
+    await expectLater(service.initialize(), completes);
+
+    container.dispose();
+  });
+
+  test('PushNotificationService background handler runs without crash', () async {
+    const mockMessage = RemoteMessage(
+      messageId: 'msg_123',
+      data: {'type': 'challenge_invite'},
+    );
+
+    // Directly call the exposed top-level background handler
+    await expectLater(
+      firebaseMessagingBackgroundHandler(mockMessage),
+      completes,
+    );
+  });
+
+  test('PushNotificationService local notifications tap callback runs without crash', () {
+    final container = ProviderContainer(
+      overrides: [
+        apiServiceProvider.overrideWithValue(mockApiService),
+      ],
+    );
+
+    final service = container.read(pushNotificationServiceProvider);
+
+    // Directly call exposed local notification tap handler callback
+    expect(
+      () => service.onLocalNotificationTap(
+        NotificationResponse(
+          notificationResponseType: NotificationResponseType.selectedNotification,
+          payload: '{"type":"reward"}',
+        ),
+      ),
+      returnsNormally,
+    );
 
     container.dispose();
   });

@@ -11,7 +11,7 @@ import '../../services/storage_service.dart';
 // Top-level background handler (must be a top-level function, not a method)
 // ─────────────────────────────────────────────────────────────────────────────
 @pragma('vm:entry-point')
-Future<void> _firebaseMessagingBackgroundHandler(RemoteMessage message) async {
+Future<void> firebaseMessagingBackgroundHandler(RemoteMessage message) async {
   // Firebase is already initialized by the OS isolate – no need to re-init here.
   debugPrint('[FCM BG] Message received: ${message.messageId}');
 }
@@ -59,11 +59,11 @@ class PushNotificationService {
     );
     await _localNotifications.initialize(
       const InitializationSettings(android: androidInit, iOS: iosInit),
-      onDidReceiveNotificationResponse: _onLocalNotificationTap,
+      onDidReceiveNotificationResponse: onLocalNotificationTap,
     );
 
     // 3. Register the background handler
-    FirebaseMessaging.onBackgroundMessage(_firebaseMessagingBackgroundHandler);
+    FirebaseMessaging.onBackgroundMessage(firebaseMessagingBackgroundHandler);
 
     // 4. Request OS permission (Android 13+ / iOS)
     await _requestPermission();
@@ -172,7 +172,7 @@ class PushNotificationService {
     // TODO: deep-link into the relevant screen based on message.data['type']
   }
 
-  void _onLocalNotificationTap(NotificationResponse response) {
+  void onLocalNotificationTap(NotificationResponse response) {
     debugPrint('[FCM] Local notification tapped: ${response.payload}');
     // TODO: deep-link handling
   }

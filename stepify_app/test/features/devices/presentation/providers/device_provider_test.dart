@@ -10,6 +10,7 @@ import 'package:health/health.dart';
 class MockApiService implements ApiService {
   List<dynamic> mockDevicesResponse = [];
   bool shouldThrowError = false;
+  bool shouldThrowOnPost = false;
   Map<String, dynamic> lastPostData = {};
   String lastDeletedId = '';
 
@@ -37,7 +38,7 @@ class MockApiService implements ApiService {
     Map<String, dynamic>? queryParameters,
     CancelToken? cancelToken,
   }) async {
-    if (shouldThrowError) throw Exception('API Error');
+    if (shouldThrowError || shouldThrowOnPost) throw Exception('API Error');
     lastPostData = data ?? {};
     if (path == '/devices') {
       mockDevicesResponse.add({
@@ -137,72 +138,199 @@ void main() {
     FlutterSecureStorage.setMockInitialValues({'device_uuid': 'test-uuid'});
     mockApiService = MockApiService();
     mockHealthService = MockHealthService();
-    // Prevent loadDevices from immediately triggering during test setup
   });
 
   DeviceNotifier createNotifier() {
     return DeviceNotifier(mockApiService, mockHealthService);
   }
 
-  test('loadDevices populates devices list', () async {
-    mockApiService.mockDevicesResponse = [
-      {'id': '1', 'name': 'Test Watch', 'type': 'WATCH_APPLE', 'lastSyncedAt': '2026-05-26T10:00:00Z'}
-    ];
-    notifier = createNotifier();
-    await Future.delayed(Duration.zero); // allow loadDevices to complete
+  group('ConnectedDevice model', () {
+    test('fromJson and copyWith works correctly', () {
+      final json = {
+        'id': 'd1',
+        'name': 'Fitbit Sense',
+        'type': 'FITBIT',
+        'lastSyncedAt': '2026-05-26T12:00:00Z',
+      };
 
-    expect(notifier.state.devices.length, 2); // 1 mock + 1 auto-registered phone
-    expect(notifier.state.devices.first.name, 'Test Watch');
-    expect(notifier.state.devices.first.status, SyncStatus.connected);
+      final device = ConnectedDevice.fromJson(json);
+      expect(device.id, 'd1');
+      expect(device.name, 'Fitbit Sense');
+      expect(device.type, 'FITBIT');
+      expect(device.status, SyncStatus.connected);
+
+      final copied = device.copyWith(status: SyncStatus.disconnected);
+      expect(copied.status, SyncStatus.disconnected);
+      expect(copied.id, 'd1');
+    });
+
+    test('brand mappings return correct values', () {
+      expect(ConnectedDevice(id: '1', name: 'N', type: 'WATCH_APPLE').brand, 'Apple');
+      expect(ConnectedDevice(id: '1', name: 'N', type: 'WATCH_ANDROID').brand, 'Google');
+      expect(ConnectedDevice(id: '1', name: 'N', type: 'FITBIT').brand, 'Fitbit');
+      expect(ConnectedDevice(id: '1', name: 'N', type: 'GARMIN').brand, 'Garmin');
+      expect(ConnectedDevice(id: '1', name: 'N', type: 'PHONE').brand, 'Phone');
+      expect(ConnectedDevice(id: '1', name: 'N', type: 'OTHER').brand, 'Other');
+    });
   });
 
-  test('connectHealthDevice adds a device when authorized', () async {
-    notifier = createNotifier();
-    await Future.delayed(Duration.zero);
-    
-    mockHealthService.shouldAuthorize = true;
-    await notifier.connectHealthDevice();
-    
-    expect(notifier.state.devices.any((d) => d.type == 'WATCH_APPLE' || d.type == 'WATCH_ANDROID'), true);
-    expect(notifier.state.error, isNull);
+  group('DeviceState', () {
+    test('copyWith updates state correctly', () {
+      final state = DeviceState(isScanning: false, isLoading: false);
+      final updated = state.copyWith(isScanning: true, error: 'Scanning failed');
+      expect(updated.isScanning, true);
+      expect(updated.error, 'Scanning failed');
+
+      final cleared = updated.copyWith(clearError: true);
+      expect(cleared.error, isNull);
+    });
   });
 
-  test('connectHealthDevice sets error when not authorized', () async {
-    notifier = createNotifier();
-    await Future.delayed(Duration.zero);
-    
-    mockHealthService.shouldAuthorize = false;
-    await notifier.connectHealthDevice();
-    
-    expect(notifier.state.error, 'Permission denied');
-  });
+  group('DeviceNotifier Tests', () {
+    test('loadDevices populates devices list', () async {
+      mockApiService.mockDevicesResponse = [
+        {'id': '1', 'name': 'Test Watch', 'type': 'WATCH_APPLE', 'lastSyncedAt': '2026-05-26T10:00:00Z'}
+      ];
+      notifier = createNotifier();
+      await Future.delayed(Duration.zero); // allow loadDevices to complete
 
-  test('syncDevice updates device sync status and steps', () async {
-    mockApiService.mockDevicesResponse = [
-      {'id': '1', 'name': 'Test Watch', 'type': 'WATCH_APPLE'}
-    ];
-    notifier = createNotifier();
-    await Future.delayed(Duration.zero);
+      expect(notifier.state.devices.length, 2); // 1 mock + 1 auto-registered phone
+      expect(notifier.state.devices.first.name, 'Test Watch');
+      expect(notifier.state.devices.first.status, SyncStatus.connected);
+    });
 
-    await notifier.syncDevice('1');
+    test('loadDevices handles auto-register failure gracefully', () async {
+      mockApiService.mockDevicesResponse = [];
+      mockApiService.shouldThrowOnPost = true; // throw on auto-register post
 
-    final updatedDevice = notifier.state.devices.firstWhere((d) => d.id == '1');
-    expect(updatedDevice.status, SyncStatus.connected);
-    expect(updatedDevice.syncedSteps, 5000);
-    expect(updatedDevice.lastSyncTime, isNotNull);
-  });
+      notifier = createNotifier();
+      await Future.delayed(Duration.zero);
 
-  test('removeDevice deletes a device and reloads list', () async {
-    mockApiService.mockDevicesResponse = [
-      {'id': '1', 'name': 'Test Watch', 'type': 'WATCH_APPLE'}
-    ];
-    notifier = createNotifier();
-    await Future.delayed(Duration.zero);
-    
-    expect(notifier.state.devices.any((d) => d.id == '1'), true);
+      // Verify list only has items fetched successfully (empty since none)
+      expect(notifier.state.devices.isEmpty, true);
+    });
 
-    await notifier.removeDevice('1');
-    
-    expect(notifier.state.devices.any((d) => d.id == '1'), false);
+    test('connectHealthDevice adds a device when authorized', () async {
+      notifier = createNotifier();
+      await Future.delayed(Duration.zero);
+      
+      mockHealthService.shouldAuthorize = true;
+      await notifier.connectHealthDevice();
+      
+      expect(notifier.state.devices.any((d) => d.type == 'WATCH_APPLE' || d.type == 'WATCH_ANDROID'), true);
+      expect(notifier.state.error, isNull);
+    });
+
+    test('connectHealthDevice sets error when not authorized', () async {
+      notifier = createNotifier();
+      await Future.delayed(Duration.zero);
+      
+      mockHealthService.shouldAuthorize = false;
+      await notifier.connectHealthDevice();
+      
+      expect(notifier.state.error, 'Permission denied');
+    });
+
+    test('connectHealthDevice handles exceptions during authorization', () async {
+      notifier = createNotifier();
+      await Future.delayed(Duration.zero);
+      
+      mockHealthService.shouldThrowError = true;
+      await notifier.connectHealthDevice();
+      
+      expect(notifier.state.error, contains('Health Error'));
+    });
+
+    test('syncDevice updates device sync status and steps', () async {
+      mockApiService.mockDevicesResponse = [
+        {'id': '1', 'name': 'Test Watch', 'type': 'WATCH_APPLE'}
+      ];
+      notifier = createNotifier();
+      await Future.delayed(Duration.zero);
+
+      await notifier.syncDevice('1');
+
+      final updatedDevice = notifier.state.devices.firstWhere((d) => d.id == '1');
+      expect(updatedDevice.status, SyncStatus.connected);
+      expect(updatedDevice.syncedSteps, 5000);
+      expect(updatedDevice.lastSyncTime, isNotNull);
+    });
+
+    test('syncDevice returns early for unsupported devices', () async {
+      mockApiService.mockDevicesResponse = [
+        {'id': '1', 'name': 'Fitbit Watch', 'type': 'FITBIT'}
+      ];
+      notifier = createNotifier();
+      await Future.delayed(Duration.zero);
+
+      await notifier.syncDevice('1');
+
+      // Status should remain disconnected since sync returns early
+      final device = notifier.state.devices.firstWhere((d) => d.id == '1');
+      expect(device.status, SyncStatus.disconnected);
+    });
+
+    test('syncDevice handles API/Health errors gracefully', () async {
+      mockApiService.mockDevicesResponse = [
+        {'id': '1', 'name': 'Test Watch', 'type': 'WATCH_APPLE'}
+      ];
+      notifier = createNotifier();
+      await Future.delayed(Duration.zero);
+
+      mockApiService.shouldThrowError = true;
+      await notifier.syncDevice('1');
+
+      final device = notifier.state.devices.firstWhere((d) => d.id == '1');
+      expect(device.status, SyncStatus.error);
+      expect(notifier.state.error, contains('API Error'));
+    });
+
+    test('addDevice sets error if device already exists', () async {
+      mockApiService.mockDevicesResponse = [
+        {'id': '1', 'name': 'Apple Health', 'type': 'WATCH_APPLE'}
+      ];
+      notifier = createNotifier();
+      await Future.delayed(Duration.zero);
+
+      await notifier.addDevice('Apple Health 2', 'WATCH_APPLE');
+      expect(notifier.state.error, 'Device is already connected');
+    });
+
+    test('addDevice handles API connection error gracefully', () async {
+      notifier = createNotifier();
+      await Future.delayed(Duration.zero);
+
+      mockApiService.shouldThrowError = true;
+      await notifier.addDevice('Apple Health', 'WATCH_APPLE');
+      
+      expect(notifier.state.error, contains('API Error'));
+    });
+
+    test('removeDevice deletes a device and reloads list', () async {
+      mockApiService.mockDevicesResponse = [
+        {'id': '1', 'name': 'Test Watch', 'type': 'WATCH_APPLE'}
+      ];
+      notifier = createNotifier();
+      await Future.delayed(Duration.zero);
+      
+      expect(notifier.state.devices.any((d) => d.id == '1'), true);
+
+      await notifier.removeDevice('1');
+      
+      expect(notifier.state.devices.any((d) => d.id == '1'), false);
+    });
+
+    test('removeDevice handles exceptions gracefully', () async {
+      mockApiService.mockDevicesResponse = [
+        {'id': '1', 'name': 'Test Watch', 'type': 'WATCH_APPLE'}
+      ];
+      notifier = createNotifier();
+      await Future.delayed(Duration.zero);
+
+      mockApiService.shouldThrowError = true;
+      await notifier.removeDevice('1');
+      
+      expect(notifier.state.error, contains('API Error'));
+    });
   });
 }
