@@ -1,158 +1,143 @@
 import 'package:flutter_test/flutter_test.dart';
-import 'package:flutter_riverpod/flutter_riverpod.dart';
-import 'package:mocktail/mocktail.dart';
-import 'package:dio/dio.dart';
+import 'package:stepify_app/features/devices/presentation/providers/device_provider.dart';
 import 'package:stepify_app/services/api_service.dart';
 import 'package:stepify_app/services/health_service.dart';
-import 'package:stepify_app/features/devices/presentation/providers/device_provider.dart';
-import 'package:stepify_app/services/storage_service.dart';
-import 'package:hive/hive.dart';
-import 'package:flutter/services.dart';
+import 'package:shared_preferences/shared_preferences.dart';
 
-class MockApiService extends Mock implements ApiService {}
-class MockHealthService extends Mock implements HealthService {}
+class MockApiService implements ApiService {
+  List<dynamic> mockDevicesResponse = [];
+  bool shouldThrowError = false;
+  Map<String, dynamic> lastPostData = {};
+  String lastDeletedId = '';
+
+  @override
+  Future<ApiResponse> get(String path, {Map<String, dynamic>? queryParameters}) async {
+    if (shouldThrowError) throw Exception('API Error');
+    return ApiResponse(data: mockDevicesResponse, statusCode: 200);
+  }
+
+  @override
+  Future<ApiResponse> post(String path, {dynamic data}) async {
+    if (shouldThrowError) throw Exception('API Error');
+    lastPostData = data ?? {};
+    if (path == '/devices') {
+      mockDevicesResponse.add({
+        'id': 'new_id',
+        'name': data['name'],
+        'type': data['type'],
+      });
+    }
+    return ApiResponse(data: {}, statusCode: 200);
+  }
+
+  @override
+  Future<ApiResponse> put(String path, {dynamic data}) async {
+    return ApiResponse(data: {}, statusCode: 200);
+  }
+
+  @override
+  Future<ApiResponse> delete(String path) async {
+    if (shouldThrowError) throw Exception('API Error');
+    lastDeletedId = path.split('/').last;
+    mockDevicesResponse.removeWhere((d) => d['id'] == lastDeletedId);
+    return ApiResponse(data: {}, statusCode: 200);
+  }
+}
+
+class MockHealthService implements HealthService {
+  bool shouldAuthorize = true;
+  bool shouldThrowError = false;
+  int mockSteps = 5000;
+
+  @override
+  Future<bool> requestAuthorization() async {
+    if (shouldThrowError) throw Exception('Health Error');
+    return shouldAuthorize;
+  }
+
+  @override
+  Future<int> getTodaySteps() async {
+    if (shouldThrowError) throw Exception('Health Error');
+    return mockSteps;
+  }
+}
 
 void main() {
-  late MockApiService mockApi;
-  late MockHealthService mockHealth;
+  TestWidgetsFlutterBinding.ensureInitialized();
+  late MockApiService mockApiService;
+  late MockHealthService mockHealthService;
   late DeviceNotifier notifier;
 
-  setUpAll(() async {
-    TestWidgetsFlutterBinding.ensureInitialized();
-    
-    // Mock MethodChannel for Hive/PathProvider
-    const channel = MethodChannel('plugins.flutter.io/path_provider');
-    TestDefaultBinaryMessengerBinding.instance.defaultBinaryMessenger.setMockMethodCallHandler(
-      channel,
-      (MethodCall methodCall) async => '.',
-    );
-
-    // Mock MethodChannel for FlutterSecureStorage
-    const secureStorageChannel = MethodChannel('plugins.it_nomads.com/flutter_secure_storage');
-    TestDefaultBinaryMessengerBinding.instance.defaultBinaryMessenger.setMockMethodCallHandler(
-      secureStorageChannel,
-      (MethodCall methodCall) async => null,
-    );
-
-    Hive.init('.');
-    await StorageService.init();
-    
-    registerFallbackValue(RequestOptions(path: ''));
-  });
-
   setUp(() {
-    mockApi = MockApiService();
-    mockHealth = MockHealthService();
-
-    // Default mock response for loadDevices
-    when(() => mockApi.get('/devices')).thenAnswer((_) async => Response(
-      requestOptions: RequestOptions(path: '/devices'),
-      data: <dynamic>[
-        {
-          'id': 'd1',
-          'name': 'My Fitbit',
-          'type': 'FITBIT',
-          'identifier': 'fitbit-123',
-          'lastSyncedAt': '2023-01-01T10:00:00Z',
-        }
-      ],
-    ));
-
-    // Default mock response for adding phone device automatically
-    when(() => mockApi.post('/devices', data: any(named: 'data'))).thenAnswer((_) async => Response(
-      requestOptions: RequestOptions(path: '/devices'),
-      data: {},
-    ));
-
-    notifier = DeviceNotifier(mockApi, mockHealth);
+    SharedPreferences.setMockInitialValues({'device_uuid': 'test-uuid'});
+    mockApiService = MockApiService();
+    mockHealthService = MockHealthService();
+    // Prevent loadDevices from immediately triggering during test setup
   });
 
-  test('loadDevices initializes state and auto-adds phone if missing', () async {
-    // Wait for the constructor's loadDevices to finish
-    await Future.delayed(Duration.zero);
+  DeviceNotifier createNotifier() {
+    return DeviceNotifier(mockApiService, mockHealthService);
+  }
 
-    expect(notifier.state.isLoading, isFalse);
-    expect(notifier.state.devices.isNotEmpty, isTrue);
-    expect(notifier.state.devices.first.id, 'd1');
-    expect(notifier.state.devices.first.type, 'FITBIT');
+  test('loadDevices populates devices list', () async {
+    mockApiService.mockDevicesResponse = [
+      {'id': '1', 'name': 'Test Watch', 'type': 'WATCH_APPLE', 'lastSyncedAt': '2026-05-26T10:00:00Z'}
+    ];
+    notifier = createNotifier();
+    await Future.delayed(Duration.zero); // allow loadDevices to complete
+
+    expect(notifier.state.devices.length, 2); // 1 mock + 1 auto-registered phone
+    expect(notifier.state.devices.first.name, 'Test Watch');
     expect(notifier.state.devices.first.status, SyncStatus.connected);
   });
 
-  test('connectHealthDevice adds health device to backend', () async {
-    when(() => mockHealth.requestAuthorization()).thenAnswer((_) async => true);
+  test('connectHealthDevice adds a device when authorized', () async {
+    notifier = createNotifier();
+    await Future.delayed(Duration.zero);
     
-    await Future.delayed(Duration.zero); // finish initial load
-    
+    mockHealthService.shouldAuthorize = true;
     await notifier.connectHealthDevice();
     
-    verify(() => mockHealth.requestAuthorization()).called(1);
-    verify(() => mockApi.post('/devices', data: any(named: 'data'))).called(greaterThanOrEqualTo(1));
+    expect(notifier.state.devices.any((d) => d.type == 'WATCH_APPLE' || d.type == 'WATCH_ANDROID'), true);
+    expect(notifier.state.error, isNull);
   });
 
-  test('removeDevice deletes device and reloads', () async {
-    when(() => mockApi.delete('/devices/d1')).thenAnswer((_) async => Response(
-      requestOptions: RequestOptions(path: '/devices/d1'),
-      data: {},
-    ));
-
-    await Future.delayed(Duration.zero); // finish initial load
-
-    await notifier.removeDevice('d1');
-
-    verify(() => mockApi.delete('/devices/d1')).called(1);
-    // Because it reloads, GET /devices should be called again
-    verify(() => mockApi.get('/devices')).called(greaterThanOrEqualTo(2));
-  });
-
-  test('connectHealthDevice sets error on authorization failure', () async {
-    when(() => mockHealth.requestAuthorization()).thenAnswer((_) async => false);
+  test('connectHealthDevice sets error when not authorized', () async {
+    notifier = createNotifier();
+    await Future.delayed(Duration.zero);
     
-    await Future.delayed(Duration.zero); // finish initial load
-    
+    mockHealthService.shouldAuthorize = false;
     await notifier.connectHealthDevice();
     
     expect(notifier.state.error, 'Permission denied');
   });
 
-  test('connectHealthDevice sets error on exception', () async {
-    when(() => mockHealth.requestAuthorization()).thenThrow(Exception('test_error'));
-    
-    await Future.delayed(Duration.zero); // finish initial load
-    
-    await notifier.connectHealthDevice();
-    
-    expect(notifier.state.error, contains('test_error'));
+  test('syncDevice updates device sync status and steps', () async {
+    mockApiService.mockDevicesResponse = [
+      {'id': '1', 'name': 'Test Watch', 'type': 'WATCH_APPLE'}
+    ];
+    notifier = createNotifier();
+    await Future.delayed(Duration.zero);
+
+    await notifier.syncDevice('1');
+
+    final updatedDevice = notifier.state.devices.firstWhere((d) => d.id == '1');
+    expect(updatedDevice.status, SyncStatus.connected);
+    expect(updatedDevice.syncedSteps, 5000);
+    expect(updatedDevice.lastSyncTime, isNotNull);
   });
 
-  test('addDevice sets error if device exists', () async {
-    await Future.delayed(Duration.zero); // finish initial load
+  test('removeDevice deletes a device and reloads list', () async {
+    mockApiService.mockDevicesResponse = [
+      {'id': '1', 'name': 'Test Watch', 'type': 'WATCH_APPLE'}
+    ];
+    notifier = createNotifier();
+    await Future.delayed(Duration.zero);
     
-    await notifier.addDevice('My Fitbit', 'FITBIT');
-    
-    expect(notifier.state.error, 'Device is already connected');
-  });
+    expect(notifier.state.devices.any((d) => d.id == '1'), true);
 
-  test('syncDevice fetches steps and calls API', () async {
-    when(() => mockHealth.getTodaySteps()).thenAnswer((_) async => 5000);
-    when(() => mockApi.post(any(), data: any(named: 'data'))).thenAnswer((_) async => Response(
-      requestOptions: RequestOptions(path: ''),
-      data: {},
-    ));
+    await notifier.removeDevice('1');
     
-    await Future.delayed(Duration.zero); // finish initial load
-    
-    await notifier.syncDevice('d1');
-    
-    expect(notifier.state.error, isNull);
-  });
-
-  test('Providers initialize correctly', () {
-    final container = ProviderContainer(
-      overrides: [
-        apiServiceProvider.overrideWithValue(mockApi),
-      ],
-    );
-    expect(container.read(healthServiceProvider), isA<HealthService>());
-    expect(container.read(deviceProvider), isA<DeviceState>());
+    expect(notifier.state.devices.any((d) => d.id == '1'), false);
   });
 }

@@ -1,6 +1,7 @@
 import { Test, TestingModule } from "@nestjs/testing";
 import { QuestsService } from "./quests.service";
 import { PrismaService } from "../prisma/prisma.service";
+import { NotificationsService } from "../notifications/notifications.service";
 
 describe("QuestsService", () => {
   let service: QuestsService;
@@ -16,6 +17,7 @@ describe("QuestsService", () => {
       create: jest.fn(),
       findMany: jest.fn(),
       update: jest.fn(),
+      updateMany: jest.fn(),
     },
     $transaction: jest.fn(),
     wallet: {
@@ -29,11 +31,16 @@ describe("QuestsService", () => {
     },
   };
 
+  const mockNotificationsService = {
+    sendPushToUser: jest.fn().mockResolvedValue(true),
+  };
+
   beforeEach(async () => {
     const module: TestingModule = await Test.createTestingModule({
       providers: [
         QuestsService,
         { provide: PrismaService, useValue: mockPrismaService },
+        { provide: NotificationsService, useValue: mockNotificationsService },
       ],
     }).compile();
 
@@ -139,13 +146,13 @@ describe("QuestsService", () => {
           },
         },
       ]);
-      mockPrismaService.userQuest.update.mockResolvedValueOnce({});
+      mockPrismaService.userQuest.updateMany.mockResolvedValueOnce({ count: 1 });
       mockPrismaService.notification.create.mockResolvedValueOnce({});
 
       await service.processQuestProgress("user1", 5000);
 
-      expect(mockPrismaService.userQuest.update).toHaveBeenCalledWith({
-        where: { id: "uq1" },
+      expect(mockPrismaService.userQuest.updateMany).toHaveBeenCalledWith({
+        where: { id: "uq1", currentStageIndex: 0, status: "IN_PROGRESS" },
         data: { currentStageIndex: 1 },
       });
       expect(mockPrismaService.notification.create).toHaveBeenCalled();
@@ -171,7 +178,7 @@ describe("QuestsService", () => {
 
       mockPrismaService.$transaction.mockImplementationOnce(async (cb) => {
         const tx = {
-          userQuest: { update: jest.fn().mockResolvedValue({}) },
+          userQuest: { updateMany: jest.fn().mockResolvedValue({ count: 1 }) },
           wallet: { upsert: jest.fn().mockResolvedValue({}) },
           transaction: { create: jest.fn().mockResolvedValue({}) },
           notification: { create: jest.fn().mockResolvedValue({}) },

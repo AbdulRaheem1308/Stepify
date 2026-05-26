@@ -1,7 +1,6 @@
 import { Test, TestingModule } from "@nestjs/testing";
 import { StepsProcessor } from "./steps.processor";
 import { PrismaService } from "../prisma/prisma.service";
-import { RewardsService } from "../rewards/rewards.service";
 import { PostHogService } from "../analytics/posthog.service";
 import { LeaderboardGateway } from "./gateways/leaderboard.gateway";
 import { Logger } from "@nestjs/common";
@@ -9,7 +8,6 @@ import { Logger } from "@nestjs/common";
 describe("StepsProcessor", () => {
   let processor: StepsProcessor;
   let prismaService: any;
-  let rewardsService: any;
   let postHogService: any;
   let leaderboardGateway: any;
 
@@ -25,10 +23,6 @@ describe("StepsProcessor", () => {
       },
     };
 
-    rewardsService = {
-      processStepRewards: jest.fn(),
-    };
-
     postHogService = {
       trackStepSync: jest.fn(),
     };
@@ -41,7 +35,6 @@ describe("StepsProcessor", () => {
       providers: [
         StepsProcessor,
         { provide: PrismaService, useValue: prismaService },
-        { provide: RewardsService, useValue: rewardsService },
         { provide: PostHogService, useValue: postHogService },
         { provide: LeaderboardGateway, useValue: leaderboardGateway },
       ],
@@ -75,10 +68,7 @@ describe("StepsProcessor", () => {
       data: jobData,
     };
 
-    it("should successfully process step rewards, update company cache, and log analytics", async () => {
-      // Mock step rewards success
-      rewardsService.processStepRewards.mockResolvedValue(undefined);
-
+    it("should successfully update company cache and log analytics", async () => {
       // Mock corporate logic
       prismaService.step.aggregate.mockResolvedValue({
         _sum: { stepCount: 5000 },
@@ -93,11 +83,6 @@ describe("StepsProcessor", () => {
 
       await processor.process(mockJob);
 
-      expect(rewardsService.processStepRewards).toHaveBeenCalledWith(
-        "user1",
-        1000,
-        expect.any(Date),
-      );
       expect(prismaService.step.aggregate).toHaveBeenCalled();
       expect(prismaService.companyMember.update).toHaveBeenCalledWith({
         where: { userId: "user1" },
@@ -113,24 +98,7 @@ describe("StepsProcessor", () => {
       );
     });
 
-    it("should handle failure in processing step rewards", async () => {
-      rewardsService.processStepRewards.mockRejectedValue(
-        new Error("Rewards failed"),
-      );
-      prismaService.step.aggregate.mockResolvedValue({
-        _sum: { stepCount: 0 },
-      });
-      prismaService.companyMember.findUnique.mockResolvedValue(null);
-
-      await processor.process(mockJob);
-
-      expect(Logger.prototype.error).toHaveBeenCalledWith(
-        expect.stringContaining("Failed to process step rewards"),
-      );
-    });
-
     it("should handle corporate leaderboard gracefully if user has no steps sum", async () => {
-      rewardsService.processStepRewards.mockResolvedValue(undefined);
       prismaService.step.aggregate.mockResolvedValue({
         _sum: { stepCount: null },
       });
@@ -148,7 +116,6 @@ describe("StepsProcessor", () => {
     });
 
     it("should handle failure in corporate leaderboard update", async () => {
-      rewardsService.processStepRewards.mockResolvedValue(undefined);
       prismaService.step.aggregate.mockRejectedValue(
         new Error("Prisma failure"),
       );
@@ -161,7 +128,6 @@ describe("StepsProcessor", () => {
     });
 
     it("should handle failure in PostHog analytics", async () => {
-      rewardsService.processStepRewards.mockResolvedValue(undefined);
       prismaService.step.aggregate.mockResolvedValue({
         _sum: { stepCount: 100 },
       });

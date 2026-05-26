@@ -2,6 +2,7 @@ import { Test, TestingModule } from "@nestjs/testing";
 import { CommunityService } from "./community.service";
 import { PrismaService } from "../prisma/prisma.service";
 import { RedisService } from "../redis/redis.service";
+import { NotificationsService } from "../notifications/notifications.service";
 
 describe("CommunityService", () => {
   let service: CommunityService;
@@ -29,12 +30,17 @@ describe("CommunityService", () => {
     setCache: jest.fn(),
   };
 
+  const mockNotificationsService = {
+    createAndNotify: jest.fn().mockResolvedValue(true),
+  };
+
   beforeEach(async () => {
     const module: TestingModule = await Test.createTestingModule({
       providers: [
         CommunityService,
         { provide: PrismaService, useValue: mockPrismaService },
         { provide: RedisService, useValue: mockRedisService },
+        { provide: NotificationsService, useValue: mockNotificationsService },
       ],
     }).compile();
 
@@ -162,7 +168,13 @@ describe("CommunityService", () => {
             create: jest.fn().mockResolvedValue({}),
           },
           feedPost: {
-            update: jest.fn().mockResolvedValue({}),
+            update: jest.fn().mockResolvedValue({ userId: "otherUser" }),
+          },
+          user: {
+            findUnique: jest.fn().mockResolvedValue({ name: "User1 Name" }),
+          },
+          notification: {
+            create: jest.fn().mockResolvedValue({}),
           },
         };
         return cb(tx);
@@ -178,15 +190,24 @@ describe("CommunityService", () => {
       mockPrismaService.$transaction.mockImplementationOnce(async (cb) => {
         const tx = {
           feedComment: {
-            create: jest.fn().mockResolvedValue({ id: "comment1" }),
+            create: jest.fn().mockResolvedValue({ 
+              id: "comment1", 
+              user: { name: "Test User" } 
+            }),
           },
-          feedPost: { update: jest.fn().mockResolvedValue({}) },
+          feedPost: { update: jest.fn().mockResolvedValue({ userId: "otherUser" }) },
+          notification: {
+            create: jest.fn().mockResolvedValue({}),
+          },
         };
         return cb(tx);
       });
 
       const result = await service.addComment("user1", "post1", "Great job!");
-      expect(result).toEqual({ id: "comment1" });
+      expect(result).toEqual({ 
+        id: "comment1", 
+        user: { name: "Test User" } 
+      });
     });
   });
 
