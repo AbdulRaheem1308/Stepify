@@ -2,6 +2,7 @@ import { Test, TestingModule } from "@nestjs/testing";
 import { ChallengesService } from "./challenges.service";
 import { PrismaService } from "../prisma/prisma.service";
 import { RedisService } from "../redis/redis.service";
+import { NotificationsService } from "../notifications/notifications.service";
 import {
   NotFoundException,
   BadRequestException,
@@ -15,6 +16,10 @@ const mockRedisClient = {
 
 const mockRedisService = {
   getClient: jest.fn(() => mockRedisClient),
+};
+
+const mockNotificationsService = {
+  createAndNotify: jest.fn().mockResolvedValue(true),
 };
 
 const mockPrismaService: any = {
@@ -50,6 +55,7 @@ describe("ChallengesService", () => {
         ChallengesService,
         { provide: PrismaService, useValue: mockPrismaService },
         { provide: RedisService, useValue: mockRedisService },
+        { provide: NotificationsService, useValue: mockNotificationsService },
       ],
     }).compile();
     service = module.get<ChallengesService>(ChallengesService);
