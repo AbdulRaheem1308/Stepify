@@ -3,6 +3,7 @@ import { RewardsService } from './rewards.service';
 import { PrismaService } from '../prisma/prisma.service';
 import { ConfigService } from '@nestjs/config';
 import { QuestsService } from '../quests/quests.service';
+import { NotificationsService } from '../notifications/notifications.service';
 import { TransactionType } from '@prisma/client';
 
 describe('RewardsService', () => {
@@ -76,6 +77,10 @@ describe('RewardsService', () => {
     processQuestProgress: jest.fn(),
   };
 
+  const mockNotificationsService = {
+    sendPushNotification: jest.fn(),
+  };
+
   beforeEach(async () => {
     const module: TestingModule = await Test.createTestingModule({
       providers: [
@@ -83,6 +88,7 @@ describe('RewardsService', () => {
         { provide: PrismaService, useValue: mockPrisma },
         { provide: ConfigService, useValue: mockConfig },
         { provide: QuestsService, useValue: mockQuestsService },
+        { provide: NotificationsService, useValue: mockNotificationsService },
       ],
     }).compile();
 
@@ -518,7 +524,4 @@ describe('RewardsService', () => {
       expect(mockPrisma.reward.create).toHaveBeenCalledTimes(6);
     });
   });
-});
-});
-
 });
