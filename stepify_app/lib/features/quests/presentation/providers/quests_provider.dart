@@ -1,4 +1,5 @@
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:flutter/foundation.dart';
 import '../../../../services/quests_service.dart';
 import '../../../../services/api_service.dart';
 import '../../../../features/auth/presentation/providers/auth_provider.dart';
@@ -79,7 +80,13 @@ class QuestsNotifier extends StateNotifier<QuestsState> {
             return quest;
           }).toList();
         } catch (e) {
-          print('Error loading user specific quests: $e');
+          debugPrint('Error loading user specific quests: $e');
+          state = QuestsState(
+            isLoading: false,
+            quests: allQuests,
+            error: 'Failed to load joined quests: ${e.toString().replaceAll('Exception: ', '')}',
+          );
+          return;
         }
       }
 
@@ -98,14 +105,27 @@ class QuestsNotifier extends StateNotifier<QuestsState> {
       state = QuestsState(isLoading: state.isLoading, quests: state.quests, error: 'You must be logged in to join quests.');
       return;
     }
+    
+    // Optimistic local state update: mark quest as in progress instantly
+    final originalQuests = state.quests;
+    final updatedQuests = state.quests.map((quest) {
+      if (quest.id == questId) {
+        return quest.copyWith(status: QuestStatus.inProgress, currentStageIndex: 0);
+      }
+      return quest;
+    }).toList();
+    
+    state = QuestsState(isLoading: true, quests: updatedQuests, error: null);
+    
     try {
       await _service.joinQuest(questId);
-      // Refresh quests to get updated status
+      // Refresh quests to get synchronized status from the backend
       await _loadQuests();
     } catch (e) {
+      // Revert optimistic update on failure
       state = QuestsState(
-        isLoading: state.isLoading,
-        quests: state.quests,
+        isLoading: false,
+        quests: originalQuests,
         error: 'Failed to join quest: ${e.toString().replaceAll('Exception: ', '')}',
       );
     }

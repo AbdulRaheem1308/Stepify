@@ -559,10 +559,9 @@ class DashboardNotifier extends StateNotifier<DashboardState> with WidgetsBindin
     }
     // ─────────────────────────────────────────────────────────────────
 
-    // 1. Optimistic UI update instantly on every step event
+    // 1. Optimistic UI update instantly on every step event (stats only — coins come from backend 4hr sync)
     if (state.todaySteps != null) {
       final currentSteps = state.todaySteps!.stepCount;
-      // Only update if steps actually increased (or we had 0)
       if (stepCount > currentSteps || currentSteps == 0) {
         final goal = state.todaySteps!.goal > 0 ? state.todaySteps!.goal : 10000;
         // Estimate active minutes: assume 100 steps ≈ 1 active minute (clinical standard)
@@ -570,6 +569,7 @@ class DashboardNotifier extends StateNotifier<DashboardState> with WidgetsBindin
         final newActiveMinutes = calculatedActiveMinutes > state.todaySteps!.activeMinutes
             ? calculatedActiveMinutes
             : state.todaySteps!.activeMinutes;
+
         state = state.copyWith(
           todaySteps: TodaySteps(
             stepCount: stepCount,

@@ -162,18 +162,28 @@ export class RewardsService {
     const day = String(date.getUTCDate()).padStart(2, "0");
     const dateStr = `${year}-${month}-${day}`;
 
-    // Get all existing steps transactions for this date
-    const existingTransactions = (await this.prisma.transaction.findMany({
+    // Get recent step transactions to calculate points already awarded today
+    // We fetch recent ones and filter in memory to avoid Prisma JSON querying issues
+    const recentTransactions = await this.prisma.transaction.findMany({
       where: {
         userId,
         type: TransactionType.STEPS,
-        metadata: {
-          equals: { date: dateStr }
-        }
+      },
+      orderBy: { createdAt: 'desc' },
+      take: 50,
+      select: {
+        points: true,
+        metadata: true,
       }
-    })) || [];
+    });
 
-    const pointsAlreadyAwarded = existingTransactions.reduce((sum, tx) => sum + tx.points, 0);
+    const todaysTransactions = recentTransactions.filter(tx => {
+      if (!tx.metadata) return false;
+      const meta = tx.metadata as any;
+      return meta.date === dateStr;
+    });
+
+    const pointsAlreadyAwarded = todaysTransactions.reduce((sum, tx) => sum + tx.points, 0);
     const newPoints = pointsEarned - pointsAlreadyAwarded;
 
     if (newPoints > 0) {

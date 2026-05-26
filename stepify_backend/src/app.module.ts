@@ -28,7 +28,7 @@ import { CompaniesModule } from "./companies/companies.module";
 import { QuestsModule } from "./quests/quests.module";
 import { MessagingModule } from "./messaging/messaging.module";
 import { AnalyticsModule } from "./analytics/analytics.module";
-import { AdminModule } from "./admin/admin.module";
+
 import { ActivitiesModule } from "./activities/activities.module";
 
 // Controllers
@@ -119,7 +119,7 @@ import { KeepAwakeService } from "./keep-awake.service";
     QuestsModule,
     MessagingModule,
     AnalyticsModule,
-    AdminModule,
+
     ActivitiesModule,
   ],
   controllers: [HealthController],

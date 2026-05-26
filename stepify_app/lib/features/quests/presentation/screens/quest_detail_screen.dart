@@ -132,14 +132,29 @@ class QuestDetailScreen extends ConsumerWidget {
                 const SizedBox(height: 40),
                 if (quest.status == QuestStatus.available)
                   ElevatedButton(
-                    onPressed: () {
-                       ref.read(questsProvider.notifier).joinQuest(quest.id);
-                       // Show snackbar
-                       ScaffoldMessenger.of(context).showSnackBar(
-                         const SnackBar(content: Text('Quest Joined! Good luck!')),
-                       );
-                    },
-                    child: const Text('Start Quest'),
+                    onPressed: state.isLoading
+                        ? null
+                        : () async {
+                            final messenger = ScaffoldMessenger.of(context);
+                            await ref.read(questsProvider.notifier).joinQuest(quest.id);
+                            
+                            // Check if the quest enrollment was successful (no error in final state)
+                            if (ref.read(questsProvider).error == null) {
+                              messenger.showSnackBar(
+                                const SnackBar(content: Text('Quest Joined! Good luck!')),
+                              );
+                            }
+                          },
+                    child: state.isLoading
+                        ? const SizedBox(
+                            width: 20,
+                            height: 20,
+                            child: CircularProgressIndicator(
+                              strokeWidth: 2,
+                              valueColor: AlwaysStoppedAnimation<Color>(Colors.white),
+                            ),
+                          )
+                        : const Text('Start Quest'),
                   )
                 else if (quest.status == QuestStatus.inProgress)
                   OutlinedButton(

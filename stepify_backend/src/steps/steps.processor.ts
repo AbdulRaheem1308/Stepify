@@ -2,7 +2,6 @@ import { Processor, WorkerHost } from "@nestjs/bullmq";
 import { Job } from "bullmq";
 import { Injectable, Logger } from "@nestjs/common";
 import { PrismaService } from "../prisma/prisma.service";
-import { RewardsService } from "../rewards/rewards.service";
 import { PostHogService } from "../analytics/posthog.service";
 import { LeaderboardGateway } from "./gateways/leaderboard.gateway";
 
@@ -13,7 +12,6 @@ export class StepsProcessor extends WorkerHost {
 
   constructor(
     private readonly prisma: PrismaService,
-    private readonly rewardsService: RewardsService,
     private readonly postHog: PostHogService,
     private readonly leaderboardGateway: LeaderboardGateway,
   ) {
@@ -27,23 +25,9 @@ export class StepsProcessor extends WorkerHost {
 
     if (job.name === "process-sync") {
       const { userId, effectiveStepCount, date, effectiveSource } = job.data;
-      const parsedDate = new Date(date);
 
-      // 1. Process achievements, streaks, and wallet rewards asynchronously
-      try {
-        await this.rewardsService.processStepRewards(
-          userId,
-          effectiveStepCount,
-          parsedDate,
-        );
-        this.logger.log(
-          `✅ Successfully processed step rewards for user ${userId}`,
-        );
-      } catch (err) {
-        this.logger.error(
-          `❌ Failed to process step rewards for user ${userId}: ${err.message}`,
-        );
-      }
+      // 1. Rewards processing has been moved to a 4-hour Cron job (RewardsCronService)
+      // to reduce database load and eliminate race conditions.
 
       // 2. Update corporate leaderboard cache if the user is in a company
       try {
