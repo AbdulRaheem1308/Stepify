@@ -92,11 +92,23 @@ export class NotificationsService {
 
     const user = await this.prisma.user.findUnique({
       where: { id: userId },
-      select: { fcmToken: true },
+      select: { 
+        fcmToken: true,
+        settings: {
+          select: { pushNotifications: true }
+        }
+      },
     });
 
     if (!user?.fcmToken) {
       this.logger.debug(`No FCM token for user ${userId} — skipping push`);
+      return;
+    }
+
+    // Explicitly check user settings (default is true if settings object doesn't exist yet)
+    const pushEnabled = user.settings?.pushNotifications ?? true;
+    if (!pushEnabled) {
+      this.logger.debug(`User ${userId} has push notifications disabled in settings — skipping FCM dispatch`);
       return;
     }
 
