@@ -31,7 +31,7 @@ void main() {
     mockSocialAuth = MockSocialAuthService();
     mockPushService = MockPushNotificationService();
     
-    when(() => mockPushService.syncTokenWithBackend()).thenAnswer((_) async {});
+    when(() => mockPushService.registerTokenAfterLogin()).thenAnswer((_) async {});
     when(() => mockPushService.clearTokenOnLogout()).thenAnswer((_) async {});
     
     notifier = AuthNotifier(mockApiService, mockSocialAuth, mockPushService);

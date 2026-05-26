@@ -11,13 +11,15 @@ import 'package:stepify_app/features/auth/presentation/providers/auth_provider.d
 import 'package:stepify_app/features/auth/services/social_auth_service.dart';
 import 'package:stepify_app/services/api_service.dart';
 import 'package:mocktail/mocktail.dart';
+import 'package:stepify_app/core/services/push_notification_service.dart';
 
 class MockSocialAuthService extends Mock implements SocialAuthService {}
+class MockPushNotificationService extends Mock implements PushNotificationService {}
 class DummyApiService extends ApiService {}
 
 class FakeAuthNotifier extends AuthNotifier {
   final bool isNewUserResult;
-  FakeAuthNotifier(this.isNewUserResult) : super(DummyApiService(), MockSocialAuthService());
+  FakeAuthNotifier(this.isNewUserResult) : super(DummyApiService(), MockSocialAuthService(), MockPushNotificationService());
 
   @override
   Future<bool> loginWithSocial(String idToken) async {
