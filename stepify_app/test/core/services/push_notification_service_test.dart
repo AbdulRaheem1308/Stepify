@@ -4,7 +4,7 @@ import 'package:stepify_app/core/services/push_notification_service.dart';
 import 'package:stepify_app/services/api_service.dart';
 
 class MockApiService extends ApiService {
-  MockApiService() : super(baseUrl: 'http://localhost');
+  MockApiService() : super();
 }
 
 void main() {
