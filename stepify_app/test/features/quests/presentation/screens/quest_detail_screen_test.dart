@@ -78,7 +78,7 @@ void main() {
     // Button state for IN_PROGRESS
     await tester.drag(find.byType(CustomScrollView), const Offset(0, -1000));
     await tester.pumpAndSettle();
-    expect(find.text('Continue Journey', skipOffstage: false), findsOneWidget);
+    expect(find.text('Continue Journey (Go Walk!)', skipOffstage: false), findsOneWidget);
   });
   
   testWidgets('QuestDetailScreen shows snackbar on error', (tester) async {
