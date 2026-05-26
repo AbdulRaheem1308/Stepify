@@ -186,6 +186,7 @@ export class TeamsService {
         "New Team Member!",
         `${user.name || 'A new walker'} just joined your team.`,
         "SOCIAL"
+      // eslint-disable-next-line no-console
       ).catch(e => console.error("Notification failed", e));
     }
 
@@ -336,6 +337,7 @@ export class TeamsService {
         "Team Battle!",
         `${challengerTeam.name} has challenged your team to a step battle! ⚔️`,
         "COMPETITION"
+      // eslint-disable-next-line no-console
       ).catch(e => console.error("Notification failed", e));
     }
 

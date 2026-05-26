@@ -658,6 +658,7 @@ export class RewardsService {
           "New Badge Unlocked! 🥇",
           `You've earned the ${achievement.name} badge!`,
           "ACHIEVEMENT"
+        // eslint-disable-next-line no-console
         ).catch(e => console.error("Push failed", e));
       }
     }

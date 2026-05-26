@@ -234,6 +234,7 @@ export class ChallengesService {
       "Challenge Accepted!",
       `You've joined ${challenge.title}. Let's go! 🏃`,
       "CHALLENGE"
+    // eslint-disable-next-line no-console
     ).catch(e => console.error("Notification failed", e));
 
     return userChallenge;
@@ -324,6 +325,7 @@ export class ChallengesService {
             "Challenge Completed! 🎉",
             `You finished ${userChallenge.challenge.title} and earned your rewards!`,
             "CHALLENGE"
+          // eslint-disable-next-line no-console
           ).catch(e => console.error("Notification failed", e));
         }
 

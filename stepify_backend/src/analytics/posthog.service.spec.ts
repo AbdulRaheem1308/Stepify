@@ -5,7 +5,7 @@ import { Logger } from '@nestjs/common';
 
 describe('PostHogService', () => {
   let service: PostHogService;
-  let configService: ConfigService;
+  let _configService: ConfigService;
   let fetchSpy: jest.SpyInstance;
   let loggerWarnSpy: jest.SpyInstance;
   let loggerLogSpy: jest.SpyInstance;
@@ -39,7 +39,7 @@ describe('PostHogService', () => {
     }).compile();
 
     service = module.get<PostHogService>(PostHogService);
-    configService = module.get<ConfigService>(ConfigService);
+    _configService = module.get<ConfigService>(ConfigService);
   });
 
   afterEach(() => {

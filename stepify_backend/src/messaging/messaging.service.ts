@@ -103,6 +103,7 @@ export class MessagingService implements OnModuleInit {
           `New Message from ${sender?.name || "Someone"}`,
           content.length > 50 ? content.substring(0, 47) + "..." : content,
           { type: "new_message", conversationId }
+        // eslint-disable-next-line no-console
         ).catch(e => console.error("Push failed", e));
       }
 

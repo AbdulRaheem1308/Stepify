@@ -5,7 +5,7 @@ import { BadRequestException, ConflictException } from '@nestjs/common';
 
 describe('ActivitiesService', () => {
   let service: ActivitiesService;
-  let prisma: PrismaService;
+  let _prisma: PrismaService;
 
   const mockPrismaService = {
     activity: {
@@ -25,7 +25,7 @@ describe('ActivitiesService', () => {
     }).compile();
 
     service = module.get<ActivitiesService>(ActivitiesService);
-    prisma = module.get<PrismaService>(PrismaService);
+    _prisma = module.get<PrismaService>(PrismaService);
   });
 
   afterEach(() => {

@@ -8,9 +8,9 @@ import { AdType } from '@prisma/client';
 
 describe('AdsService', () => {
   let service: AdsService;
-  let prisma: PrismaService;
-  let redis: RedisService;
-  let config: ConfigService;
+  let _prisma: PrismaService;
+  let _redis: RedisService;
+  let _config: ConfigService;
 
   const mockPrismaService = {
     adView: {
@@ -53,9 +53,9 @@ describe('AdsService', () => {
     }).compile();
 
     service = module.get<AdsService>(AdsService);
-    prisma = module.get<PrismaService>(PrismaService);
-    redis = module.get<RedisService>(RedisService);
-    config = module.get<ConfigService>(ConfigService);
+    _prisma = module.get<PrismaService>(PrismaService);
+    _redis = module.get<RedisService>(RedisService);
+    _config = module.get<ConfigService>(ConfigService);
   });
 
   afterEach(() => {

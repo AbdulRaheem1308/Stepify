@@ -174,6 +174,7 @@ export class FriendsService {
         "New Friend Request!",
         `${sender.name || 'Someone'} wants to connect with you.`,
         "SOCIAL"
+      // eslint-disable-next-line no-console
       ).catch(e => console.error("Notification failed", e));
     }
 
@@ -204,6 +205,7 @@ export class FriendsService {
         "Friend Request Accepted!",
         `${accepter.name || 'Someone'} accepted your friend request.`,
         "SOCIAL"
+      // eslint-disable-next-line no-console
       ).catch(e => console.error("Notification failed", e));
     }
 
@@ -275,6 +277,7 @@ export class FriendsService {
           "Boost Received!",
           `${sender.name || 'A friend'} sent you a boost. Keep stepping! 🔥`,
           "SOCIAL"
+        // eslint-disable-next-line no-console
         ).catch(e => console.error("Notification failed", e));
       }
 

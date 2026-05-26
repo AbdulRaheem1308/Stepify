@@ -1,6 +1,6 @@
 import { Test } from '@nestjs/testing';
 import { AppModule } from './app.module';
-import { ConfigModule, ConfigService } from '@nestjs/config';
+import { ConfigService } from '@nestjs/config';
 
 jest.mock('bullmq', () => ({
   Queue: class QueueMock {

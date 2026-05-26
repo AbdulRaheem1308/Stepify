@@ -205,6 +205,7 @@ export class QuestsService implements OnModuleInit {
                 "Quest Completed! 🏆",
                 `You've conquered ${quest.title}!`,
                 { type: "quest_complete" }
+              // eslint-disable-next-line no-console
               ).catch(e => console.error("Push failed", e));
             }
           });
@@ -237,6 +238,7 @@ export class QuestsService implements OnModuleInit {
               "Quest Progress!",
               `You've reached stage ${currentStageIndex + 1} of ${quest.title}.`,
               { type: "quest_stage" }
+            // eslint-disable-next-line no-console
             ).catch(e => console.error("Push failed", e));
           }
         }

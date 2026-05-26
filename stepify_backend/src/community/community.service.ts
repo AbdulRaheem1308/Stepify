@@ -101,6 +101,7 @@ export class CommunityService {
             "New Like! ❤️",
             `${liker?.name || "Someone"} liked your post.`,
             "SOCIAL"
+          // eslint-disable-next-line no-console
           ).catch(e => console.error("Notification failed", e));
         }
 
@@ -131,6 +132,7 @@ export class CommunityService {
           "New Comment! 💬",
           `${comment.user.name || "Someone"} commented on your post.`,
           "SOCIAL"
+        // eslint-disable-next-line no-console
         ).catch(e => console.error("Notification failed", e));
       }
 
