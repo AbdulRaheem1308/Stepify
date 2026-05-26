@@ -9,13 +9,16 @@ import 'package:flutter_secure_storage/flutter_secure_storage.dart';
 import 'dart:io';
 import 'package:hive/hive.dart';
 import 'package:stepify_app/services/storage_service.dart';
+import 'package:stepify_app/core/services/push_notification_service.dart';
 
 class MockApiService extends Mock implements ApiService {}
 class MockSocialAuthService extends Mock implements SocialAuthService {}
+class MockPushNotificationService extends Mock implements PushNotificationService {}
 
 void main() {
   late MockApiService mockApiService;
   late MockSocialAuthService mockSocialAuth;
+  late MockPushNotificationService mockPushService;
   late AuthNotifier notifier;
 
   setUp(() async {
@@ -26,7 +29,12 @@ void main() {
     FlutterSecureStorage.setMockInitialValues({});
     mockApiService = MockApiService();
     mockSocialAuth = MockSocialAuthService();
-    notifier = AuthNotifier(mockApiService, mockSocialAuth);
+    mockPushService = MockPushNotificationService();
+    
+    when(() => mockPushService.syncTokenWithBackend()).thenAnswer((_) async {});
+    when(() => mockPushService.clearTokenOnLogout()).thenAnswer((_) async {});
+    
+    notifier = AuthNotifier(mockApiService, mockSocialAuth, mockPushService);
   });
 
   group('AuthNotifier', () {
