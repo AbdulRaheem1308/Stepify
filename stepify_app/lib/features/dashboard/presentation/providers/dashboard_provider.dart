@@ -282,19 +282,27 @@ class DashboardNotifier extends StateNotifier<DashboardState> with WidgetsBindin
 
         final expectedTotal = _pedometerOffsetInitialized ? stepsToday + _pedometerOffset : stepsToday;
         
+        final now = DateTime.now();
+        final newFirst = state.firstTrackingTime ?? now;
+        final newLast = now;
+
         TodaySteps? updatedTodaySteps = state.todaySteps;
         if (updatedTodaySteps != null && expectedTotal > updatedTodaySteps.stepCount) {
+          final newActiveMinutes = newLast.difference(newFirst).inMinutes;
+          final activeMinutesToUse = newActiveMinutes > updatedTodaySteps.activeMinutes
+              ? newActiveMinutes
+              : updatedTodaySteps.activeMinutes;
+
           updatedTodaySteps = updatedTodaySteps.copyWith(
             stepCount: expectedTotal,
-            // Calculate progress instantly
+            caloriesBurned: (expectedTotal * 0.045).round(),
+            distanceKm: expectedTotal * 0.000762,
+            activeMinutes: activeMinutesToUse,
             progress: ((expectedTotal / updatedTodaySteps.goal) * 100).toInt(),
             goalReached: expectedTotal >= updatedTodaySteps.goal,
           );
         }
 
-        final now = DateTime.now();
-        final newFirst = state.firstTrackingTime ?? now;
-        final newLast = now;
         state = state.copyWith(
           sensorStepsToday: stepsToday,
           sensorOffset: _pedometerOffset,
