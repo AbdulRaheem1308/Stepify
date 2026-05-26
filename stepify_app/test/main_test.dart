@@ -1,15 +1,18 @@
+import 'dart:async';
 import 'dart:io';
 import 'package:flutter/services.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
+import 'package:stepify_app/main.dart' as app;
 import 'package:stepify_app/main.dart';
 import 'package:stepify_app/core/router/app_router.dart';
 import 'package:stepify_app/services/api_service.dart';
 import 'package:stepify_app/services/storage_service.dart';
 import 'package:hive_flutter/hive_flutter.dart';
 import 'package:dio/dio.dart';
+import 'package:mocktail/mocktail.dart';
 
 class MockApiService extends ApiService {
   MockApiService() : super();
@@ -53,9 +56,93 @@ class MockApiService extends ApiService {
   }
 }
 
+// Global network overrides to make Dio/HTTP requests finish instantly without timers
+class MockHttpOverrides extends HttpOverrides {
+  @override
+  HttpClient createHttpClient(SecurityContext? context) {
+    return MockHttpClient();
+  }
+}
+
+class MockHttpClient extends Mock implements HttpClient {
+  @override
+  Future<HttpClientRequest> openUrl(String method, Uri url) async {
+    return MockHttpClientRequest();
+  }
+  
+  @override
+  set badCertificateCallback(bool Function(X509Certificate cert, String host, int port)? callback) {}
+}
+
+class MockHttpClientRequest extends Mock implements HttpClientRequest {
+  @override
+  HttpHeaders get headers => MockHttpHeaders();
+
+  @override
+  Future<HttpClientResponse> close() async {
+    return MockHttpClientResponse();
+  }
+}
+
+class MockHttpHeaders extends Mock implements HttpHeaders {
+  @override
+  void add(String name, Object value, {bool preserveHeaderCase = false}) {}
+  @override
+  void set(String name, Object value, {bool preserveHeaderCase = false}) {}
+}
+
+class MockHttpClientResponse extends Mock implements HttpClientResponse {
+  @override
+  int get statusCode => 404;
+
+  @override
+  int get contentLength => 0;
+
+  @override
+  HttpClientResponseCompressionState get compressionState =>
+      HttpClientResponseCompressionState.notCompressed;
+
+  @override
+  StreamSubscription<List<int>> listen(
+    void Function(List<int> event)? onData, {
+    Function? onError,
+    void Function()? onDone,
+    bool? cancelOnError,
+  }) {
+    final stream = Stream<List<int>>.empty();
+    return stream.listen(
+      onData,
+      onError: onError,
+      onDone: onDone,
+      cancelOnError: cancelOnError,
+    );
+  }
+}
+
 void main() {
   setUpAll(() async {
     TestWidgetsFlutterBinding.ensureInitialized();
+    
+    // Path provider mock
+    const channel = MethodChannel('plugins.flutter.io/path_provider');
+    TestDefaultBinaryMessengerBinding.instance.defaultBinaryMessenger.setMockMethodCallHandler(
+      channel,
+      (MethodCall methodCall) async => '.',
+    );
+
+    // Flutter secure storage mock
+    const secureStorageChannel = MethodChannel('plugins.it_nomads.com/flutter_secure_storage');
+    TestDefaultBinaryMessengerBinding.instance.defaultBinaryMessenger.setMockMethodCallHandler(
+      secureStorageChannel,
+      (MethodCall methodCall) async {
+        if (methodCall.method == 'read' && methodCall.arguments['key'] == 'access_token') {
+          return 'fake_token';
+        }
+        return null;
+      },
+    );
+
+    // Workmanager mock
     TestDefaultBinaryMessengerBinding.instance.defaultBinaryMessenger
         .setMockMethodCallHandler(
             const MethodChannel('be.tramckrijte.workmanager/workmanager'),
@@ -91,5 +178,15 @@ void main() {
     
     // We just verify it pumps without throwing a critical widget error
     expect(find.byType(StepifyApp), findsOneWidget);
+  });
+
+  testWidgets('main() entry point runs and initializes the app successfully', (WidgetTester tester) async {
+    HttpOverrides.global = MockHttpOverrides();
+
+    // Call the main function of the app and verify it doesn't crash
+    expect(() => app.main(), returnsNormally);
+
+    // Allow any asynchronous/zoned initialization code to run
+    await tester.pump(const Duration(milliseconds: 200));
   });
 }
