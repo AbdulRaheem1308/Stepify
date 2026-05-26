@@ -1,9 +1,13 @@
 import { Injectable, OnModuleInit } from "@nestjs/common";
 import { PrismaService } from "../prisma/prisma.service";
+import { NotificationsService } from "../notifications/notifications.service";
 
 @Injectable()
 export class MessagingService implements OnModuleInit {
-  constructor(private readonly prisma: PrismaService) {}
+  constructor(
+    private readonly prisma: PrismaService,
+    private readonly notificationsService: NotificationsService,
+  ) {}
 
   async onModuleInit() {
     // Seed mock messages if empty
@@ -83,10 +87,24 @@ export class MessagingService implements OnModuleInit {
       });
 
       // Update conversation timestamp
-      await tx.conversation.update({
+      const conversation = await tx.conversation.update({
         where: { id: conversationId },
         data: { updatedAt: new Date() },
+        include: { participants: true },
       });
+
+      // Notify other participants
+      const sender = await tx.user.findUnique({ where: { id: senderId }, select: { name: true }});
+      const otherParticipants = conversation.participants.filter(p => p.userId !== senderId);
+      
+      for (const p of otherParticipants) {
+        this.notificationsService.sendPushToUser(
+          p.userId,
+          `New Message from ${sender?.name || "Someone"}`,
+          content.length > 50 ? content.substring(0, 47) + "..." : content,
+          { type: "new_message", conversationId }
+        ).catch(e => console.error("Push failed", e));
+      }
 
       return message;
     });

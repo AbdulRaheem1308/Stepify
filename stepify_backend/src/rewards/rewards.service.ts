@@ -3,6 +3,7 @@ import { PrismaService } from "../prisma/prisma.service";
 import { ConfigService } from "@nestjs/config";
 import { TransactionType } from "@prisma/client";
 import { QuestsService } from "../quests/quests.service";
+import { NotificationsService } from "../notifications/notifications.service";
 import { Cron, CronExpression } from "@nestjs/schedule";
 
 @Injectable()
@@ -14,6 +15,7 @@ export class RewardsService {
     private readonly prisma: PrismaService,
     private readonly configService: ConfigService,
     private readonly questsService: QuestsService,
+    private readonly notificationsService: NotificationsService,
   ) {
     this.pointsPerStep = Number.parseFloat(
       this.configService.get("POINTS_PER_STEP", "0.1"),
@@ -650,6 +652,13 @@ export class RewardsService {
         this.logger.log(
           `User ${userId} unlocked achievement: ${achievement.name}`,
         );
+
+        this.notificationsService.createAndNotify(
+          userId,
+          "New Badge Unlocked! 🥇",
+          `You've earned the ${achievement.name} badge!`,
+          "ACHIEVEMENT"
+        ).catch(e => console.error("Push failed", e));
       }
     }
 

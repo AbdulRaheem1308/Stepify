@@ -8,6 +8,7 @@ import {
 import { Cron, CronExpression } from "@nestjs/schedule";
 import { PrismaService } from "../prisma/prisma.service";
 import { RedisService } from "../redis/redis.service";
+import { NotificationsService } from "../notifications/notifications.service";
 import { CreateChallengeDto, ChallengeStatus } from "./dto/challenge.dto";
 
 @Injectable()
@@ -17,6 +18,7 @@ export class ChallengesService {
   constructor(
     private readonly prisma: PrismaService,
     private readonly redis: RedisService,
+    private readonly notificationsService: NotificationsService,
   ) {}
 
   @Cron(CronExpression.EVERY_DAY_AT_MIDNIGHT)
@@ -214,7 +216,7 @@ export class ChallengesService {
     }
 
     // Create user challenge entry
-    return this.prisma.userChallenge.create({
+    const userChallenge = await this.prisma.userChallenge.create({
       data: {
         userId,
         challengeId,
@@ -226,6 +228,15 @@ export class ChallengesService {
         challenge: true,
       },
     });
+
+    await this.notificationsService.createAndNotify(
+      userId,
+      "Challenge Accepted!",
+      `You've joined ${challenge.title}. Let's go! 🏃`,
+      "CHALLENGE"
+    ).catch(e => console.error("Notification failed", e));
+
+    return userChallenge;
   }
 
   /**
@@ -305,6 +316,15 @@ export class ChallengesService {
               metadata: { challengeId: challengeId },
             },
           });
+        }
+
+        if (isCompleted) {
+          this.notificationsService.createAndNotify(
+            userId,
+            "Challenge Completed! 🎉",
+            `You finished ${userChallenge.challenge.title} and earned your rewards!`,
+            "CHALLENGE"
+          ).catch(e => console.error("Notification failed", e));
         }
 
         return uc;

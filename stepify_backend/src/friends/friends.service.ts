@@ -6,6 +6,7 @@ import {
 } from "@nestjs/common";
 import { PrismaService } from "../prisma/prisma.service";
 import { RedisService } from "../redis/redis.service";
+import { NotificationsService } from "../notifications/notifications.service";
 import * as crypto from "node:crypto";
 
 @Injectable()
@@ -13,6 +14,7 @@ export class FriendsService {
   constructor(
     private readonly prisma: PrismaService,
     private readonly redis: RedisService,
+    private readonly notificationsService: NotificationsService,
   ) {}
 
   /**
@@ -161,9 +163,21 @@ export class FriendsService {
       throw new ConflictException("Friend request already exists");
     }
 
-    return this.prisma.friendship.create({
+    const friendship = await this.prisma.friendship.create({
       data: { userId, friendId, status: "PENDING" },
     });
+
+    const sender = await this.prisma.user.findUnique({ where: { id: userId } });
+    if (sender) {
+      await this.notificationsService.createAndNotify(
+        friendId,
+        "New Friend Request!",
+        `${sender.name || 'Someone'} wants to connect with you.`,
+        "SOCIAL"
+      ).catch(e => console.error("Notification failed", e));
+    }
+
+    return friendship;
   }
 
   /**
@@ -178,10 +192,22 @@ export class FriendsService {
       throw new NotFoundException("Friend request not found");
     }
 
-    return this.prisma.friendship.update({
+    const updated = await this.prisma.friendship.update({
       where: { id: request.id },
       data: { status: "ACCEPTED" },
     });
+
+    const accepter = await this.prisma.user.findUnique({ where: { id: userId } });
+    if (accepter) {
+      await this.notificationsService.createAndNotify(
+        requesterId,
+        "Friend Request Accepted!",
+        `${accepter.name || 'Someone'} accepted your friend request.`,
+        "SOCIAL"
+      ).catch(e => console.error("Notification failed", e));
+    }
+
+    return updated;
   }
 
   /**
@@ -241,6 +267,16 @@ export class FriendsService {
           description: "Received a boost from a friend!",
         },
       });
+
+      const sender = await tx.user.findUnique({ where: { id: userId } });
+      if (sender) {
+        this.notificationsService.createAndNotify(
+          friendId,
+          "Boost Received!",
+          `${sender.name || 'A friend'} sent you a boost. Keep stepping! 🔥`,
+          "SOCIAL"
+        ).catch(e => console.error("Notification failed", e));
+      }
 
       return { success: true, boost };
     });

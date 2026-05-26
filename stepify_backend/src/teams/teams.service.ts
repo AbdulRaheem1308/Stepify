@@ -5,10 +5,14 @@ import {
   NotFoundException,
 } from "@nestjs/common";
 import { PrismaService } from "../prisma/prisma.service";
+import { NotificationsService } from "../notifications/notifications.service";
 
 @Injectable()
 export class TeamsService {
-  constructor(private readonly prisma: PrismaService) {}
+  constructor(
+    private readonly prisma: PrismaService,
+    private readonly notificationsService: NotificationsService,
+  ) {}
 
   // Get user's teams
   async getMyTeams(userId: string) {
@@ -175,6 +179,16 @@ export class TeamsService {
       },
     });
 
+    const user = await this.prisma.user.findUnique({ where: { id: userId } });
+    if (user && team.captainId) {
+      await this.notificationsService.createAndNotify(
+        team.captainId,
+        "New Team Member!",
+        `${user.name || 'A new walker'} just joined your team.`,
+        "SOCIAL"
+      ).catch(e => console.error("Notification failed", e));
+    }
+
     return { success: true };
   }
 
@@ -315,6 +329,15 @@ export class TeamsService {
         endsAt: nextWeek,
       },
     });
+
+    if (opponentTeam?.captainId && challengerTeam) {
+      await this.notificationsService.createAndNotify(
+        opponentTeam.captainId,
+        "Team Battle!",
+        `${challengerTeam.name} has challenged your team to a step battle! ⚔️`,
+        "COMPETITION"
+      ).catch(e => console.error("Notification failed", e));
+    }
 
     return { success: true, battle };
   }

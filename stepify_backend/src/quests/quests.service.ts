@@ -1,9 +1,13 @@
 import { Injectable, OnModuleInit, Logger } from "@nestjs/common";
 import { PrismaService } from "../prisma/prisma.service";
+import { NotificationsService } from "../notifications/notifications.service";
 
 @Injectable()
 export class QuestsService implements OnModuleInit {
-  constructor(private readonly prisma: PrismaService) {}
+  constructor(
+    private readonly prisma: PrismaService,
+    private readonly notificationsService: NotificationsService,
+  ) {}
 
   // Seed data on init
   async onModuleInit() {
@@ -195,6 +199,13 @@ export class QuestsService implements OnModuleInit {
                   type: "achievement",
                 },
               });
+
+              this.notificationsService.sendPushToUser(
+                userId,
+                "Quest Completed! 🏆",
+                `You've conquered ${quest.title}!`,
+                { type: "quest_complete" }
+              ).catch(e => console.error("Push failed", e));
             }
           });
         } else {
@@ -220,6 +231,13 @@ export class QuestsService implements OnModuleInit {
                 type: "system",
               },
             });
+
+            this.notificationsService.sendPushToUser(
+              userId,
+              "Quest Progress!",
+              `You've reached stage ${currentStageIndex + 1} of ${quest.title}.`,
+              { type: "quest_stage" }
+            ).catch(e => console.error("Push failed", e));
           }
         }
       }

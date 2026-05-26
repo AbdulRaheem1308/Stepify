@@ -1,12 +1,14 @@
 import { Injectable } from "@nestjs/common";
 import { PrismaService } from "../prisma/prisma.service";
 import { RedisService } from "../redis/redis.service";
+import { NotificationsService } from "../notifications/notifications.service";
 
 @Injectable()
 export class CommunityService {
   constructor(
     private readonly prisma: PrismaService,
     private readonly redis: RedisService,
+    private readonly notificationsService: NotificationsService,
   ) {}
 
   // Get community feed (Screen 19)
@@ -86,10 +88,22 @@ export class CommunityService {
         await tx.feedReaction.create({
           data: { postId, userId, type: reactionType },
         });
-        await tx.feedPost.update({
+        const updatedPost = await tx.feedPost.update({
           where: { id: postId },
           data: { likesCount: { increment: 1 } },
         });
+
+        // Notify post owner
+        if (updatedPost.userId !== userId) {
+          const liker = await tx.user.findUnique({ where: { id: userId }, select: { name: true }});
+          this.notificationsService.createAndNotify(
+            updatedPost.userId,
+            "New Like! ❤️",
+            `${liker?.name || "Someone"} liked your post.`,
+            "SOCIAL"
+          ).catch(e => console.error("Notification failed", e));
+        }
+
         return { reacted: true };
       }
     });
@@ -105,10 +119,20 @@ export class CommunityService {
         },
       });
 
-      await tx.feedPost.update({
+      const updatedPost = await tx.feedPost.update({
         where: { id: postId },
         data: { commentsCount: { increment: 1 } },
       });
+
+      // Notify post owner
+      if (updatedPost.userId !== userId) {
+        this.notificationsService.createAndNotify(
+          updatedPost.userId,
+          "New Comment! 💬",
+          `${comment.user.name || "Someone"} commented on your post.`,
+          "SOCIAL"
+        ).catch(e => console.error("Notification failed", e));
+      }
 
       return comment;
     });
