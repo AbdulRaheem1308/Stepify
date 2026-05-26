@@ -2,6 +2,7 @@ import { Test, TestingModule } from "@nestjs/testing";
 import { FriendsService } from "./friends.service";
 import { PrismaService } from "../prisma/prisma.service";
 import { RedisService } from "../redis/redis.service";
+import { NotificationsService } from "../notifications/notifications.service";
 import {
   NotFoundException,
   ConflictException,
@@ -22,6 +23,7 @@ describe("FriendsService", () => {
     },
     user: {
       findMany: jest.fn(),
+      findUnique: jest.fn().mockResolvedValue({ name: "Test User" }),
     },
     friendBoost: {
       findMany: jest.fn(),
@@ -46,12 +48,17 @@ describe("FriendsService", () => {
     setCache: jest.fn(),
   };
 
+  const mockNotificationsService = {
+    createAndNotify: jest.fn().mockResolvedValue(true),
+  };
+
   beforeEach(async () => {
     const module: TestingModule = await Test.createTestingModule({
       providers: [
         FriendsService,
         { provide: PrismaService, useValue: mockPrisma },
         { provide: RedisService, useValue: mockRedis },
+        { provide: NotificationsService, useValue: mockNotificationsService },
       ],
     }).compile();
 
