@@ -174,6 +174,7 @@ export class FriendsService {
           friendId,
           "New Friend Request!",
           `${sender.name || "Someone"} wants to connect with you.`,
+          "FRIEND_REQUEST"
         )
         .catch((e) => {
           // eslint-disable-next-line no-console
@@ -210,6 +211,7 @@ export class FriendsService {
           requesterId,
           "Friend Request Accepted!",
           `${accepter.name || "Someone"} accepted your friend request.`,
+          "FRIEND_ACCEPTED"
         )
         .catch((e) => {
           // eslint-disable-next-line no-console
@@ -285,6 +287,7 @@ export class FriendsService {
             friendId,
             "Boost Received!",
             `${sender.name || "A friend"} sent you a boost. Keep stepping! 🔥`,
+            "FRIEND_BOOST"
           )
           .catch((e) => {
             // eslint-disable-next-line no-console

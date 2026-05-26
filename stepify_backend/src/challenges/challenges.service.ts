@@ -234,6 +234,7 @@ export class ChallengesService {
         userId,
         "Challenge Accepted!",
         `You've joined ${challenge.title}. Let's go! 🏃`,
+        "CHALLENGE_ACCEPTED"
       )
       .catch((e) => {
         // eslint-disable-next-line no-console
@@ -328,6 +329,7 @@ export class ChallengesService {
               userId,
               "Challenge Completed! 🎉",
               `You finished ${userChallenge.challenge.title} and earned your rewards!`,
+              "CHALLENGE_COMPLETED"
             )
             .catch((e) => {
               // eslint-disable-next-line no-console

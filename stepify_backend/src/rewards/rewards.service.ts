@@ -661,6 +661,7 @@ export class RewardsService {
             userId,
             "New Badge Unlocked! 🥇",
             `You've earned the ${achievement.name} badge!`,
+            "BADGE_UNLOCKED"
           )
           .catch((e) => {
             // eslint-disable-next-line no-console

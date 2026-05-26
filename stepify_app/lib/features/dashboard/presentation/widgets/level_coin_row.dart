@@ -46,15 +46,17 @@ class LevelCoinRow extends StatelessWidget {
     final xpProgress = (currentXp / nextLevelXp).clamp(0.0, 1.0);
     final xpPercentage = (xpProgress * 100).toInt();
 
-    return Row(
-      children: [
-        // Level Card
+    return IntrinsicHeight(
+      child: Row(
+        crossAxisAlignment: CrossAxisAlignment.stretch,
+        children: [
+          // Level Card
         Expanded(
           child: GestureDetector(
             onTap: onLevelTap,
             child: Container(
               padding: const EdgeInsets.all(16),
-              height: 100, // Fixed height for alignment
+              // Fixed height removed; using IntrinsicHeight on parent
               decoration: BoxDecoration(
                 color: Theme.of(context).cardColor,
                 borderRadius: BorderRadius.circular(10),
@@ -71,14 +73,19 @@ class LevelCoinRow extends StatelessWidget {
                   Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
                     mainAxisAlignment: MainAxisAlignment.center,
+                    mainAxisSize: MainAxisSize.min,
                     children: [
                       Row(
                         mainAxisAlignment: MainAxisAlignment.spaceBetween,
                         children: [
-                          Text(
-                            'Level $level',
-                            style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 16),
+                          Flexible(
+                            child: Text(
+                              'Level $level',
+                              style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 16),
+                              overflow: TextOverflow.ellipsis,
+                            ),
                           ),
+                          const SizedBox(width: 4),
                           Text(
                             '$xpPercentage%',
                             style: Theme.of(context).textTheme.bodySmall,
@@ -125,7 +132,7 @@ class LevelCoinRow extends StatelessWidget {
             onTap: onCoinTap,
             child: Container(
               padding: const EdgeInsets.all(16),
-              height: 100,
+              // Fixed height removed; using IntrinsicHeight on parent
               decoration: BoxDecoration(
                 gradient: const LinearGradient(
                   colors: [Color(0xFFFFC107), Color(0xFFFF6F00)], // Yellow to Orange
@@ -152,26 +159,29 @@ class LevelCoinRow extends StatelessWidget {
                      child: const Icon(Icons.stars_rounded, color: Colors.white, size: 24),
                    ),
                    const SizedBox(width: 12),
-                   Column(
-                     crossAxisAlignment: CrossAxisAlignment.start,
-                     mainAxisAlignment: MainAxisAlignment.center,
-                     children: [
-                       Text(
-                         '$coins',
-                         style: const TextStyle(
-                           color: Colors.white,
-                           fontWeight: FontWeight.bold,
-                           fontSize: 24,
+                   Expanded(
+                     child: Column(
+                       crossAxisAlignment: CrossAxisAlignment.start,
+                       mainAxisAlignment: MainAxisAlignment.center,
+                       mainAxisSize: MainAxisSize.min,
+                       children: [
+                         Text(
+                           '$coins',
+                           style: const TextStyle(
+                             color: Colors.white,
+                             fontWeight: FontWeight.bold,
+                             fontSize: 24,
+                           ),
                          ),
-                       ),
-                       const Text(
-                         'Stepify Coins',
-                         style: TextStyle(
-                           color: Colors.white70,
-                           fontSize: 12,
+                         const Text(
+                           'Stepify Coins',
+                           style: TextStyle(
+                             color: Colors.white70,
+                             fontSize: 12,
+                           ),
                          ),
-                       ),
-                     ],
+                       ],
+                     ),
                    ),
                 ],
               ),
@@ -179,6 +189,7 @@ class LevelCoinRow extends StatelessWidget {
           ),
         ),
       ],
+    ),
     );
   }
 }

@@ -22,6 +22,9 @@ describe("MessagingService", () => {
     conversationParticipant: {
       findUnique: jest.fn(),
     },
+    user: {
+      findUnique: jest.fn(),
+    },
   };
 
   const mockNotificationsService = {
@@ -85,7 +88,8 @@ describe("MessagingService", () => {
         userId: "u1",
       });
       mockPrisma.message.create.mockResolvedValueOnce({ id: "m1" });
-      mockPrisma.conversation.update.mockResolvedValueOnce({});
+      mockPrisma.conversation.update.mockResolvedValueOnce({ participants: [] });
+      mockPrisma.user.findUnique.mockResolvedValueOnce({ name: 'Test User' });
 
       const res = await service.sendMessage("c1", "u1", "hello");
       expect(res.id).toBe("m1");

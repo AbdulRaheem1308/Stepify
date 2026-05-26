@@ -186,6 +186,7 @@ export class TeamsService {
           team.captainId,
           "New Team Member!",
           `${user.name || "A new walker"} just joined your team.`,
+          "TEAM_JOIN"
         )
         .catch((e) => {
           // eslint-disable-next-line no-console
@@ -340,6 +341,7 @@ export class TeamsService {
           opponentTeam.captainId,
           "Team Battle!",
           `${challengerTeam.name} has challenged your team to a step battle! ⚔️`,
+          "TEAM_BATTLE"
         )
         .catch((e) => {
           // eslint-disable-next-line no-console
