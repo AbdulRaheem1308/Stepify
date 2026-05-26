@@ -56,6 +56,13 @@ export class QuestsController {
     return this.questsService.joinQuest(resolvedUserId, questId);
   }
 
+  @Get("my-quests")
+  @ApiOperation({ summary: "Get current user's active and completed quests" })
+  @ApiResponse({ status: 200, description: "Returns user quests" })
+  async getOwnQuests(@CurrentUser() user: any) {
+    return this.questsService.getUserQuests(user.id);
+  }
+
   @Get("my-quests/:userId")
   @ApiOperation({ summary: "Get user's active and completed quests" })
   @ApiParam({ name: "userId", description: "User ID or 'me'" })

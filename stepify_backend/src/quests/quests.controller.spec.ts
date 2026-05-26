@@ -56,6 +56,14 @@ describe('QuestsController', () => {
     });
   });
 
+  describe('getOwnQuests', () => {
+    it('should get own quests', async () => {
+      const user = { id: 'u1' };
+      await controller.getOwnQuests(user);
+      expect(service.getUserQuests).toHaveBeenCalledWith('u1');
+    });
+  });
+
   describe('getMyQuests', () => {
     it('should get quests for me', async () => {
       const user = { id: 'u1' };
