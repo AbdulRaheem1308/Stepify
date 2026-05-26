@@ -2,7 +2,10 @@ import 'package:flutter_test/flutter_test.dart';
 import 'package:stepify_app/features/devices/presentation/providers/device_provider.dart';
 import 'package:stepify_app/services/api_service.dart';
 import 'package:stepify_app/services/health_service.dart';
-import 'package:shared_preferences/shared_preferences.dart';
+import 'package:flutter_secure_storage/flutter_secure_storage.dart';
+
+import 'package:dio/dio.dart';
+import 'package:health/health.dart';
 
 class MockApiService implements ApiService {
   List<dynamic> mockDevicesResponse = [];
@@ -11,13 +14,29 @@ class MockApiService implements ApiService {
   String lastDeletedId = '';
 
   @override
-  Future<ApiResponse> get(String path, {Map<String, dynamic>? queryParameters}) async {
+  Future<void> Function()? onAuthFailure;
+
+  @override
+  Future<Response<dynamic>> get(
+    String path, {
+    Map<String, dynamic>? queryParameters,
+    CancelToken? cancelToken,
+  }) async {
     if (shouldThrowError) throw Exception('API Error');
-    return ApiResponse(data: mockDevicesResponse, statusCode: 200);
+    return Response(
+      requestOptions: RequestOptions(path: path, queryParameters: queryParameters),
+      data: mockDevicesResponse,
+      statusCode: 200,
+    );
   }
 
   @override
-  Future<ApiResponse> post(String path, {dynamic data}) async {
+  Future<Response<dynamic>> post(
+    String path, {
+    dynamic data,
+    Map<String, dynamic>? queryParameters,
+    CancelToken? cancelToken,
+  }) async {
     if (shouldThrowError) throw Exception('API Error');
     lastPostData = data ?? {};
     if (path == '/devices') {
@@ -27,20 +46,56 @@ class MockApiService implements ApiService {
         'type': data['type'],
       });
     }
-    return ApiResponse(data: {}, statusCode: 200);
+    return Response(
+      requestOptions: RequestOptions(path: path, queryParameters: queryParameters, data: data),
+      data: {},
+      statusCode: 200,
+    );
   }
 
   @override
-  Future<ApiResponse> put(String path, {dynamic data}) async {
-    return ApiResponse(data: {}, statusCode: 200);
+  Future<Response<dynamic>> put(
+    String path, {
+    dynamic data,
+    Map<String, dynamic>? queryParameters,
+    CancelToken? cancelToken,
+  }) async {
+    return Response(
+      requestOptions: RequestOptions(path: path, queryParameters: queryParameters, data: data),
+      data: {},
+      statusCode: 200,
+    );
   }
 
   @override
-  Future<ApiResponse> delete(String path) async {
+  Future<Response<dynamic>> patch(
+    String path, {
+    dynamic data,
+    Map<String, dynamic>? queryParameters,
+    CancelToken? cancelToken,
+  }) async {
+    return Response(
+      requestOptions: RequestOptions(path: path, queryParameters: queryParameters, data: data),
+      data: {},
+      statusCode: 200,
+    );
+  }
+
+  @override
+  Future<Response<dynamic>> delete(
+    String path, {
+    dynamic data,
+    Map<String, dynamic>? queryParameters,
+    CancelToken? cancelToken,
+  }) async {
     if (shouldThrowError) throw Exception('API Error');
     lastDeletedId = path.split('/').last;
     mockDevicesResponse.removeWhere((d) => d['id'] == lastDeletedId);
-    return ApiResponse(data: {}, statusCode: 200);
+    return Response(
+      requestOptions: RequestOptions(path: path, queryParameters: queryParameters, data: data),
+      data: {},
+      statusCode: 200,
+    );
   }
 }
 
@@ -60,6 +115,16 @@ class MockHealthService implements HealthService {
     if (shouldThrowError) throw Exception('Health Error');
     return mockSteps;
   }
+
+  @override
+  Future<Map<DateTime, int>> getStepHistory(int days) async {
+    return {};
+  }
+
+  @override
+  Future<List<HealthDataPoint>> getRecentWorkouts(int days) async {
+    return [];
+  }
 }
 
 void main() {
@@ -69,7 +134,7 @@ void main() {
   late DeviceNotifier notifier;
 
   setUp(() {
-    SharedPreferences.setMockInitialValues({'device_uuid': 'test-uuid'});
+    FlutterSecureStorage.setMockInitialValues({'device_uuid': 'test-uuid'});
     mockApiService = MockApiService();
     mockHealthService = MockHealthService();
     // Prevent loadDevices from immediately triggering during test setup
