@@ -156,8 +156,6 @@ class PushNotificationService {
           priority: Priority.high,
           playSound: true,
           icon: '@mipmap/ic_launcher',
-          // encode the data payload so we can read it on tap
-          payload: message.data.isNotEmpty ? jsonEncode(message.data) : null,
         ),
         iOS: const DarwinNotificationDetails(
           presentAlert: true,
@@ -165,6 +163,7 @@ class PushNotificationService {
           presentSound: true,
         ),
       ),
+      payload: message.data.isNotEmpty ? jsonEncode(message.data) : null,
     );
   }
 

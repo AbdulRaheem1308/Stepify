@@ -331,6 +331,9 @@ class DashboardNotifier extends StateNotifier<DashboardState> with WidgetsBindin
           );
         }
 
+        final newFirst = state.firstTrackingTime ?? now;
+        final newLast = now;
+
         state = state.copyWith(
           sensorStepsToday: stepsToday,
           sensorOffset: _pedometerOffset,
