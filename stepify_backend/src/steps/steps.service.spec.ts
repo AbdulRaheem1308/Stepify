@@ -1,18 +1,16 @@
-import { Test, TestingModule } from '@nestjs/testing';
-import { StepsService } from './steps.service';
-import { PrismaService } from '../prisma/prisma.service';
-import { ConfigService } from '@nestjs/config';
-import { RewardsService } from '../rewards/rewards.service';
-import { PostHogService } from '../analytics/posthog.service';
-import { RedisService } from '../redis/redis.service';
-import { getQueueToken } from '@nestjs/bullmq';
-import { BadRequestException } from '@nestjs/common';
-import { SyncStepsDto } from './dto/steps.dto';
+import { Test, TestingModule } from "@nestjs/testing";
+import { StepsService } from "./steps.service";
+import { PrismaService } from "../prisma/prisma.service";
+import { ConfigService } from "@nestjs/config";
+import { RewardsService } from "../rewards/rewards.service";
+import { PostHogService } from "../analytics/posthog.service";
+import { RedisService } from "../redis/redis.service";
+import { getQueueToken } from "@nestjs/bullmq";
+import { BadRequestException } from "@nestjs/common";
+import { SyncStepsDto } from "./dto/steps.dto";
 
-describe('StepsService', () => {
+describe("StepsService", () => {
   let service: StepsService;
-  let prisma: PrismaService;
-  let redis: RedisService;
   let queue: any;
 
   const mockPrisma: any = {
@@ -40,8 +38,8 @@ describe('StepsService', () => {
 
   const mockConfig = {
     get: jest.fn().mockImplementation((key, defaultVal) => {
-      if (key === 'CALORIES_PER_STEP') return '0.04';
-      if (key === 'KM_PER_STEP') return '0.000762';
+      if (key === "CALORIES_PER_STEP") return "0.04";
+      if (key === "KM_PER_STEP") return "0.000762";
       return defaultVal;
     }),
   };
@@ -64,109 +62,135 @@ describe('StepsService', () => {
         { provide: RewardsService, useValue: mockRewardsService },
         { provide: PostHogService, useValue: mockPostHogService },
         { provide: RedisService, useValue: mockRedisService },
-        { provide: getQueueToken('steps-processing'), useValue: mockQueue },
+        { provide: getQueueToken("steps-processing"), useValue: mockQueue },
       ],
     }).compile();
 
     service = module.get<StepsService>(StepsService);
-    prisma = module.get<PrismaService>(PrismaService);
-    redis = module.get<RedisService>(RedisService);
-    queue = module.get(getQueueToken('steps-processing'));
+    queue = module.get(getQueueToken("steps-processing"));
 
     jest.clearAllMocks();
   });
 
-  it('should be defined', () => {
+  it("should be defined", () => {
     expect(service).toBeDefined();
   });
 
-  describe('syncSteps validation & anti-cheat', () => {
-    const userId = 'user1';
+  describe("syncSteps validation & anti-cheat", () => {
+    const userId = "user1";
     const baseDto: SyncStepsDto = {
-      deviceIdentifier: 'dev123',
+      deviceIdentifier: "dev123",
       stepCount: 5000,
       date: new Date().toISOString(),
-      source: 'google_fit',
+      source: "google_fit",
     };
 
-    it('should throw if no deviceIdentifier', async () => {
+    it("should throw if no deviceIdentifier", async () => {
       const dto = { ...baseDto, deviceIdentifier: undefined };
-      await expect(service.syncSteps(userId, dto as any)).rejects.toThrow(BadRequestException);
+      await expect(service.syncSteps(userId, dto as any)).rejects.toThrow(
+        BadRequestException,
+      );
     });
 
-    it('should throw if device is not bound/active', async () => {
+    it("should throw if device is not bound/active", async () => {
       mockPrisma.device.findFirst.mockResolvedValueOnce(null);
-      await expect(service.syncSteps(userId, baseDto)).rejects.toThrow(BadRequestException);
+      await expect(service.syncSteps(userId, baseDto)).rejects.toThrow(
+        BadRequestException,
+      );
     });
 
-    it('should throw on negative steps', async () => {
-      mockPrisma.device.findFirst.mockResolvedValueOnce({ id: 'd1' });
+    it("should throw on negative steps", async () => {
+      mockPrisma.device.findFirst.mockResolvedValueOnce({ id: "d1" });
       const dto = { ...baseDto, stepCount: -10 };
-      await expect(service.syncSteps(userId, dto)).rejects.toThrow(BadRequestException);
+      await expect(service.syncSteps(userId, dto)).rejects.toThrow(
+        BadRequestException,
+      );
     });
 
-    it('should throw on replay nonce', async () => {
-      mockPrisma.device.findFirst.mockResolvedValueOnce({ id: 'd1' });
+    it("should throw on replay nonce", async () => {
+      mockPrisma.device.findFirst.mockResolvedValueOnce({ id: "d1" });
       mockRedisService.setNonce.mockResolvedValueOnce(false); // not unique
-      const dto = { ...baseDto, nonce: 'nonce123' };
-      await expect(service.syncSteps(userId, dto)).rejects.toThrow(BadRequestException);
+      const dto = { ...baseDto, nonce: "nonce123" };
+      await expect(service.syncSteps(userId, dto)).rejects.toThrow(
+        BadRequestException,
+      );
     });
 
-    it('should throw on time drift', async () => {
-      mockPrisma.device.findFirst.mockResolvedValueOnce({ id: 'd1' });
+    it("should throw on time drift", async () => {
+      mockPrisma.device.findFirst.mockResolvedValueOnce({ id: "d1" });
       const dto = { ...baseDto, timestamp: Date.now() - 600000 }; // 10 minutes ago
-      await expect(service.syncSteps(userId, dto)).rejects.toThrow(BadRequestException);
+      await expect(service.syncSteps(userId, dto)).rejects.toThrow(
+        BadRequestException,
+      );
     });
 
-    it('should throw on jailbroken device', async () => {
-      mockPrisma.device.findFirst.mockResolvedValueOnce({ id: 'd1' });
+    it("should throw on jailbroken device", async () => {
+      mockPrisma.device.findFirst.mockResolvedValueOnce({ id: "d1" });
       const dto = { ...baseDto, integrity: { isJailBroken: true } };
-      await expect(service.syncSteps(userId, dto as any)).rejects.toThrow(BadRequestException);
+      await expect(service.syncSteps(userId, dto as any)).rejects.toThrow(
+        BadRequestException,
+      );
     });
 
-    it('should throw on mock location', async () => {
-      mockPrisma.device.findFirst.mockResolvedValueOnce({ id: 'd1' });
+    it("should throw on mock location", async () => {
+      mockPrisma.device.findFirst.mockResolvedValueOnce({ id: "d1" });
       const dto = { ...baseDto, integrity: { isMockLocation: true } };
-      await expect(service.syncSteps(userId, dto as any)).rejects.toThrow(BadRequestException);
+      await expect(service.syncSteps(userId, dto as any)).rejects.toThrow(
+        BadRequestException,
+      );
     });
 
-    it('should pass if timestamp, nonce, and clean integrity are provided', async () => {
-      mockPrisma.device.findFirst.mockResolvedValueOnce({ id: 'd1' });
+    it("should pass if timestamp, nonce, and clean integrity are provided", async () => {
+      mockPrisma.device.findFirst.mockResolvedValueOnce({ id: "d1" });
       mockRedisService.setNonce.mockResolvedValueOnce(true);
-      const dto = { 
-        ...baseDto, 
-        timestamp: Date.now(), 
-        nonce: 'valid-nonce',
-        integrity: { isJailBroken: false, isMockLocation: false, isRealDevice: true }
+      const dto = {
+        ...baseDto,
+        timestamp: Date.now(),
+        nonce: "valid-nonce",
+        integrity: {
+          isJailBroken: false,
+          isMockLocation: false,
+          isRealDevice: true,
+        },
       };
       mockPrisma.step.findUnique.mockResolvedValueOnce(null);
-      mockPrisma.step.upsert.mockResolvedValueOnce({ stepCount: 5000, source: 'google_fit' });
+      mockPrisma.step.upsert.mockResolvedValueOnce({
+        stepCount: 5000,
+        source: "google_fit",
+      });
 
-      await expect(service.syncSteps(userId, dto as any)).resolves.toBeDefined();
+      await expect(
+        service.syncSteps(userId, dto as any),
+      ).resolves.toBeDefined();
     });
 
-    it('should throw if steps > MAX_STEPS_PER_DAY', async () => {
-      mockPrisma.device.findFirst.mockResolvedValueOnce({ id: 'd1' });
+    it("should throw if steps > MAX_STEPS_PER_DAY", async () => {
+      mockPrisma.device.findFirst.mockResolvedValueOnce({ id: "d1" });
       const dto = { ...baseDto, stepCount: 65000 };
-      await expect(service.syncSteps(userId, dto)).rejects.toThrow(BadRequestException);
+      await expect(service.syncSteps(userId, dto)).rejects.toThrow(
+        BadRequestException,
+      );
     });
 
-    it('should sync steps and queue job successfully', async () => {
-      mockPrisma.device.findFirst.mockResolvedValueOnce({ id: 'd1' });
+    it("should sync steps and queue job successfully", async () => {
+      mockPrisma.device.findFirst.mockResolvedValueOnce({ id: "d1" });
       mockPrisma.step.findUnique.mockResolvedValueOnce(null);
-      const stepRet = { stepCount: 5000, source: 'google_fit' };
+      const stepRet = { stepCount: 5000, source: "google_fit" };
       mockPrisma.step.upsert.mockResolvedValueOnce(stepRet);
 
       const res = await service.syncSteps(userId, baseDto);
       expect(res).toEqual(stepRet);
-      expect(queue.add).toHaveBeenCalledWith('process-sync', expect.objectContaining({
-        userId,
-        effectiveStepCount: 5000,
-      }));
+      expect(queue.add).toHaveBeenCalledWith(
+        "process-sync",
+        expect.objectContaining({
+          userId,
+          effectiveStepCount: 5000,
+        }),
+      );
     });
 
-    it('should log warning and process if steps > SUSPICIOUS_STEPS_THRESHOLD', async () => {
-      mockPrisma.device.findFirst.mockResolvedValueOnce({ id: 'd1' });
+    it("should log warning and process if steps > SUSPICIOUS_STEPS_THRESHOLD", async () => {
+      mockPrisma.device.findFirst.mockResolvedValueOnce({ id: "d1" });
       mockPrisma.step.findUnique.mockResolvedValueOnce(null);
       mockPrisma.step.upsert.mockResolvedValueOnce({});
       const dto = { ...baseDto, stepCount: 35000 };
@@ -174,30 +198,36 @@ describe('StepsService', () => {
       expect(queue.add).toHaveBeenCalled();
     });
 
-    it('should use the higher step count if existing is higher', async () => {
-      mockPrisma.device.findFirst.mockResolvedValueOnce({ id: 'd1' });
-      mockPrisma.step.findUnique.mockResolvedValueOnce({ stepCount: 8000, source: 'apple_health' });
-      const stepRet = { stepCount: 8000, source: 'apple_health' };
+    it("should use the higher step count if existing is higher", async () => {
+      mockPrisma.device.findFirst.mockResolvedValueOnce({ id: "d1" });
+      mockPrisma.step.findUnique.mockResolvedValueOnce({
+        stepCount: 8000,
+        source: "apple_health",
+      });
+      const stepRet = { stepCount: 8000, source: "apple_health" };
       mockPrisma.step.upsert.mockResolvedValueOnce(stepRet);
 
-      const res = await service.syncSteps(userId, baseDto);
+      await service.syncSteps(userId, baseDto);
       expect(mockPrisma.step.upsert).toHaveBeenCalledWith(
         expect.objectContaining({
-          update: expect.objectContaining({ stepCount: 8000, source: 'apple_health' })
-        })
+          update: expect.objectContaining({
+            stepCount: 8000,
+            source: "apple_health",
+          }),
+        }),
       );
     });
   });
 
-  describe('getTodaySteps', () => {
-    const userId = 'user1';
+  describe("getTodaySteps", () => {
+    const userId = "user1";
 
-    it('should fetch today steps, ensuring user data first', async () => {
+    it("should fetch today steps, ensuring user data first", async () => {
       mockPrisma.step.findUnique.mockResolvedValueOnce({
         stepCount: 4000,
         caloriesBurned: 160,
         distanceKm: 3.0,
-        activeMinutes: 30
+        activeMinutes: 30,
       });
       mockPrisma.user.findUnique.mockResolvedValueOnce({ dailyStepGoal: 5000 });
 
@@ -208,7 +238,7 @@ describe('StepsService', () => {
       expect(res.goalReached).toBe(false);
     });
 
-    it('should cap progress at 100%', async () => {
+    it("should cap progress at 100%", async () => {
       mockPrisma.step.findUnique.mockResolvedValueOnce({ stepCount: 6000 });
       mockPrisma.user.findUnique.mockResolvedValueOnce({ dailyStepGoal: 5000 });
 
@@ -218,52 +248,55 @@ describe('StepsService', () => {
     });
   });
 
-  describe('getHistory', () => {
-    it('should return paginated history', async () => {
-      mockPrisma.step.findMany.mockResolvedValueOnce([{ id: 's1' }, { id: 's2' }]);
+  describe("getHistory", () => {
+    it("should return paginated history", async () => {
+      mockPrisma.step.findMany.mockResolvedValueOnce([
+        { id: "s1" },
+        { id: "s2" },
+      ]);
       mockPrisma.step.count.mockResolvedValueOnce(2);
 
-      const res = await service.getHistory('u1', 1, 10);
+      const res = await service.getHistory("u1", 1, 10);
       expect(res.data).toHaveLength(2);
       expect(res.pagination.total).toBe(2);
       expect(res.pagination.page).toBe(1);
     });
   });
 
-  describe('getWeeklySummary', () => {
-    it('should compute weekly totals correctly', async () => {
+  describe("getWeeklySummary", () => {
+    it("should compute weekly totals correctly", async () => {
       const d1 = new Date();
-      d1.setHours(0,0,0,0);
+      d1.setHours(0, 0, 0, 0);
       mockPrisma.step.findMany.mockResolvedValueOnce([
-        { date: d1, stepCount: 5000, caloriesBurned: 200, distanceKm: 3.8 }
+        { date: d1, stepCount: 5000, caloriesBurned: 200, distanceKm: 3.8 },
       ]);
 
-      const res = await service.getWeeklySummary('u1');
+      const res = await service.getWeeklySummary("u1");
       expect(res.totalSteps).toBe(5000);
       expect(res.activeDays).toBe(1);
       expect(res.dailyBreakdown.length).toBe(7);
     });
   });
 
-  describe('getMonthlySummary', () => {
-    it('should compute monthly totals correctly', async () => {
+  describe("getMonthlySummary", () => {
+    it("should compute monthly totals correctly", async () => {
       const d1 = new Date(2023, 5, 15);
       mockPrisma.step.findMany.mockResolvedValueOnce([
-        { date: d1, stepCount: 10000, caloriesBurned: 400, distanceKm: 7.6 }
+        { date: d1, stepCount: 10000, caloriesBurned: 400, distanceKm: 7.6 },
       ]);
 
-      const res = await service.getMonthlySummary('u1', 2023, 6);
+      const res = await service.getMonthlySummary("u1", 2023, 6);
       expect(res.totalSteps).toBe(10000);
       expect(res.activeDays).toBe(1);
       expect(res.bestDay).toEqual({
-        date: '2023-06-15',
-        stepCount: 10000
+        date: "2023-06-15",
+        stepCount: 10000,
       });
     });
 
-    it('should handle empty steps for getMonthlySummary', async () => {
+    it("should handle empty steps for getMonthlySummary", async () => {
       mockPrisma.step.findMany.mockResolvedValueOnce([]);
-      const res = await service.getMonthlySummary('u1', 2023, 6);
+      const res = await service.getMonthlySummary("u1", 2023, 6);
       expect(res.totalSteps).toBe(0);
       expect(res.bestDay).toBeNull();
     });

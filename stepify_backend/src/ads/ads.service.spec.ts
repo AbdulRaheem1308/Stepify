@@ -1,16 +1,13 @@
-import { Test, TestingModule } from '@nestjs/testing';
-import { AdsService } from './ads.service';
-import { PrismaService } from '../prisma/prisma.service';
-import { RedisService } from '../redis/redis.service';
-import { ConfigService } from '@nestjs/config';
-import { BadRequestException } from '@nestjs/common';
-import { AdType } from '@prisma/client';
+import { Test, TestingModule } from "@nestjs/testing";
+import { AdsService } from "./ads.service";
+import { PrismaService } from "../prisma/prisma.service";
+import { RedisService } from "../redis/redis.service";
+import { ConfigService } from "@nestjs/config";
+import { BadRequestException } from "@nestjs/common";
+import { AdType } from "@prisma/client";
 
-describe('AdsService', () => {
+describe("AdsService", () => {
   let service: AdsService;
-  let _prisma: PrismaService;
-  let _redis: RedisService;
-  let _config: ConfigService;
 
   const mockPrismaService = {
     adView: {
@@ -36,8 +33,8 @@ describe('AdsService', () => {
 
   const mockConfigService = {
     get: jest.fn((key: string, defaultValue: string) => {
-      if (key === 'AD_REWARD_POINTS') return '10';
-      if (key === 'AD_COOLDOWN_MINUTES') return '5';
+      if (key === "AD_REWARD_POINTS") return "10";
+      if (key === "AD_COOLDOWN_MINUTES") return "5";
       return defaultValue;
     }),
   };
@@ -53,25 +50,22 @@ describe('AdsService', () => {
     }).compile();
 
     service = module.get<AdsService>(AdsService);
-    _prisma = module.get<PrismaService>(PrismaService);
-    _redis = module.get<RedisService>(RedisService);
-    _config = module.get<ConfigService>(ConfigService);
   });
 
   afterEach(() => {
     jest.clearAllMocks();
   });
 
-  it('should be defined', () => {
+  it("should be defined", () => {
     expect(service).toBeDefined();
   });
 
-  describe('checkCanWatchAd', () => {
-    it('should return canWatch=true if cooldown passes and under daily limit', async () => {
+  describe("checkCanWatchAd", () => {
+    it("should return canWatch=true if cooldown passes and under daily limit", async () => {
       mockRedisService.checkAdCooldown.mockResolvedValueOnce(true);
       mockPrismaService.adView.count.mockResolvedValueOnce(5);
 
-      const result = await service.checkCanWatchAd('user1');
+      const result = await service.checkCanWatchAd("user1");
       expect(result).toEqual({
         canWatch: true,
         cooldownRemaining: 0,
@@ -82,12 +76,12 @@ describe('AdsService', () => {
       });
     });
 
-    it('should return canWatch=false if in cooldown', async () => {
+    it("should return canWatch=false if in cooldown", async () => {
       mockRedisService.checkAdCooldown.mockResolvedValueOnce(false);
       mockRedisService.getAdCooldownRemaining.mockResolvedValueOnce(120);
       mockPrismaService.adView.count.mockResolvedValueOnce(5);
 
-      const result = await service.checkCanWatchAd('user1');
+      const result = await service.checkCanWatchAd("user1");
       expect(result).toEqual({
         canWatch: false,
         cooldownRemaining: 120,
@@ -98,11 +92,11 @@ describe('AdsService', () => {
       });
     });
 
-    it('should return canWatch=false if daily limit reached', async () => {
+    it("should return canWatch=false if daily limit reached", async () => {
       mockRedisService.checkAdCooldown.mockResolvedValueOnce(true);
       mockPrismaService.adView.count.mockResolvedValueOnce(10);
 
-      const result = await service.checkCanWatchAd('user1');
+      const result = await service.checkCanWatchAd("user1");
       expect(result).toEqual({
         canWatch: false,
         cooldownRemaining: 0,
@@ -114,58 +108,58 @@ describe('AdsService', () => {
     });
   });
 
-  describe('claimAdReward', () => {
-    it('should throw if in cooldown and ad is rewarded', async () => {
+  describe("claimAdReward", () => {
+    it("should throw if in cooldown and ad is rewarded", async () => {
       mockRedisService.checkAdCooldown.mockResolvedValueOnce(false);
       mockRedisService.getAdCooldownRemaining.mockResolvedValueOnce(60);
 
-      await expect(service.claimAdReward('user1', AdType.REWARDED)).rejects.toThrow(
-        BadRequestException,
-      );
+      await expect(
+        service.claimAdReward("user1", AdType.REWARDED),
+      ).rejects.toThrow(BadRequestException);
     });
 
-    it('should throw if daily limit reached and ad is rewarded', async () => {
+    it("should throw if daily limit reached and ad is rewarded", async () => {
       mockRedisService.checkAdCooldown.mockResolvedValueOnce(true);
       mockPrismaService.adView.count.mockResolvedValueOnce(10);
 
-      await expect(service.claimAdReward('user1', AdType.REWARDED)).rejects.toThrow(
-        BadRequestException,
-      );
+      await expect(
+        service.claimAdReward("user1", AdType.REWARDED),
+      ).rejects.toThrow(BadRequestException);
     });
 
-    it('should successfully claim reward, process tx, and set cooldown', async () => {
+    it("should successfully claim reward, process tx, and set cooldown", async () => {
       mockRedisService.checkAdCooldown.mockResolvedValueOnce(true);
       mockPrismaService.adView.count.mockResolvedValueOnce(5);
 
       mockPrismaService.$transaction.mockImplementationOnce(async (cb) => {
         const tx = {
-          adView: { create: jest.fn().mockResolvedValue({ id: 'ad1' }) },
+          adView: { create: jest.fn().mockResolvedValue({ id: "ad1" }) },
           transaction: { create: jest.fn().mockResolvedValue({}) },
           wallet: { upsert: jest.fn().mockResolvedValue({}) },
         };
         return cb(tx);
       });
 
-      const result = await service.claimAdReward('user1', AdType.REWARDED);
+      const result = await service.claimAdReward("user1", AdType.REWARDED);
 
       expect(result).toEqual({
         success: true,
         pointsEarned: 10,
         cooldownMinutes: 5,
       });
-      expect(mockRedisService.setAdCooldown).toHaveBeenCalledWith('user1', 5);
+      expect(mockRedisService.setAdCooldown).toHaveBeenCalledWith("user1", 5);
       expect(mockPrismaService.$transaction).toHaveBeenCalled();
     });
 
-    it('should claim unrewarded ad without limits and 0 points', async () => {
+    it("should claim unrewarded ad without limits and 0 points", async () => {
       mockPrismaService.$transaction.mockImplementationOnce(async (cb) => {
         const tx = {
-          adView: { create: jest.fn().mockResolvedValue({ id: 'ad2' }) },
+          adView: { create: jest.fn().mockResolvedValue({ id: "ad2" }) },
         };
         return cb(tx);
       });
 
-      const result = await service.claimAdReward('user1', AdType.INTERSTITIAL);
+      const result = await service.claimAdReward("user1", AdType.INTERSTITIAL);
 
       expect(result).toEqual({
         success: true,
@@ -176,19 +170,23 @@ describe('AdsService', () => {
       expect(mockRedisService.setAdCooldown).not.toHaveBeenCalled();
     });
 
-    it('should handle transaction error', async () => {
+    it("should handle transaction error", async () => {
       mockRedisService.checkAdCooldown.mockResolvedValueOnce(true);
       mockPrismaService.adView.count.mockResolvedValueOnce(5);
 
-      mockPrismaService.$transaction.mockRejectedValueOnce(new Error('Tx failed'));
+      mockPrismaService.$transaction.mockRejectedValueOnce(
+        new Error("Tx failed"),
+      );
 
-      await expect(service.claimAdReward('user1', AdType.REWARDED)).rejects.toThrow('Tx failed');
+      await expect(
+        service.claimAdReward("user1", AdType.REWARDED),
+      ).rejects.toThrow("Tx failed");
     });
   });
 
-  describe('getAdHistory', () => {
-    it('should return paginated ad views and summary', async () => {
-      const views = [{ id: '1' }];
+  describe("getAdHistory", () => {
+    it("should return paginated ad views and summary", async () => {
+      const views = [{ id: "1" }];
       mockPrismaService.adView.findMany.mockResolvedValueOnce(views);
       mockPrismaService.adView.count.mockResolvedValueOnce(1);
       mockPrismaService.adView.aggregate.mockResolvedValueOnce({
@@ -196,11 +194,19 @@ describe('AdsService', () => {
         _sum: { pointsEarned: 10 },
       });
 
-      const result = await service.getAdHistory('user1', 1, 10);
+      const result = await service.getAdHistory("user1", 1, 10);
 
       expect(result.data).toEqual(views);
-      expect(result.pagination).toEqual({ page: 1, limit: 10, total: 1, totalPages: 1 });
-      expect(result.summary).toEqual({ totalAdsWatched: 1, totalPointsEarned: 10 });
+      expect(result.pagination).toEqual({
+        page: 1,
+        limit: 10,
+        total: 1,
+        totalPages: 1,
+      });
+      expect(result.summary).toEqual({
+        totalAdsWatched: 1,
+        totalPointsEarned: 10,
+      });
     });
   });
 });

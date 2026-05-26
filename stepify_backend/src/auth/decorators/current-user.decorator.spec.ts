@@ -1,21 +1,21 @@
-import { CurrentUser } from './current-user.decorator';
-import { ExecutionContext } from '@nestjs/common';
-import { ROUTE_ARGS_METADATA } from '@nestjs/common/constants';
+import { CurrentUser } from "./current-user.decorator";
+import { ExecutionContext } from "@nestjs/common";
+import { ROUTE_ARGS_METADATA } from "@nestjs/common/constants";
 
 function getParamDecoratorFactory(decorator: any) {
   class Test {
     public test(@decorator() _value: any) {}
   }
 
-  const args = Reflect.getMetadata(ROUTE_ARGS_METADATA, Test, 'test');
+  const args = Reflect.getMetadata(ROUTE_ARGS_METADATA, Test, "test");
   return args[Object.keys(args)[0]].factory;
 }
 
-describe('CurrentUser Decorator', () => {
-  it('should extract user from request', () => {
+describe("CurrentUser Decorator", () => {
+  it("should extract user from request", () => {
     const factory = getParamDecoratorFactory(CurrentUser);
-    
-    const mockUser = { id: 'user1', email: 'test@test.com' };
+
+    const mockUser = { id: "user1", email: "test@test.com" };
     const mockContext = {
       switchToHttp: () => ({
         getRequest: () => ({
@@ -28,9 +28,9 @@ describe('CurrentUser Decorator', () => {
     expect(result).toEqual(mockUser);
   });
 
-  it('should return undefined if user is not on request', () => {
+  it("should return undefined if user is not on request", () => {
     const factory = getParamDecoratorFactory(CurrentUser);
-    
+
     const mockContext = {
       switchToHttp: () => ({
         getRequest: () => ({}),

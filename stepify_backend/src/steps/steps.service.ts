@@ -109,7 +109,7 @@ export class StepsService {
     });
 
     this.logger.log(
-      `🟢 STEP SYNC: User ${userId} synced ${dto.stepCount} steps from ${dto.source || "manual"} (Effective count: ${step.stepCount}, Device: ${dto.deviceIdentifier})`
+      `🟢 STEP SYNC: User ${userId} synced ${dto.stepCount} steps from ${dto.source || "manual"} (Effective count: ${step.stepCount}, Device: ${dto.deviceIdentifier})`,
     );
 
     // Queue background job for streaks, achievements, rewards, corporate leaderboard updates, and analytics
@@ -126,7 +126,7 @@ export class StepsService {
   /**
    * Ensure user has demo data if empty
    */
-  private async ensureUserData(userId: string) {
+  private async ensureUserData(_userId: string) {
     // Disabled: We no longer auto-generate mock data for new users.
     return;
   }

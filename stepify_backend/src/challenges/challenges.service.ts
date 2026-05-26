@@ -229,13 +229,16 @@ export class ChallengesService {
       },
     });
 
-    await this.notificationsService.createAndNotify(
-      userId,
-      "Challenge Accepted!",
-      `You've joined ${challenge.title}. Let's go! 🏃`,
-      "CHALLENGE"
-    // eslint-disable-next-line no-console
-    ).catch(e => console.error("Notification failed", e));
+    await this.notificationsService
+      .createAndNotify(
+        userId,
+        "Challenge Accepted!",
+        `You've joined ${challenge.title}. Let's go! 🏃`,
+      )
+      .catch((e) => {
+        // eslint-disable-next-line no-console
+        console.error("Notification failed", e);
+      });
 
     return userChallenge;
   }
@@ -320,13 +323,16 @@ export class ChallengesService {
         }
 
         if (isCompleted) {
-          this.notificationsService.createAndNotify(
-            userId,
-            "Challenge Completed! 🎉",
-            `You finished ${userChallenge.challenge.title} and earned your rewards!`,
-            "CHALLENGE"
-          // eslint-disable-next-line no-console
-          ).catch(e => console.error("Notification failed", e));
+          this.notificationsService
+            .createAndNotify(
+              userId,
+              "Challenge Completed! 🎉",
+              `You finished ${userChallenge.challenge.title} and earned your rewards!`,
+            )
+            .catch((e) => {
+              // eslint-disable-next-line no-console
+              console.error("Notification failed", e);
+            });
         }
 
         return uc;

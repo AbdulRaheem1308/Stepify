@@ -27,8 +27,8 @@ void main() {
     rewardXp: 100,
     durationDays: 2,
     difficulty: 'EASY',
+    participantsCount: 150,
     challengeType: 'SOLO',
-    participantCount: 150,
   );
 
   testWidgets('ChallengeCard displays unjoined state correctly', (tester) async {

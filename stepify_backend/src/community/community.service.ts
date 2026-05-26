@@ -95,14 +95,20 @@ export class CommunityService {
 
         // Notify post owner
         if (updatedPost.userId !== userId) {
-          const liker = await tx.user.findUnique({ where: { id: userId }, select: { name: true }});
-          this.notificationsService.createAndNotify(
-            updatedPost.userId,
-            "New Like! ❤️",
-            `${liker?.name || "Someone"} liked your post.`,
-            "SOCIAL"
-          // eslint-disable-next-line no-console
-          ).catch(e => console.error("Notification failed", e));
+          const liker = await tx.user.findUnique({
+            where: { id: userId },
+            select: { name: true },
+          });
+          this.notificationsService
+            .createAndNotify(
+              updatedPost.userId,
+              "New Like! ❤️",
+              `${liker?.name || "Someone"} liked your post.`,
+            )
+            .catch((e) => {
+              // eslint-disable-next-line no-console
+              console.error("Notification failed", e);
+            });
         }
 
         return { reacted: true };
@@ -127,13 +133,16 @@ export class CommunityService {
 
       // Notify post owner
       if (updatedPost.userId !== userId) {
-        this.notificationsService.createAndNotify(
-          updatedPost.userId,
-          "New Comment! 💬",
-          `${comment.user.name || "Someone"} commented on your post.`,
-          "SOCIAL"
-        // eslint-disable-next-line no-console
-        ).catch(e => console.error("Notification failed", e));
+        this.notificationsService
+          .createAndNotify(
+            updatedPost.userId,
+            "New Comment! 💬",
+            `${comment.user.name || "Someone"} commented on your post.`,
+          )
+          .catch((e) => {
+            // eslint-disable-next-line no-console
+            console.error("Notification failed", e);
+          });
       }
 
       return comment;

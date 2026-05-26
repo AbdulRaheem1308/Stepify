@@ -1,7 +1,7 @@
 import { Injectable, Logger } from "@nestjs/common";
-import { Cron, CronExpression } from "@nestjs/schedule";
 import { PrismaService } from "../prisma/prisma.service";
 import { NotificationsService } from "./notifications.service";
+import { Cron } from "@nestjs/schedule";
 
 @Injectable()
 export class NotificationsCronService {
@@ -53,15 +53,15 @@ export class NotificationsCronService {
 
         if (currentSteps < goal) {
           const remaining = goal - currentSteps;
-          
+
           // Only send if they have a reasonable amount left, to not spam people who haven't moved at all if they aren't using the app today
           // Actually, let's just send it to everyone who hasn't hit it to encourage them
           let message = `You're only ${remaining} steps away from your daily goal! Let's get stepping! 🚶‍♂️`;
-          
+
           if (currentSteps === 0) {
-             message = `Don't forget your daily walk! Even a short stroll makes a big difference. 🏃‍♀️`;
+            message = `Don't forget your daily walk! Even a short stroll makes a big difference. 🏃‍♀️`;
           } else if (remaining < 2000) {
-             message = `Almost there! Just ${remaining} more steps to crush your goal! 🔥`;
+            message = `Almost there! Just ${remaining} more steps to crush your goal! 🔥`;
           }
 
           // Use sendPushToUser (which honors settings and handles invalid tokens)
@@ -71,12 +71,14 @@ export class NotificationsCronService {
             message,
             { type: "reminder" },
           );
-          
+
           remindersSent++;
         }
       }
 
-      this.logger.log(`Daily motivation reminders completed. Sent to ${remindersSent} users.`);
+      this.logger.log(
+        `Daily motivation reminders completed. Sent to ${remindersSent} users.`,
+      );
     } catch (error) {
       this.logger.error("Failed to run daily reminders cron job", error);
     }

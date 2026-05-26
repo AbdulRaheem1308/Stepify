@@ -24,7 +24,7 @@ const mockPrisma: any = {
   wallet: { upsert: jest.fn() },
   transaction: { create: jest.fn() },
   $transaction: jest.fn((ops) => {
-    if (typeof ops === 'function') {
+    if (typeof ops === "function") {
       return ops(mockPrisma);
     }
     return Promise.all(ops);
@@ -316,32 +316,49 @@ describe("AuthService", () => {
   describe("loginWithSocial()", () => {
     it("should throw BadRequest if email missing from social token", async () => {
       mockSocialAuth.verifyIdToken.mockResolvedValue({});
-      await expect(service.loginWithSocial({ idToken: "token" } as any)).rejects.toThrow(BadRequestException);
+      await expect(
+        service.loginWithSocial({ idToken: "token" } as any),
+      ).rejects.toThrow(BadRequestException);
     });
 
     it("should return existing user and generate tokens", async () => {
-      mockSocialAuth.verifyIdToken.mockResolvedValue({ email: "test@apple.com" });
+      mockSocialAuth.verifyIdToken.mockResolvedValue({
+        email: "test@apple.com",
+      });
       const mockUser = { id: "user-1", email: "test@apple.com" };
       mockUsers.findByIdentifier.mockResolvedValue(mockUser);
       mockPrisma.refreshToken.create.mockResolvedValue({});
-      
+
       const result = await service.loginWithSocial({ idToken: "token" });
       expect(result.isNewUser).toBe(false);
       expect(result.tokens.accessToken).toBe("mock-jwt-token");
     });
 
     it("should create new user, process referral, and return tokens", async () => {
-      mockSocialAuth.verifyIdToken.mockResolvedValue({ email: "new@apple.com", name: "Apple User" });
+      mockSocialAuth.verifyIdToken.mockResolvedValue({
+        email: "new@apple.com",
+        name: "Apple User",
+      });
       mockUsers.findByIdentifier.mockResolvedValue(null);
       const mockUser = { id: "user-new", email: "new@apple.com" };
       mockUsers.create.mockResolvedValue(mockUser);
       mockPrisma.refreshToken.create.mockResolvedValue({});
       mockPrisma.user.findUnique.mockResolvedValue({ id: "inviter-1" });
-      
-      const result = await service.loginWithSocial({ idToken: "token", referralCode: "REFCODE" });
+
+      const result = await service.loginWithSocial({
+        idToken: "token",
+        referralCode: "REFCODE",
+      });
       expect(result.isNewUser).toBe(true);
-      expect(mockUsers.create).toHaveBeenCalledWith({ email: "new@apple.com", name: "Apple User", referredBy: "REFCODE" });
-      expect(mockPrisma.user.findUnique).toHaveBeenCalledWith({ where: { referralCode: "REFCODE" }, select: { id: true } });
+      expect(mockUsers.create).toHaveBeenCalledWith({
+        email: "new@apple.com",
+        name: "Apple User",
+        referredBy: "REFCODE",
+      });
+      expect(mockPrisma.user.findUnique).toHaveBeenCalledWith({
+        where: { referralCode: "REFCODE" },
+        select: { id: true },
+      });
     });
   });
 
@@ -355,23 +372,30 @@ describe("AuthService", () => {
       mockUsers.findByIdentifier.mockResolvedValue(null);
       mockUsers.create.mockResolvedValue({ id: "user-new" });
       mockPrisma.refreshToken.create.mockResolvedValue({});
-      
-      await expect(service.verifyOtp({ phone: "123", otp: "123456", referralCode: "BAD" })).resolves.toBeDefined();
+
+      await expect(
+        service.verifyOtp({ phone: "123", otp: "123456", referralCode: "BAD" }),
+      ).resolves.toBeDefined();
     });
 
     it("should fail silently if database transaction fails", async () => {
       mockPrisma.user.findUnique.mockResolvedValue({ id: "inviter-1" });
       mockPrisma.$transaction.mockRejectedValue(new Error("DB Error"));
-      
+
       mockRedis.getOtp.mockResolvedValue("123456");
       mockRedis.deleteOtp.mockResolvedValue(true);
       mockUsers.findByIdentifier.mockResolvedValue(null);
       mockUsers.create.mockResolvedValue({ id: "user-new" });
       mockPrisma.refreshToken.create.mockResolvedValue({});
-      
+
       // Should resolve without throwing error
-      await expect(service.verifyOtp({ phone: "123", otp: "123456", referralCode: "GOOD" })).resolves.toBeDefined();
+      await expect(
+        service.verifyOtp({
+          phone: "123",
+          otp: "123456",
+          referralCode: "GOOD",
+        }),
+      ).resolves.toBeDefined();
     });
   });
 });
-

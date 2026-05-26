@@ -1,11 +1,10 @@
-import { Test, TestingModule } from '@nestjs/testing';
-import { MessagingService } from './messaging.service';
-import { PrismaService } from '../prisma/prisma.service';
-import { NotificationsService } from '../notifications/notifications.service';
+import { Test, TestingModule } from "@nestjs/testing";
+import { MessagingService } from "./messaging.service";
+import { PrismaService } from "../prisma/prisma.service";
+import { NotificationsService } from "../notifications/notifications.service";
 
-describe('MessagingService', () => {
+describe("MessagingService", () => {
   let service: MessagingService;
-  let prisma: PrismaService;
 
   const mockPrisma: any = {
     $transaction: jest.fn(async (cb) => cb(mockPrisma)),
@@ -39,59 +38,62 @@ describe('MessagingService', () => {
     }).compile();
 
     service = module.get<MessagingService>(MessagingService);
-    prisma = module.get<PrismaService>(PrismaService);
     jest.clearAllMocks();
   });
 
-  it('should be defined', () => {
+  it("should be defined", () => {
     expect(service).toBeDefined();
   });
 
-  it('should get conversations', async () => {
-    mockPrisma.conversation.findMany.mockResolvedValueOnce([{ id: 'c1' }]);
-    const res = await service.getConversations('u1');
+  it("should get conversations", async () => {
+    mockPrisma.conversation.findMany.mockResolvedValueOnce([{ id: "c1" }]);
+    const res = await service.getConversations("u1");
     expect(res).toHaveLength(1);
   });
 
-  it('should get messages', async () => {
-    mockPrisma.message.findMany.mockResolvedValueOnce([{ id: 'm1' }]);
-    const res = await service.getMessages('c1');
+  it("should get messages", async () => {
+    mockPrisma.message.findMany.mockResolvedValueOnce([{ id: "m1" }]);
+    const res = await service.getMessages("c1");
     expect(res).toHaveLength(1);
   });
 
-  describe('startConversation', () => {
-    it('should return existing conversation', async () => {
-      mockPrisma.conversation.findFirst.mockResolvedValueOnce({ id: 'c1' });
-      const res = await service.startConversation('u1', 'u2');
-      expect(res.id).toBe('c1');
+  describe("startConversation", () => {
+    it("should return existing conversation", async () => {
+      mockPrisma.conversation.findFirst.mockResolvedValueOnce({ id: "c1" });
+      const res = await service.startConversation("u1", "u2");
+      expect(res.id).toBe("c1");
     });
 
-    it('should create new conversation', async () => {
+    it("should create new conversation", async () => {
       mockPrisma.conversation.findFirst.mockResolvedValueOnce(null);
-      mockPrisma.conversation.create.mockResolvedValueOnce({ id: 'c2' });
-      const res = await service.startConversation('u1', 'u2');
-      expect(res.id).toBe('c2');
+      mockPrisma.conversation.create.mockResolvedValueOnce({ id: "c2" });
+      const res = await service.startConversation("u1", "u2");
+      expect(res.id).toBe("c2");
     });
   });
 
-  describe('sendMessage', () => {
-    it('should throw if not participant', async () => {
+  describe("sendMessage", () => {
+    it("should throw if not participant", async () => {
       mockPrisma.conversationParticipant.findUnique.mockResolvedValueOnce(null);
-      await expect(service.sendMessage('c1', 'u1', 'hello')).rejects.toThrow('Sender is not a participant');
+      await expect(service.sendMessage("c1", "u1", "hello")).rejects.toThrow(
+        "Sender is not a participant",
+      );
     });
 
-    it('should send message and update conversation', async () => {
-      mockPrisma.conversationParticipant.findUnique.mockResolvedValueOnce({ userId: 'u1' });
-      mockPrisma.message.create.mockResolvedValueOnce({ id: 'm1' });
+    it("should send message and update conversation", async () => {
+      mockPrisma.conversationParticipant.findUnique.mockResolvedValueOnce({
+        userId: "u1",
+      });
+      mockPrisma.message.create.mockResolvedValueOnce({ id: "m1" });
       mockPrisma.conversation.update.mockResolvedValueOnce({});
-      
-      const res = await service.sendMessage('c1', 'u1', 'hello');
-      expect(res.id).toBe('m1');
+
+      const res = await service.sendMessage("c1", "u1", "hello");
+      expect(res.id).toBe("m1");
       expect(mockPrisma.conversation.update).toHaveBeenCalled();
     });
   });
 
-  it('should run onModuleInit without throwing', async () => {
+  it("should run onModuleInit without throwing", async () => {
     mockPrisma.conversation.count.mockResolvedValueOnce(0);
     await expect(service.onModuleInit()).resolves.not.toThrow();
   });

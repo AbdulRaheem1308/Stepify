@@ -7,8 +7,12 @@ export const ACTIVITIES_CONSTANTS = {
   DEFAULT_LIMIT: 20,
 };
 
-export const VALID_ACTIVITY_SOURCES = ['manual', 'gps', 'google_fit', 'apple_health'];
-
+export const VALID_ACTIVITY_SOURCES = [
+  "manual",
+  "gps",
+  "google_fit",
+  "apple_health",
+];
 
 // Speed constraints (km per minute) based on human limits
 export const ACTIVITY_SPEED_LIMITS: Record<ActivityType, number> = {

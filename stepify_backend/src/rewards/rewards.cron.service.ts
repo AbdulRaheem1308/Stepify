@@ -1,7 +1,7 @@
-import { Injectable, Logger } from '@nestjs/common';
-import { Cron, CronExpression } from '@nestjs/schedule';
-import { PrismaService } from '../prisma/prisma.service';
-import { RewardsService } from './rewards.service';
+import { Injectable, Logger } from "@nestjs/common";
+import { Cron } from "@nestjs/schedule";
+import { PrismaService } from "../prisma/prisma.service";
+import { RewardsService } from "./rewards.service";
 
 @Injectable()
 export class RewardsCronService {
@@ -16,16 +16,16 @@ export class RewardsCronService {
    * Run every 4 hours.
    * Processes all steps and assigns coins, quests, and achievements.
    */
-  @Cron('0 */4 * * *')
+  @Cron("0 */4 * * *")
   async handleRewardsSync() {
-    this.logger.log('Starting 4-hour rewards sync job...');
+    this.logger.log("Starting 4-hour rewards sync job...");
 
     try {
       const now = new Date();
       // Stepify date format is at midnight UTC in the database
       const year = now.getUTCFullYear();
-      const month = String(now.getUTCMonth() + 1).padStart(2, '0');
-      const day = String(now.getUTCDate()).padStart(2, '0');
+      const month = String(now.getUTCMonth() + 1).padStart(2, "0");
+      const day = String(now.getUTCDate()).padStart(2, "0");
       const dateStr = `${year}-${month}-${day}T00:00:00.000Z`;
 
       const todaySteps = await this.prisma.step.findMany({
@@ -34,7 +34,9 @@ export class RewardsCronService {
         },
       });
 
-      this.logger.log(`Found ${todaySteps.length} users with steps today. Processing rewards...`);
+      this.logger.log(
+        `Found ${todaySteps.length} users with steps today. Processing rewards...`,
+      );
 
       for (const stepData of todaySteps) {
         try {
@@ -46,13 +48,19 @@ export class RewardsCronService {
             now,
           );
         } catch (err) {
-          this.logger.error(`Failed to process rewards for user ${stepData.userId}`, err.stack);
+          this.logger.error(
+            `Failed to process rewards for user ${stepData.userId}`,
+            err.stack,
+          );
         }
       }
 
-      this.logger.log('4-hour rewards sync job completed.');
+      this.logger.log("4-hour rewards sync job completed.");
     } catch (error) {
-      this.logger.error('Failed to execute 4-hour rewards sync job', error.stack);
+      this.logger.error(
+        "Failed to execute 4-hour rewards sync job",
+        error.stack,
+      );
     }
   }
 }

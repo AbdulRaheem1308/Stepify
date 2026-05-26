@@ -1,12 +1,12 @@
-import { plainToInstance } from 'class-transformer';
-import { validate } from 'class-validator';
-import { SyncStepsDto, DeviceIntegrityDto } from './steps.dto';
+import { plainToInstance } from "class-transformer";
+import { validate } from "class-validator";
+import { SyncStepsDto } from "./steps.dto";
 
-describe('SyncStepsDto', () => {
-  it('should validate successfully with valid data', async () => {
+describe("SyncStepsDto", () => {
+  it("should validate successfully with valid data", async () => {
     const data = {
-      deviceIdentifier: 'id123',
-      date: '2026-05-20',
+      deviceIdentifier: "id123",
+      date: "2026-05-20",
       stepCount: 5000,
       integrity: {
         isJailBroken: false,
@@ -19,37 +19,37 @@ describe('SyncStepsDto', () => {
     expect(errors.length).toBe(0);
   });
 
-  it('should fail if deviceIdentifier is missing', async () => {
+  it("should fail if deviceIdentifier is missing", async () => {
     const data = {
-      date: '2026-05-20',
+      date: "2026-05-20",
       stepCount: 5000,
     };
     const dto = plainToInstance(SyncStepsDto, data);
     const errors = await validate(dto);
     expect(errors.length).toBeGreaterThan(0);
-    expect(errors[0].property).toBe('deviceIdentifier');
+    expect(errors[0].property).toBe("deviceIdentifier");
   });
 
-  it('should fail if stepCount is negative', async () => {
+  it("should fail if stepCount is negative", async () => {
     const data = {
-      deviceIdentifier: 'id123',
-      date: '2026-05-20',
+      deviceIdentifier: "id123",
+      date: "2026-05-20",
       stepCount: -1,
     };
     const dto = plainToInstance(SyncStepsDto, data);
     const errors = await validate(dto);
     expect(errors.length).toBeGreaterThan(0);
-    expect(errors[0].property).toBe('stepCount');
+    expect(errors[0].property).toBe("stepCount");
   });
 
-  describe('DeviceIntegrityDto', () => {
-    it('should fail if integrity fields are not boolean', async () => {
+  describe("DeviceIntegrityDto", () => {
+    it("should fail if integrity fields are not boolean", async () => {
       const data = {
-        deviceIdentifier: 'id123',
-        date: '2026-05-20',
+        deviceIdentifier: "id123",
+        date: "2026-05-20",
         stepCount: 5000,
         integrity: {
-          isJailBroken: 'no',
+          isJailBroken: "no",
           isRealDevice: true,
           isMockLocation: false,
         },
@@ -57,7 +57,7 @@ describe('SyncStepsDto', () => {
       const dto = plainToInstance(SyncStepsDto, data);
       const errors = await validate(dto);
       expect(errors.length).toBeGreaterThan(0);
-      expect(errors[0].property).toBe('integrity');
+      expect(errors[0].property).toBe("integrity");
     });
   });
 });

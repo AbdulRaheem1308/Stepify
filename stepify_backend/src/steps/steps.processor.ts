@@ -24,7 +24,7 @@ export class StepsProcessor extends WorkerHost {
     );
 
     if (job.name === "process-sync") {
-      const { userId, effectiveStepCount, date, effectiveSource } = job.data;
+      const { userId, effectiveStepCount, effectiveSource } = job.data;
 
       // 1. Rewards processing has been moved to a 4-hour Cron job (RewardsCronService)
       // to reduce database load and eliminate race conditions.

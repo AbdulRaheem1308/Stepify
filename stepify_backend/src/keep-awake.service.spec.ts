@@ -1,7 +1,7 @@
-import { Test, TestingModule } from '@nestjs/testing';
-import { KeepAwakeService } from './keep-awake.service';
+import { Test, TestingModule } from "@nestjs/testing";
+import { KeepAwakeService } from "./keep-awake.service";
 
-describe('KeepAwakeService', () => {
+describe("KeepAwakeService", () => {
   let service: KeepAwakeService;
   let originalFetch: typeof fetch;
 
@@ -20,11 +20,11 @@ describe('KeepAwakeService', () => {
     jest.clearAllMocks();
   });
 
-  it('should be defined', () => {
+  it("should be defined", () => {
     expect(service).toBeDefined();
   });
 
-  it('should skip pinging if RENDER_EXTERNAL_URL is not set', async () => {
+  it("should skip pinging if RENDER_EXTERNAL_URL is not set", async () => {
     const mockFetch = jest.fn();
     global.fetch = mockFetch;
 
@@ -32,21 +32,23 @@ describe('KeepAwakeService', () => {
     expect(mockFetch).not.toHaveBeenCalled();
   });
 
-  it('should ping the health endpoint if RENDER_EXTERNAL_URL is set', async () => {
-    process.env.RENDER_EXTERNAL_URL = 'https://my-render-app.com';
+  it("should ping the health endpoint if RENDER_EXTERNAL_URL is set", async () => {
+    process.env.RENDER_EXTERNAL_URL = "https://my-render-app.com";
     const mockFetch = jest.fn().mockResolvedValue({
       ok: true,
       status: 200,
-      statusText: 'OK',
+      statusText: "OK",
     } as any);
     global.fetch = mockFetch;
 
     await service.handleCron();
-    expect(mockFetch).toHaveBeenCalledWith('https://my-render-app.com/api/v1/health');
+    expect(mockFetch).toHaveBeenCalledWith(
+      "https://my-render-app.com/api/v1/health",
+    );
   });
 
-  it('should log an error if ping fails with non-ok status', async () => {
-    process.env.RENDER_EXTERNAL_URL = 'https://my-render-app.com';
+  it("should log an error if ping fails with non-ok status", async () => {
+    process.env.RENDER_EXTERNAL_URL = "https://my-render-app.com";
     const mockFetch = jest.fn().mockResolvedValue({
       ok: false,
       status: 500,
@@ -54,24 +56,30 @@ describe('KeepAwakeService', () => {
     global.fetch = mockFetch;
 
     await service.handleCron();
-    expect(mockFetch).toHaveBeenCalledWith('https://my-render-app.com/api/v1/health');
+    expect(mockFetch).toHaveBeenCalledWith(
+      "https://my-render-app.com/api/v1/health",
+    );
   });
 
-  it('should log an error if fetch throws an exception', async () => {
-    process.env.RENDER_EXTERNAL_URL = 'https://my-render-app.com';
-    const mockFetch = jest.fn().mockRejectedValue(new Error('Network error'));
+  it("should log an error if fetch throws an exception", async () => {
+    process.env.RENDER_EXTERNAL_URL = "https://my-render-app.com";
+    const mockFetch = jest.fn().mockRejectedValue(new Error("Network error"));
     global.fetch = mockFetch;
 
     await service.handleCron();
-    expect(mockFetch).toHaveBeenCalledWith('https://my-render-app.com/api/v1/health');
+    expect(mockFetch).toHaveBeenCalledWith(
+      "https://my-render-app.com/api/v1/health",
+    );
   });
-  
-  it('should log an error if fetch throws a non-error exception', async () => {
-    process.env.RENDER_EXTERNAL_URL = 'https://my-render-app.com';
-    const mockFetch = jest.fn().mockRejectedValue('String error');
+
+  it("should log an error if fetch throws a non-error exception", async () => {
+    process.env.RENDER_EXTERNAL_URL = "https://my-render-app.com";
+    const mockFetch = jest.fn().mockRejectedValue("String error");
     global.fetch = mockFetch;
 
     await service.handleCron();
-    expect(mockFetch).toHaveBeenCalledWith('https://my-render-app.com/api/v1/health');
+    expect(mockFetch).toHaveBeenCalledWith(
+      "https://my-render-app.com/api/v1/health",
+    );
   });
 });

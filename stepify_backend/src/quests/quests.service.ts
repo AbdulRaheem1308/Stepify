@@ -149,10 +149,10 @@ export class QuestsService implements OnModuleInit {
           // Completed the entire quest! Wrap in atomic transaction
           await this.prisma.$transaction(async (tx) => {
             const updateResult = await tx.userQuest.updateMany({
-              where: { 
+              where: {
                 id: userQuest.id,
                 currentStageIndex: currentStageIndex,
-                status: "IN_PROGRESS"
+                status: "IN_PROGRESS",
               },
               data: {
                 status: "COMPLETED",
@@ -200,22 +200,25 @@ export class QuestsService implements OnModuleInit {
                 },
               });
 
-              this.notificationsService.sendPushToUser(
-                userId,
-                "Quest Completed! 🏆",
-                `You've conquered ${quest.title}!`,
-                { type: "quest_complete" }
-              // eslint-disable-next-line no-console
-              ).catch(e => console.error("Push failed", e));
+              this.notificationsService
+                .sendPushToUser(
+                  userId,
+                  "Quest Completed! 🏆",
+                  `You've conquered ${quest.title}!`,
+                )
+                .catch((e) => {
+                  // eslint-disable-next-line no-console
+                  console.error("Push failed", e);
+                });
             }
           });
         } else {
           // Advance to the next stage!
           const updateResult = await this.prisma.userQuest.updateMany({
-            where: { 
+            where: {
               id: userQuest.id,
               currentStageIndex: currentStageIndex,
-              status: "IN_PROGRESS"
+              status: "IN_PROGRESS",
             },
             data: {
               currentStageIndex: nextStageIndex,
@@ -233,13 +236,16 @@ export class QuestsService implements OnModuleInit {
               },
             });
 
-            this.notificationsService.sendPushToUser(
-              userId,
-              "Quest Progress!",
-              `You've reached stage ${currentStageIndex + 1} of ${quest.title}.`,
-              { type: "quest_stage" }
-            // eslint-disable-next-line no-console
-            ).catch(e => console.error("Push failed", e));
+            this.notificationsService
+              .sendPushToUser(
+                userId,
+                "Quest Progress!",
+                `You've reached stage ${currentStageIndex + 1} of ${quest.title}.`,
+              )
+              .catch((e) => {
+                // eslint-disable-next-line no-console
+                console.error("Push failed", e);
+              });
           }
         }
       }

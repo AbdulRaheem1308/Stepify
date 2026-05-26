@@ -1,10 +1,10 @@
-import { Test, TestingModule } from '@nestjs/testing';
-import { JwtStrategy } from './jwt.strategy';
-import { ConfigService } from '@nestjs/config';
-import { AuthService } from '../auth.service';
-import { UnauthorizedException } from '@nestjs/common';
+import { Test, TestingModule } from "@nestjs/testing";
+import { JwtStrategy } from "./jwt.strategy";
+import { ConfigService } from "@nestjs/config";
+import { AuthService } from "../auth.service";
+import { UnauthorizedException } from "@nestjs/common";
 
-describe('JwtStrategy', () => {
+describe("JwtStrategy", () => {
   let strategy: JwtStrategy;
   let authService: AuthService;
 
@@ -16,7 +16,7 @@ describe('JwtStrategy', () => {
           provide: ConfigService,
           useValue: {
             get: jest.fn((key) => {
-              if (key === 'JWT_SECRET') return 'test_secret';
+              if (key === "JWT_SECRET") return "test_secret";
               return null;
             }),
           },
@@ -34,11 +34,11 @@ describe('JwtStrategy', () => {
     authService = module.get<AuthService>(AuthService);
   });
 
-  it('should be defined', () => {
+  it("should be defined", () => {
     expect(strategy).toBeDefined();
   });
 
-  it('should fallback to fallback_secret if JWT_SECRET not found', async () => {
+  it("should fallback to fallback_secret if JWT_SECRET not found", async () => {
     const module: TestingModule = await Test.createTestingModule({
       providers: [
         JwtStrategy,
@@ -61,24 +61,26 @@ describe('JwtStrategy', () => {
     expect(fallbackStrategy).toBeDefined();
   });
 
-  describe('validate', () => {
-    it('should return user if validation is successful', async () => {
-      const mockUser = { id: '1', email: 'test@test.com' };
-      const payload = { sub: '1', email: 'test@test.com', type: 'access' };
-      
+  describe("validate", () => {
+    it("should return user if validation is successful", async () => {
+      const mockUser = { id: "1", email: "test@test.com" };
+      const payload = { sub: "1", email: "test@test.com", type: "access" };
+
       (authService.validateUser as jest.Mock).mockResolvedValueOnce(mockUser);
-      
+
       const result = await strategy.validate(payload as any);
       expect(result).toEqual(mockUser);
       expect(authService.validateUser).toHaveBeenCalledWith(payload);
     });
 
-    it('should throw UnauthorizedException if validation fails', async () => {
-      const payload = { sub: '2', email: 'fail@test.com', type: 'access' };
-      
+    it("should throw UnauthorizedException if validation fails", async () => {
+      const payload = { sub: "2", email: "fail@test.com", type: "access" };
+
       (authService.validateUser as jest.Mock).mockResolvedValueOnce(null);
-      
-      await expect(strategy.validate(payload as any)).rejects.toThrow(UnauthorizedException);
+
+      await expect(strategy.validate(payload as any)).rejects.toThrow(
+        UnauthorizedException,
+      );
     });
   });
 });

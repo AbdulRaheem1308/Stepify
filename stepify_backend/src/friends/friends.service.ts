@@ -169,13 +169,16 @@ export class FriendsService {
 
     const sender = await this.prisma.user.findUnique({ where: { id: userId } });
     if (sender) {
-      await this.notificationsService.createAndNotify(
-        friendId,
-        "New Friend Request!",
-        `${sender.name || 'Someone'} wants to connect with you.`,
-        "SOCIAL"
-      // eslint-disable-next-line no-console
-      ).catch(e => console.error("Notification failed", e));
+      await this.notificationsService
+        .createAndNotify(
+          friendId,
+          "New Friend Request!",
+          `${sender.name || "Someone"} wants to connect with you.`,
+        )
+        .catch((e) => {
+          // eslint-disable-next-line no-console
+          console.error("Notification failed", e);
+        });
     }
 
     return friendship;
@@ -198,15 +201,20 @@ export class FriendsService {
       data: { status: "ACCEPTED" },
     });
 
-    const accepter = await this.prisma.user.findUnique({ where: { id: userId } });
+    const accepter = await this.prisma.user.findUnique({
+      where: { id: userId },
+    });
     if (accepter) {
-      await this.notificationsService.createAndNotify(
-        requesterId,
-        "Friend Request Accepted!",
-        `${accepter.name || 'Someone'} accepted your friend request.`,
-        "SOCIAL"
-      // eslint-disable-next-line no-console
-      ).catch(e => console.error("Notification failed", e));
+      await this.notificationsService
+        .createAndNotify(
+          requesterId,
+          "Friend Request Accepted!",
+          `${accepter.name || "Someone"} accepted your friend request.`,
+        )
+        .catch((e) => {
+          // eslint-disable-next-line no-console
+          console.error("Notification failed", e);
+        });
     }
 
     return updated;
@@ -272,13 +280,16 @@ export class FriendsService {
 
       const sender = await tx.user.findUnique({ where: { id: userId } });
       if (sender) {
-        this.notificationsService.createAndNotify(
-          friendId,
-          "Boost Received!",
-          `${sender.name || 'A friend'} sent you a boost. Keep stepping! 🔥`,
-          "SOCIAL"
-        // eslint-disable-next-line no-console
-        ).catch(e => console.error("Notification failed", e));
+        this.notificationsService
+          .createAndNotify(
+            friendId,
+            "Boost Received!",
+            `${sender.name || "A friend"} sent you a boost. Keep stepping! 🔥`,
+          )
+          .catch((e) => {
+            // eslint-disable-next-line no-console
+            console.error("Notification failed", e);
+          });
       }
 
       return { success: true, boost };

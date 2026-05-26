@@ -4,6 +4,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:stepify_app/features/gamification/presentation/providers/badges_provider.dart';
 import 'package:stepify_app/features/gamification/presentation/screens/badges_screen.dart';
 import 'package:stepify_app/l10n/app_localizations.dart';
+import 'package:stepify_app/services/api_service.dart';
 
 void main() {
   void setScreenSize(WidgetTester tester) {
@@ -65,7 +66,7 @@ void main() {
     final container = ProviderContainer(
       overrides: [
         badgesProvider.overrideWith((ref) {
-          final notifier = BadgesNotifier(null as dynamic);
+          final notifier = BadgesNotifier(ApiService());
           notifier.state = BadgesState(badges: [], isLoading: false);
           return notifier;
         }),
@@ -84,7 +85,7 @@ void main() {
     final container = ProviderContainer(
       overrides: [
         badgesProvider.overrideWith((ref) {
-          final notifier = BadgesNotifier(null as dynamic);
+          final notifier = BadgesNotifier(ApiService());
           notifier.state = BadgesState(badges: mockBadges, isLoading: false, activeFilter: 'All');
           return notifier;
         }),
@@ -109,8 +110,12 @@ void main() {
     expect(find.text('How You Earned It'), findsOneWidget);
     expect(find.text('+50 coins on unlock'), findsOneWidget);
     
-    // Tap close button (out of bottom sheet)
-    await tester.tapAt(const Offset(10, 10));
+    // Close the bottom sheet reliably
+    Navigator.pop(tester.element(find.byType(BadgesScreen)));
+    await tester.pumpAndSettle();
+
+    // Set filter back to All so we can find the in-progress badge
+    await tester.tap(find.widgetWithText(ChoiceChip, 'All').first);
     await tester.pumpAndSettle();
 
     // Tap in-progress badge
@@ -121,6 +126,8 @@ void main() {
   });
   
   testWidgets('BadgesScreen bottom sheet edge cases', (tester) async {
+    setScreenSize(tester);
+    addTearDown(() => tester.view.reset());
     final lockedBadge = Badge(
       id: 'b3',
       title: 'Locked Legend',
@@ -135,7 +142,7 @@ void main() {
     final container = ProviderContainer(
       overrides: [
         badgesProvider.overrideWith((ref) {
-          final notifier = BadgesNotifier(null as dynamic);
+          final notifier = BadgesNotifier(ApiService());
           notifier.state = BadgesState(badges: [lockedBadge], isLoading: false, activeFilter: 'All');
           return notifier;
         }),

@@ -9,7 +9,10 @@ import {
 } from "class-validator";
 import { ApiProperty, ApiPropertyOptional } from "@nestjs/swagger";
 import { ActivityType } from "../enums/activity-type.enum";
-import { ACTIVITIES_CONSTANTS, VALID_ACTIVITY_SOURCES } from "../constants/activities.constants";
+import {
+  ACTIVITIES_CONSTANTS,
+  VALID_ACTIVITY_SOURCES,
+} from "../constants/activities.constants";
 
 export class LogActivityDto {
   @ApiProperty({

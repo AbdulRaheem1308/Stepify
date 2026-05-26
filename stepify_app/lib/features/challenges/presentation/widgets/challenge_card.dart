@@ -336,12 +336,14 @@ class ChallengeCard extends StatelessWidget {
                         size: 18,
                       ),
                       const SizedBox(width: 8),
-                      Text(
-                        isCompleted ? 'How You Completed It' : 'How to Complete',
-                        style: TextStyle(
-                          fontWeight: FontWeight.bold,
-                          fontSize: 15,
-                          color: isCompleted ? AppTheme.success : AppTheme.neutral800,
+                      Expanded(
+                        child: Text(
+                          isCompleted ? 'How You Completed It' : 'How to Complete',
+                          style: TextStyle(
+                            fontWeight: FontWeight.bold,
+                            fontSize: 15,
+                            color: isCompleted ? AppTheme.success : AppTheme.neutral800,
+                          ),
                         ),
                       ),
                     ],
@@ -414,7 +416,7 @@ class ChallengeCard extends StatelessWidget {
                         children: [
                           Icon(Icons.check_circle, color: AppTheme.success),
                           SizedBox(width: 8),
-                          Text('Challenge Completed! 🎉', style: TextStyle(color: AppTheme.success, fontWeight: FontWeight.bold, fontSize: 15)),
+                          Flexible(child: Text('Challenge Completed! 🎉', style: TextStyle(color: AppTheme.success, fontWeight: FontWeight.bold, fontSize: 15))),
                         ],
                       ),
                     )
@@ -432,7 +434,7 @@ class ChallengeCard extends StatelessWidget {
                         children: [
                           Icon(Icons.directions_walk, color: accentColor),
                           const SizedBox(width: 8),
-                          Text('Keep Walking! ${(progress ?? 0)}% done', style: TextStyle(color: accentColor, fontWeight: FontWeight.bold, fontSize: 15)),
+                          Flexible(child: Text('Keep Walking! ${(progress ?? 0)}% done', style: TextStyle(color: accentColor, fontWeight: FontWeight.bold, fontSize: 15))),
                         ],
                       ),
                     ),

@@ -171,21 +171,24 @@ export class RewardsService {
         userId,
         type: TransactionType.STEPS,
       },
-      orderBy: { createdAt: 'desc' },
+      orderBy: { createdAt: "desc" },
       take: 50,
       select: {
         points: true,
         metadata: true,
-      }
+      },
     });
 
-    const todaysTransactions = recentTransactions.filter(tx => {
+    const todaysTransactions = recentTransactions.filter((tx) => {
       if (!tx.metadata) return false;
       const meta = tx.metadata as any;
       return meta.date === dateStr;
     });
 
-    const pointsAlreadyAwarded = todaysTransactions.reduce((sum, tx) => sum + tx.points, 0);
+    const pointsAlreadyAwarded = todaysTransactions.reduce(
+      (sum, tx) => sum + tx.points,
+      0,
+    );
     const newPoints = pointsEarned - pointsAlreadyAwarded;
 
     if (newPoints > 0) {
@@ -194,7 +197,7 @@ export class RewardsService {
         newPoints,
         TransactionType.STEPS,
         `Earned ${newPoints} points for reaching ${stepCount.toLocaleString()} steps today`,
-        { date: dateStr }
+        { date: dateStr },
       );
     }
 
@@ -653,13 +656,16 @@ export class RewardsService {
           `User ${userId} unlocked achievement: ${achievement.name}`,
         );
 
-        this.notificationsService.createAndNotify(
-          userId,
-          "New Badge Unlocked! 🥇",
-          `You've earned the ${achievement.name} badge!`,
-          "ACHIEVEMENT"
-        // eslint-disable-next-line no-console
-        ).catch(e => console.error("Push failed", e));
+        this.notificationsService
+          .createAndNotify(
+            userId,
+            "New Badge Unlocked! 🥇",
+            `You've earned the ${achievement.name} badge!`,
+          )
+          .catch((e) => {
+            // eslint-disable-next-line no-console
+            console.error("Push failed", e);
+          });
       }
     }
 

@@ -327,12 +327,14 @@ class BadgesScreen extends ConsumerWidget {
                           children: [
                             const Icon(Icons.stars_rounded, color: Color(0xFFD4A017), size: 18),
                             const SizedBox(width: 6),
-                            Text(
-                              '+${badge.pointsReward} coins on unlock',
-                              style: const TextStyle(
-                                color: Color(0xFFD4A017),
-                                fontWeight: FontWeight.bold,
-                                fontSize: 14,
+                            Flexible(
+                              child: Text(
+                                '+${badge.pointsReward} coins on unlock',
+                                style: const TextStyle(
+                                  color: Color(0xFFD4A017),
+                                  fontWeight: FontWeight.bold,
+                                  fontSize: 14,
+                                ),
                               ),
                             ),
                           ],
@@ -404,12 +406,14 @@ class BadgesScreen extends ConsumerWidget {
                         size: 18,
                       ),
                       const SizedBox(width: 8),
-                      Text(
-                        isUnlocked ? 'How You Earned It' : 'How to Earn',
-                        style: TextStyle(
-                          fontWeight: FontWeight.bold,
-                          fontSize: 15,
-                          color: isUnlocked ? AppTheme.success : AppTheme.neutral800,
+                      Expanded(
+                        child: Text(
+                          isUnlocked ? 'How You Earned It' : 'How to Earn',
+                          style: TextStyle(
+                            fontWeight: FontWeight.bold,
+                            fontSize: 15,
+                            color: isUnlocked ? AppTheme.success : AppTheme.neutral800,
+                          ),
                         ),
                       ),
                     ],

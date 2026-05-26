@@ -3,7 +3,6 @@ import {
   IsOptional,
   IsNumber,
   IsEmail,
-  IsPhoneNumber,
   Min,
   Max,
   IsArray,

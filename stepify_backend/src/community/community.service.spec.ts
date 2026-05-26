@@ -1,12 +1,10 @@
-import { Test, TestingModule } from '@nestjs/testing';
-import { CommunityService } from './community.service';
-import { PrismaService } from '../prisma/prisma.service';
-import { RedisService } from '../redis/redis.service';
+import { Test, TestingModule } from "@nestjs/testing";
+import { CommunityService } from "./community.service";
+import { PrismaService } from "../prisma/prisma.service";
+import { RedisService } from "../redis/redis.service";
 
-describe('CommunityService', () => {
+describe("CommunityService", () => {
   let service: CommunityService;
-  let prisma: PrismaService;
-  let redis: RedisService;
 
   const mockPrismaService = {
     feedPost: {
@@ -41,81 +39,108 @@ describe('CommunityService', () => {
     }).compile();
 
     service = module.get<CommunityService>(CommunityService);
-    prisma = module.get<PrismaService>(PrismaService);
-    redis = module.get<RedisService>(RedisService);
   });
 
   afterEach(() => {
     jest.clearAllMocks();
   });
 
-  it('should be defined', () => {
+  it("should be defined", () => {
     expect(service).toBeDefined();
   });
 
-  describe('getFeed', () => {
-    it('should return cached feed if available and no cursor is provided', async () => {
-      mockRedisService.getCache.mockResolvedValueOnce([{ id: 'cached-post' }]);
+  describe("getFeed", () => {
+    it("should return cached feed if available and no cursor is provided", async () => {
+      mockRedisService.getCache.mockResolvedValueOnce([{ id: "cached-post" }]);
       const result = await service.getFeed(20);
-      expect(result).toEqual([{ id: 'cached-post' }]);
-      expect(mockRedisService.getCache).toHaveBeenCalledWith('community:feed:20');
+      expect(result).toEqual([{ id: "cached-post" }]);
+      expect(mockRedisService.getCache).toHaveBeenCalledWith(
+        "community:feed:20",
+      );
       expect(mockPrismaService.feedPost.findMany).not.toHaveBeenCalled();
     });
 
-    it('should query db, map counts, and cache result if no cursor and no cache', async () => {
+    it("should query db, map counts, and cache result if no cursor and no cache", async () => {
       mockRedisService.getCache.mockResolvedValueOnce(null);
-      const mockPosts = [
-        { id: '1', _count: { reactions: 5, comments: 2 } },
-      ];
+      const mockPosts = [{ id: "1", _count: { reactions: 5, comments: 2 } }];
       mockPrismaService.feedPost.findMany.mockResolvedValueOnce(mockPosts);
 
       const result = await service.getFeed(20);
 
-      expect(mockPrismaService.feedPost.findMany).toHaveBeenCalledWith(expect.objectContaining({
-        take: 20,
-        orderBy: { createdAt: 'desc' },
-      }));
-      expect(result).toEqual([{ id: '1', _count: { reactions: 5, comments: 2 }, likesCount: 5, commentsCount: 2 }]);
-      expect(mockRedisService.setCache).toHaveBeenCalledWith('community:feed:20', result, 120);
+      expect(mockPrismaService.feedPost.findMany).toHaveBeenCalledWith(
+        expect.objectContaining({
+          take: 20,
+          orderBy: { createdAt: "desc" },
+        }),
+      );
+      expect(result).toEqual([
+        {
+          id: "1",
+          _count: { reactions: 5, comments: 2 },
+          likesCount: 5,
+          commentsCount: 2,
+        },
+      ]);
+      expect(mockRedisService.setCache).toHaveBeenCalledWith(
+        "community:feed:20",
+        result,
+        120,
+      );
     });
 
-    it('should use cursor and skip caching if cursor is provided', async () => {
-      const mockPosts = [
-        { id: '2', _count: { reactions: 0, comments: 0 } },
-      ];
+    it("should use cursor and skip caching if cursor is provided", async () => {
+      const mockPosts = [{ id: "2", _count: { reactions: 0, comments: 0 } }];
       mockPrismaService.feedPost.findMany.mockResolvedValueOnce(mockPosts);
 
-      const result = await service.getFeed(20, 'cursor-id');
+      const result = await service.getFeed(20, "cursor-id");
 
       expect(mockRedisService.getCache).not.toHaveBeenCalled();
-      expect(mockPrismaService.feedPost.findMany).toHaveBeenCalledWith(expect.objectContaining({
-        take: 20,
-        skip: 1,
-        cursor: { id: 'cursor-id' },
-      }));
+      expect(mockPrismaService.feedPost.findMany).toHaveBeenCalledWith(
+        expect.objectContaining({
+          take: 20,
+          skip: 1,
+          cursor: { id: "cursor-id" },
+        }),
+      );
       expect(mockRedisService.setCache).not.toHaveBeenCalled();
-      expect(result).toEqual([{ id: '2', _count: { reactions: 0, comments: 0 }, likesCount: 0, commentsCount: 0 }]);
+      expect(result).toEqual([
+        {
+          id: "2",
+          _count: { reactions: 0, comments: 0 },
+          likesCount: 0,
+          commentsCount: 0,
+        },
+      ]);
     });
   });
 
-  describe('createPost', () => {
-    it('should create a feed post', async () => {
-      mockPrismaService.feedPost.create.mockResolvedValueOnce({ id: 'post1' });
-      const result = await service.createPost('user1', 'content', 'type', { meta: 'data' });
-      expect(result).toEqual({ id: 'post1' });
+  describe("createPost", () => {
+    it("should create a feed post", async () => {
+      mockPrismaService.feedPost.create.mockResolvedValueOnce({ id: "post1" });
+      const result = await service.createPost("user1", "content", "type", {
+        meta: "data",
+      });
+      expect(result).toEqual({ id: "post1" });
       expect(mockPrismaService.feedPost.create).toHaveBeenCalledWith({
-        data: { userId: 'user1', content: 'content', type: 'type', metadata: { meta: 'data' } },
-        include: { user: { select: { id: true, name: true, avatarUrl: true } } },
+        data: {
+          userId: "user1",
+          content: "content",
+          type: "type",
+          metadata: { meta: "data" },
+        },
+        include: {
+          user: { select: { id: true, name: true, avatarUrl: true } },
+        },
       });
     });
   });
 
-  describe('reactToPost', () => {
-    it('should remove reaction if it already exists', async () => {
+  describe("reactToPost", () => {
+    it("should remove reaction if it already exists", async () => {
       mockPrismaService.$transaction.mockImplementationOnce(async (cb) => {
         const tx = {
           feedReaction: {
-            findUnique: jest.fn().mockResolvedValue({ id: 'react1' }),
+            findUnique: jest.fn().mockResolvedValue({ id: "react1" }),
             delete: jest.fn().mockResolvedValue({}),
           },
           feedPost: {
@@ -125,11 +150,11 @@ describe('CommunityService', () => {
         return cb(tx);
       });
 
-      const result = await service.reactToPost('user1', 'post1');
+      const result = await service.reactToPost("user1", "post1");
       expect(result).toEqual({ reacted: false });
     });
 
-    it('should add reaction if it does not exist', async () => {
+    it("should add reaction if it does not exist", async () => {
       mockPrismaService.$transaction.mockImplementationOnce(async (cb) => {
         const tx = {
           feedReaction: {
@@ -143,45 +168,63 @@ describe('CommunityService', () => {
         return cb(tx);
       });
 
-      const result = await service.reactToPost('user1', 'post1', 'fire');
+      const result = await service.reactToPost("user1", "post1", "fire");
       expect(result).toEqual({ reacted: true });
     });
   });
 
-  describe('addComment', () => {
-    it('should create comment and increment comment count', async () => {
+  describe("addComment", () => {
+    it("should create comment and increment comment count", async () => {
       mockPrismaService.$transaction.mockImplementationOnce(async (cb) => {
         const tx = {
-          feedComment: { create: jest.fn().mockResolvedValue({ id: 'comment1' }) },
+          feedComment: {
+            create: jest.fn().mockResolvedValue({ id: "comment1" }),
+          },
           feedPost: { update: jest.fn().mockResolvedValue({}) },
         };
         return cb(tx);
       });
 
-      const result = await service.addComment('user1', 'post1', 'Great job!');
-      expect(result).toEqual({ id: 'comment1' });
+      const result = await service.addComment("user1", "post1", "Great job!");
+      expect(result).toEqual({ id: "comment1" });
     });
   });
 
-  describe('getComments', () => {
-    it('should return comments for a post', async () => {
-      mockPrismaService.feedComment.findMany.mockResolvedValueOnce([{ id: 'c1' }]);
-      const result = await service.getComments('post1');
-      expect(result).toEqual([{ id: 'c1' }]);
+  describe("getComments", () => {
+    it("should return comments for a post", async () => {
+      mockPrismaService.feedComment.findMany.mockResolvedValueOnce([
+        { id: "c1" },
+      ]);
+      const result = await service.getComments("post1");
+      expect(result).toEqual([{ id: "c1" }]);
       expect(mockPrismaService.feedComment.findMany).toHaveBeenCalledWith({
-        where: { postId: 'post1' },
-        include: { user: { select: { id: true, name: true, avatarUrl: true } } },
-        orderBy: { createdAt: 'asc' },
+        where: { postId: "post1" },
+        include: {
+          user: { select: { id: true, name: true, avatarUrl: true } },
+        },
+        orderBy: { createdAt: "asc" },
       });
     });
   });
 
-  describe('postMilestone', () => {
-    it('should call createPost', async () => {
-      jest.spyOn(service, 'createPost').mockResolvedValueOnce({ id: 'post2' } as any);
-      const result = await service.postMilestone('user1', 'MILESTONE', 'content', {});
-      expect(result).toEqual({ id: 'post2' });
-      expect(service.createPost).toHaveBeenCalledWith('user1', 'content', 'MILESTONE', {});
+  describe("postMilestone", () => {
+    it("should call createPost", async () => {
+      jest
+        .spyOn(service, "createPost")
+        .mockResolvedValueOnce({ id: "post2" } as any);
+      const result = await service.postMilestone(
+        "user1",
+        "MILESTONE",
+        "content",
+        {},
+      );
+      expect(result).toEqual({ id: "post2" });
+      expect(service.createPost).toHaveBeenCalledWith(
+        "user1",
+        "content",
+        "MILESTONE",
+        {},
+      );
     });
   });
 });

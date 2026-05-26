@@ -44,7 +44,9 @@ describe("Tracing", () => {
     await new Promise(process.nextTick);
 
     expect(shutdownMock).toHaveBeenCalled();
-    expect(consoleInfoSpy).toHaveBeenCalledWith("OpenTelemetry SDK shut down successfully");
+    expect(consoleInfoSpy).toHaveBeenCalledWith(
+      "OpenTelemetry SDK shut down successfully",
+    );
     expect(exitSpy).toHaveBeenCalledWith(0);
   });
 
@@ -62,7 +64,10 @@ describe("Tracing", () => {
     await new Promise(process.nextTick);
 
     expect(shutdownMock).toHaveBeenCalled();
-    expect(consoleErrorSpy).toHaveBeenCalledWith("Error shutting down OpenTelemetry SDK", error);
+    expect(consoleErrorSpy).toHaveBeenCalledWith(
+      "Error shutting down OpenTelemetry SDK",
+      error,
+    );
     expect(exitSpy).toHaveBeenCalledWith(0);
   });
 });

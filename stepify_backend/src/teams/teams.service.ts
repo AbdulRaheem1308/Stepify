@@ -181,13 +181,16 @@ export class TeamsService {
 
     const user = await this.prisma.user.findUnique({ where: { id: userId } });
     if (user && team.captainId) {
-      await this.notificationsService.createAndNotify(
-        team.captainId,
-        "New Team Member!",
-        `${user.name || 'A new walker'} just joined your team.`,
-        "SOCIAL"
-      // eslint-disable-next-line no-console
-      ).catch(e => console.error("Notification failed", e));
+      await this.notificationsService
+        .createAndNotify(
+          team.captainId,
+          "New Team Member!",
+          `${user.name || "A new walker"} just joined your team.`,
+        )
+        .catch((e) => {
+          // eslint-disable-next-line no-console
+          console.error("Notification failed", e);
+        });
     }
 
     return { success: true };
@@ -332,13 +335,16 @@ export class TeamsService {
     });
 
     if (opponentTeam?.captainId && challengerTeam) {
-      await this.notificationsService.createAndNotify(
-        opponentTeam.captainId,
-        "Team Battle!",
-        `${challengerTeam.name} has challenged your team to a step battle! ⚔️`,
-        "COMPETITION"
-      // eslint-disable-next-line no-console
-      ).catch(e => console.error("Notification failed", e));
+      await this.notificationsService
+        .createAndNotify(
+          opponentTeam.captainId,
+          "Team Battle!",
+          `${challengerTeam.name} has challenged your team to a step battle! ⚔️`,
+        )
+        .catch((e) => {
+          // eslint-disable-next-line no-console
+          console.error("Notification failed", e);
+        });
     }
 
     return { success: true, battle };

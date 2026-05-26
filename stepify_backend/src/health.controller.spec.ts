@@ -1,7 +1,7 @@
-import { Test, TestingModule } from '@nestjs/testing';
-import { HealthController } from './health.controller';
+import { Test, TestingModule } from "@nestjs/testing";
+import { HealthController } from "./health.controller";
 
-describe('HealthController', () => {
+describe("HealthController", () => {
   let controller: HealthController;
 
   beforeEach(async () => {
@@ -12,20 +12,20 @@ describe('HealthController', () => {
     controller = module.get<HealthController>(HealthController);
   });
 
-  it('should be defined', () => {
+  it("should be defined", () => {
     expect(controller).toBeDefined();
   });
 
-  it('should return health status', () => {
-    // Mock date to ensure consistent timestamp testing if needed, 
+  it("should return health status", () => {
+    // Mock date to ensure consistent timestamp testing if needed,
     // or just check for existence of properties.
     const result = controller.check();
-    
-    expect(result.status).toBe('ok');
-    expect(result.service).toBe('stepify-api');
-    expect(result.version).toBe('1.0.0');
+
+    expect(result.status).toBe("ok");
+    expect(result.service).toBe("stepify-api");
+    expect(result.version).toBe("1.0.0");
     expect(result.timestamp).toBeDefined();
-    
+
     // Check if timestamp is a valid ISO string
     expect(() => new Date(result.timestamp)).not.toThrow();
   });
