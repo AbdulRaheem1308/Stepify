@@ -22,7 +22,7 @@ const mockPrismaService: any = {
     update: jest.fn(),
     delete: jest.fn(),
   },
-  user: { findMany: jest.fn() },
+  user: { findMany: jest.fn(), findUnique: jest.fn() },
   teamChallenge: { deleteMany: jest.fn(), findMany: jest.fn() },
   teamBattle: { findFirst: jest.fn(), create: jest.fn() },
   $transaction: jest.fn((queries: any): any => {

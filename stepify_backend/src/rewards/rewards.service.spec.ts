@@ -77,7 +77,7 @@ describe("RewardsService", () => {
 
   const mockNotificationsService = {
     sendPushNotification: jest.fn(),
-    createAndNotify: jest.fn(),
+    createAndNotify: jest.fn().mockResolvedValue({}),
   };
 
   beforeEach(async () => {
@@ -204,7 +204,10 @@ describe("RewardsService", () => {
 
     it("should award only incremental points if some points have already been awarded today", async () => {
       mockPrisma.user.findUnique.mockResolvedValue({ dailyStepGoal: 5000 });
-      mockPrisma.transaction.findMany.mockResolvedValueOnce([{ points: 50 }]); // Already got 50 points today
+      const dateStr = new Date().toISOString().split("T")[0];
+      mockPrisma.transaction.findMany.mockResolvedValueOnce([
+        { points: 50, metadata: { date: dateStr } },
+      ]);
       mockPrisma.transaction.create.mockResolvedValue({});
       mockPrisma.wallet.upsert.mockResolvedValue({});
 
