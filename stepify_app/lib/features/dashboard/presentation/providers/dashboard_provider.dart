@@ -289,7 +289,8 @@ class DashboardNotifier extends StateNotifier<DashboardState> with WidgetsBindin
         // Live recalculations for real-time daily stats cards updates (Walked km, Burned kcal, Active mins)
         TodaySteps? updatedTodaySteps = state.todaySteps;
         if (updatedTodaySteps != null && expectedTotal > updatedTodaySteps.stepCount) {
-          final newActiveMinutes = newLast.difference(newFirst).inMinutes;
+          // Estimate active minutes: assume 100 steps ≈ 1 active minute (clinical standard)
+          final newActiveMinutes = (expectedTotal / 100).round();
           final activeMinutesToUse = newActiveMinutes > updatedTodaySteps.activeMinutes
               ? newActiveMinutes
               : updatedTodaySteps.activeMinutes;
@@ -407,6 +408,7 @@ class DashboardNotifier extends StateNotifier<DashboardState> with WidgetsBindin
                     'deviceIdentifier': deviceUUID,
                     'date': dateStr,
                     'stepCount': steps,
+                    'activeMinutes': (steps / 100).round(),
                     'source': 'phone_sensors',
                     'nonce': nonce,
                     'timestamp': timestamp,
@@ -563,10 +565,11 @@ class DashboardNotifier extends StateNotifier<DashboardState> with WidgetsBindin
       // Only update if steps actually increased (or we had 0)
       if (stepCount > currentSteps || currentSteps == 0) {
         final goal = state.todaySteps!.goal > 0 ? state.todaySteps!.goal : 10000;
-        // Estimate active minutes: assume 30 steps ≈ 1 active minute
-        final newActiveMinutes = (state.firstTrackingTime != null && state.lastTrackingTime != null)
-            ? state.lastTrackingTime!.difference(state.firstTrackingTime!).inMinutes
-            : (state.todaySteps?.activeMinutes ?? 0);
+        // Estimate active minutes: assume 100 steps ≈ 1 active minute (clinical standard)
+        final calculatedActiveMinutes = (stepCount / 100).round();
+        final newActiveMinutes = calculatedActiveMinutes > state.todaySteps!.activeMinutes
+            ? calculatedActiveMinutes
+            : state.todaySteps!.activeMinutes;
         state = state.copyWith(
           todaySteps: TodaySteps(
             stepCount: stepCount,
@@ -609,6 +612,7 @@ class DashboardNotifier extends StateNotifier<DashboardState> with WidgetsBindin
           'deviceIdentifier': deviceUUID,
           'date': today,
           'stepCount': stepCount,
+          'activeMinutes': (stepCount / 100).round(),
           'source': 'phone_sensors',
           'nonce': nonce,
           'timestamp': timestamp,
