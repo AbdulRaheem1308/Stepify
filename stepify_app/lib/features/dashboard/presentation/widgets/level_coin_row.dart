@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import '../../../../core/theme/app_theme.dart';
+import 'explainer_bottom_sheet.dart';
 
 class LevelCoinRow extends StatelessWidget {
   final int level;
@@ -18,6 +19,27 @@ class LevelCoinRow extends StatelessWidget {
     required this.onLevelTap,
     required this.onCoinTap,
   });
+
+  void _showExplainer(BuildContext context) {
+    ExplainerBottomSheet.show(
+      context,
+      title: 'Level & Wallet',
+      headerIcon: Icons.account_balance_wallet,
+      primaryColor: const Color(0xFFFF9100), // Orange
+      items: const [
+        ExplainerItem(
+          title: 'Stepify Coins',
+          description: 'Your Currency. Spend coins on real-world rewards, premium challenges, or avatar items. Earned by walking and completing quests.',
+          icon: Icons.stars_rounded,
+        ),
+        ExplainerItem(
+          title: 'Experience Points (XP)',
+          description: 'Your Status. Experience points determine your Level and Leaderboard rank. XP resets monthly to keep competition fresh!',
+          icon: Icons.military_tech,
+        ),
+      ],
+    );
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -44,35 +66,50 @@ class LevelCoinRow extends StatelessWidget {
                   ),
                 ],
               ),
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                mainAxisAlignment: MainAxisAlignment.center,
+              child: Stack(
                 children: [
-                  Row(
-                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                  Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    mainAxisAlignment: MainAxisAlignment.center,
                     children: [
-                      Text(
-                        'Level $level',
-                        style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 16),
+                      Row(
+                        mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                        children: [
+                          Text(
+                            'Level $level',
+                            style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 16),
+                          ),
+                          Text(
+                            '$xpPercentage%',
+                            style: Theme.of(context).textTheme.bodySmall,
+                          ),
+                        ],
                       ),
+                      const SizedBox(height: 12),
+                      LinearProgressIndicator(
+                        value: xpProgress,
+                        backgroundColor: Theme.of(context).dividerColor.withAlpha(77),
+                        color: AppTheme.primaryGreen,
+                        borderRadius: BorderRadius.circular(4),
+                        minHeight: 8,
+                      ),
+                      const SizedBox(height: 8),
                       Text(
-                        '$xpPercentage%',
+                        'Experience Points',
                         style: Theme.of(context).textTheme.bodySmall,
                       ),
                     ],
                   ),
-                  const SizedBox(height: 12),
-                  LinearProgressIndicator(
-                    value: xpProgress,
-                    backgroundColor: Theme.of(context).dividerColor.withAlpha(77),
-                    color: AppTheme.primaryGreen,
-                    borderRadius: BorderRadius.circular(4),
-                    minHeight: 8,
-                  ),
-                  const SizedBox(height: 8),
-                  Text(
-                    'Experience Points',
-                    style: Theme.of(context).textTheme.bodySmall,
+                  Positioned(
+                    top: -12,
+                    right: -12,
+                    child: IconButton(
+                      icon: Icon(Icons.info_outline, size: 16, color: Theme.of(context).textTheme.bodySmall?.color),
+                      onPressed: () => _showExplainer(context),
+                      tooltip: 'How it works',
+                      padding: EdgeInsets.zero,
+                      constraints: const BoxConstraints(),
+                    ),
                   ),
                 ],
               ),

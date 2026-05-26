@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'explainer_bottom_sheet.dart';
 
 class StreakBanner extends StatelessWidget {
   final int streakDays;
@@ -11,6 +12,25 @@ class StreakBanner extends StatelessWidget {
     required this.bestStreak,
     required this.onTap,
   });
+
+  void _showExplainer(BuildContext context) {
+    ExplainerBottomSheet.show(
+      context,
+      title: 'Daily Streaks',
+      headerIcon: Icons.local_fire_department,
+      primaryColor: const Color(0xFFFF9100), // Orange
+      items: const [
+        ExplainerItem(
+          title: 'Keep the Flame Alive',
+          description: 'Hit your daily step goal before midnight (in your local timezone) to keep your streak going.',
+        ),
+        ExplainerItem(
+          title: 'Don\'t Miss a Day!',
+          description: 'If you miss a single day, your current streak will reset to zero! Can you beat your personal best?',
+        ),
+      ],
+    );
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -47,13 +67,22 @@ class StreakBanner extends StatelessWidget {
             Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                Text(
-                  '$streakDays days',
-                  style: const TextStyle(
-                    color: Colors.white,
-                    fontSize: 22,
-                    fontWeight: FontWeight.bold,
-                  ),
+                Row(
+                  children: [
+                    Text(
+                      '$streakDays days',
+                      style: const TextStyle(
+                        color: Colors.white,
+                        fontSize: 22,
+                        fontWeight: FontWeight.bold,
+                      ),
+                    ),
+                    const SizedBox(width: 8),
+                    GestureDetector(
+                      onTap: () => _showExplainer(context),
+                      child: const Icon(Icons.info_outline, color: Colors.white70, size: 18),
+                    ),
+                  ],
                 ),
                 const Text(
                   'Current Streak',

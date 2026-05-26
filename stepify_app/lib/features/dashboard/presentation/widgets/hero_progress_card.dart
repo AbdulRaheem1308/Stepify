@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'dart:math' as math;
 import 'package:flutter_animate/flutter_animate.dart';
+import 'explainer_bottom_sheet.dart';
 
 class HeroProgressCard extends StatelessWidget {
   final int steps;
@@ -13,6 +14,27 @@ class HeroProgressCard extends StatelessWidget {
     required this.goal,
     required this.onAdjustGoal,
   });
+
+  void _showExplainer(BuildContext context) {
+    ExplainerBottomSheet.show(
+      context,
+      title: 'Step Syncing',
+      headerIcon: Icons.sync,
+      primaryColor: const Color(0xFF26D0CE), // Cyan
+      items: const [
+        ExplainerItem(
+          title: 'Secure Background Sync',
+          description: 'Steps are synced securely from your phone\'s native health app (Health Connect/Apple Health).',
+          icon: Icons.security,
+        ),
+        ExplainerItem(
+          title: 'Instant Refresh',
+          description: 'Syncing happens automatically in the background, but you can always pull down on the dashboard to force an instant refresh.',
+          icon: Icons.refresh,
+        ),
+      ],
+    );
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -151,13 +173,22 @@ class HeroProgressCard extends StatelessWidget {
                           );
                         },
                       ),
-                      const Text(
-                        'steps today',
-                        style: TextStyle(
-                          color: Colors.white70,
-                          fontSize: 14,
-                          fontWeight: FontWeight.w500,
-                        ),
+                      Row(
+                        children: [
+                          const Text(
+                            'steps today',
+                            style: TextStyle(
+                              color: Colors.white70,
+                              fontSize: 14,
+                              fontWeight: FontWeight.w500,
+                            ),
+                          ),
+                          const SizedBox(width: 4),
+                          GestureDetector(
+                            onTap: () => _showExplainer(context),
+                            child: const Icon(Icons.info_outline, color: Colors.white70, size: 16),
+                          ),
+                        ],
                       ),
                       
                       const Spacer(),
