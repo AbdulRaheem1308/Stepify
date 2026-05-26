@@ -166,6 +166,26 @@ describe('RewardsService', () => {
       expect(res.pointsEarned).toBe(600); // 6000 * 0.1
       expect(mockQuestsService.processQuestProgress).toHaveBeenCalledWith('u1', 6000);
     });
+
+    it('should award only incremental points if some points have already been awarded today', async () => {
+      mockPrisma.user.findUnique.mockResolvedValue({ dailyStepGoal: 5000 });
+      mockPrisma.transaction.findMany.mockResolvedValueOnce([{ points: 50 }]); // Already got 50 points today
+      mockPrisma.transaction.create.mockResolvedValue({});
+      mockPrisma.wallet.upsert.mockResolvedValue({});
+      
+      mockPrisma.streak.findUnique.mockResolvedValue({ currentStreak: 1, longestStreak: 1, lastActiveDate: new Date() });
+      mockPrisma.streak.update.mockResolvedValue({});
+      
+      mockPrisma.step.findMany.mockResolvedValue([]);
+      mockPrisma.step.aggregate.mockResolvedValue({ _sum: { stepCount: 10000 } });
+      mockPrisma.wallet.findUnique.mockResolvedValue({ lifetimePoints: 1000, balance: 1000, lastResetDate: new Date() });
+      mockPrisma.userChallenge.count.mockResolvedValue(0);
+      mockPrisma.friendship.count.mockResolvedValue(0);
+      mockPrisma.achievement.findMany.mockResolvedValue([]);
+
+      const res = await service.processStepRewards('u1', 6000, new Date());
+      expect(res.pointsEarned).toBe(550); // 600 (total) - 50 (already awarded) = 550
+    });
   });
 
   describe('updateStreak', () => {

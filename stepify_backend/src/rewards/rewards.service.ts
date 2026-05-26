@@ -156,12 +156,33 @@ export class RewardsService {
     // Award points for steps
     const pointsEarned = Math.floor(stepCount * this.pointsPerStep);
 
-    if (pointsEarned > 0) {
+    // Format date string to YYYY-MM-DD
+    const year = date.getUTCFullYear();
+    const month = String(date.getUTCMonth() + 1).padStart(2, "0");
+    const day = String(date.getUTCDate()).padStart(2, "0");
+    const dateStr = `${year}-${month}-${day}`;
+
+    // Get all existing steps transactions for this date
+    const existingTransactions = (await this.prisma.transaction.findMany({
+      where: {
+        userId,
+        type: TransactionType.STEPS,
+        metadata: {
+          equals: { date: dateStr }
+        }
+      }
+    })) || [];
+
+    const pointsAlreadyAwarded = existingTransactions.reduce((sum, tx) => sum + tx.points, 0);
+    const newPoints = pointsEarned - pointsAlreadyAwarded;
+
+    if (newPoints > 0) {
       await this.addPoints(
         userId,
-        pointsEarned,
+        newPoints,
         TransactionType.STEPS,
-        `Earned ${pointsEarned} points for ${stepCount.toLocaleString()} steps`,
+        `Earned ${newPoints} points for reaching ${stepCount.toLocaleString()} steps today`,
+        { date: dateStr }
       );
     }
 
@@ -179,7 +200,7 @@ export class RewardsService {
     // Check for monthly reset
     await this.checkMonthlyReset(userId);
 
-    return { pointsEarned };
+    return { pointsEarned: newPoints > 0 ? newPoints : 0 };
   }
 
   /**
