@@ -11,6 +11,7 @@ on:
     paths:
       - 'stepify_backend/**'
       - '.github/workflows/backend-ci.yml'
+  workflow_dispatch:
 
 jobs:
   build-and-test:
