@@ -240,8 +240,6 @@ describe("FriendsService", () => {
 
     it("should return empty leaderboard when user has no friends", async () => {
       mockPrisma.friendship.findMany.mockResolvedValueOnce([]);
-      mockPrisma.user.findMany.mockResolvedValueOnce([]);
-      mockPrisma.friendBoost.findMany.mockResolvedValueOnce([]);
 
       const res = await service.getMiniLeaderboard("u1");
       expect(res).toEqual([]);

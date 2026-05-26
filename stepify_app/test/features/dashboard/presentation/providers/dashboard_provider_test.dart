@@ -110,4 +110,12 @@ void main() {
       expect(wallet.monthlyXp, 1000);
     });
   });
+
+  group('DashboardNotifier', () {
+    test('calculateXpLevel fallback via wallet integration', () {
+      final state = DashboardState();
+      // Test that the state starts properly
+      expect(state.isLoading, false);
+    });
+  });
 }

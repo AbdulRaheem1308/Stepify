@@ -41,7 +41,7 @@ describe("TeamsService", () => {
       providers: [
         TeamsService,
         { provide: PrismaService, useValue: mockPrismaService },
-        { provide: NotificationsService, useValue: { createAndNotify: jest.fn() } },
+        { provide: NotificationsService, useValue: { createAndNotify: jest.fn().mockResolvedValue(true) } },
       ],
     }).compile();
     service = module.get<TeamsService>(TeamsService);
