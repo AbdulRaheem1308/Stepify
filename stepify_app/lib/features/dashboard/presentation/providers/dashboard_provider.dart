@@ -4,6 +4,7 @@ import 'package:flutter/widgets.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:uuid/uuid.dart';
 import 'package:safe_device/safe_device.dart';
+import 'dart:math';
 
 import '../../../../services/api_service.dart';
 import '../../../../services/storage_service.dart';
@@ -232,8 +233,13 @@ class DashboardNotifier extends StateNotifier<DashboardState> with WidgetsBindin
   DateTime? _lastSyncedTime;
   
   int _currentPedometerSteps = 0;
+  int _lastPedometerRawSteps = 0;
   int _pedometerOffset = 0;
   bool _pedometerOffsetInitialized = false;
+  
+  // Real-time active minutes tracking
+  DateTime? _lastStepTime;
+  int _accumulatedActiveSeconds = 0;
   
   Timer? _uiBatchTimer;
 
@@ -282,15 +288,35 @@ class DashboardNotifier extends StateNotifier<DashboardState> with WidgetsBindin
 
         final expectedTotal = _pedometerOffsetInitialized ? stepsToday + _pedometerOffset : stepsToday;
         
+        // Active time tracking logic
         final now = DateTime.now();
-        final newFirst = state.firstTrackingTime ?? now;
-        final newLast = now;
+        if (_lastStepTime != null) {
+          final timeDiff = now.difference(_lastStepTime!);
+          final stepDiff = stepsToday - _lastPedometerRawSteps;
+          
+          if (stepDiff > 0) {
+             if (timeDiff.inSeconds <= 15) {
+               // Continuous walking (steps registered within 15 seconds)
+               _accumulatedActiveSeconds += timeDiff.inSeconds;
+             } else {
+               // Bulk step update (e.g. app woke up from background)
+               // Estimate time for these specific missed steps
+               _accumulatedActiveSeconds += (stepDiff / 100 * 60).round();
+             }
+          }
+        }
+        _lastStepTime = now;
+        _lastPedometerRawSteps = stepsToday;
 
         // Live recalculations for real-time daily stats cards updates (Walked km, Burned kcal, Active mins)
         TodaySteps? updatedTodaySteps = state.todaySteps;
         if (updatedTodaySteps != null && expectedTotal > updatedTodaySteps.stepCount) {
-          // Estimate active minutes: assume 100 steps ≈ 1 active minute (clinical standard)
-          final newActiveMinutes = (expectedTotal / 100).round();
+          // Use accumulated real-time tracking, fallback to clinical standard if it somehow failed
+          int newActiveMinutes = (_accumulatedActiveSeconds / 60).round();
+          if (newActiveMinutes == 0 && expectedTotal > 0) {
+            newActiveMinutes = (expectedTotal / 100).round();
+          }
+
           final activeMinutesToUse = newActiveMinutes > updatedTodaySteps.activeMinutes
               ? newActiveMinutes
               : updatedTodaySteps.activeMinutes;
@@ -466,7 +492,6 @@ class DashboardNotifier extends StateNotifier<DashboardState> with WidgetsBindin
       final backendStepsData = results[0].data;
       final backendSteps = backendStepsData['stepCount'] ?? 0;
       
-      // Calculate offset if not initialized, OR update it if backend has more steps (e.g. smartwatch synced)
       final expectedTotal = _currentPedometerSteps + _pedometerOffset;
       if (backendSteps > expectedTotal) {
          _pedometerOffset = backendSteps - _currentPedometerSteps;
@@ -476,6 +501,11 @@ class DashboardNotifier extends StateNotifier<DashboardState> with WidgetsBindin
          _pedometerOffset = backendSteps - _currentPedometerSteps;
          if (_pedometerOffset < 0) _pedometerOffset = 0;
          _pedometerOffsetInitialized = true;
+      }
+
+      // Initialize active seconds from backend if we are just starting
+      if (_accumulatedActiveSeconds == 0) {
+        _accumulatedActiveSeconds = (backendStepsData['activeMinutes'] ?? 0) * 60;
       }
 
       state = state.copyWith(
@@ -564,8 +594,12 @@ class DashboardNotifier extends StateNotifier<DashboardState> with WidgetsBindin
       final currentSteps = state.todaySteps!.stepCount;
       if (stepCount > currentSteps || currentSteps == 0) {
         final goal = state.todaySteps!.goal > 0 ? state.todaySteps!.goal : 10000;
-        // Estimate active minutes: assume 100 steps ≈ 1 active minute (clinical standard)
-        final calculatedActiveMinutes = (stepCount / 100).round();
+        
+        int calculatedActiveMinutes = (_accumulatedActiveSeconds / 60).round();
+        if (calculatedActiveMinutes == 0 && stepCount > 0) {
+           calculatedActiveMinutes = (stepCount / 100).round();
+        }
+
         final newActiveMinutes = calculatedActiveMinutes > state.todaySteps!.activeMinutes
             ? calculatedActiveMinutes
             : state.todaySteps!.activeMinutes;
@@ -612,7 +646,7 @@ class DashboardNotifier extends StateNotifier<DashboardState> with WidgetsBindin
           'deviceIdentifier': deviceUUID,
           'date': today,
           'stepCount': stepCount,
-          'activeMinutes': (stepCount / 100).round(),
+          'activeMinutes': max((_accumulatedActiveSeconds / 60).round(), (stepCount / 100).round()),
           'source': 'phone_sensors',
           'nonce': nonce,
           'timestamp': timestamp,
