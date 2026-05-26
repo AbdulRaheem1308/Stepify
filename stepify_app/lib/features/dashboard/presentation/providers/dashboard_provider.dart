@@ -286,6 +286,7 @@ class DashboardNotifier extends StateNotifier<DashboardState> with WidgetsBindin
         final newFirst = state.firstTrackingTime ?? now;
         final newLast = now;
 
+        // Live recalculations for real-time daily stats cards updates (Walked km, Burned kcal, Active mins)
         TodaySteps? updatedTodaySteps = state.todaySteps;
         if (updatedTodaySteps != null && expectedTotal > updatedTodaySteps.stepCount) {
           final newActiveMinutes = newLast.difference(newFirst).inMinutes;
