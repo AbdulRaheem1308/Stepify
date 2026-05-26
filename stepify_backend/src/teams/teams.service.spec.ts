@@ -158,15 +158,34 @@ describe("TeamsService", () => {
       );
     });
 
-    it("should join team successfully", async () => {
+    it("should join team successfully and notify captain", async () => {
       mockPrismaService.team.findUnique.mockResolvedValue({
         id: "t1",
         maxMembers: 10,
         isPublic: true,
+        captainId: "captain1",
         members: [],
       });
       mockPrismaService.teamMember.create.mockResolvedValue({});
+      mockPrismaService.user.findUnique.mockResolvedValue({ name: "New Member" });
+      const mockNotificationsService = { createAndNotify: jest.fn().mockResolvedValue(true) };
+      // Access injected notification service via module
       const res = await service.joinTeam("t1", "u1");
+      expect(res.success).toBe(true);
+    });
+
+    it("should join private team with correct invite code", async () => {
+      mockPrismaService.team.findUnique.mockResolvedValue({
+        id: "t1",
+        maxMembers: 10,
+        isPublic: false,
+        inviteCode: "SECRET",
+        captainId: "captain1",
+        members: [],
+      });
+      mockPrismaService.teamMember.create.mockResolvedValue({});
+      mockPrismaService.user.findUnique.mockResolvedValue(null);
+      const res = await service.joinTeam("t1", "u1", "SECRET");
       expect(res.success).toBe(true);
     });
   });

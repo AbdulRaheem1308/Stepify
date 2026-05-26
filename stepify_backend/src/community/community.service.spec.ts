@@ -183,6 +183,27 @@ describe("CommunityService", () => {
       const result = await service.reactToPost("user1", "post1", "fire");
       expect(result).toEqual({ reacted: true });
     });
+
+    it("should not notify when user reacts to their own post", async () => {
+      mockPrismaService.$transaction.mockImplementationOnce(async (cb) => {
+        const tx = {
+          feedReaction: {
+            findUnique: jest.fn().mockResolvedValue(null),
+            create: jest.fn().mockResolvedValue({}),
+          },
+          feedPost: {
+            // userId === reactor, so no notification
+            update: jest.fn().mockResolvedValue({ userId: "user1" }),
+          },
+        };
+        return cb(tx);
+      });
+
+      const result = await service.reactToPost("user1", "post1", "fire");
+      expect(result).toEqual({ reacted: true });
+      // createAndNotify should NOT have been called because userId === postOwnerId
+      expect(mockNotificationsService.createAndNotify).not.toHaveBeenCalled();
+    });
   });
 
   describe("addComment", () => {
@@ -208,6 +229,23 @@ describe("CommunityService", () => {
         id: "comment1", 
         user: { name: "Test User" } 
       });
+    });
+
+    it("should not notify when user comments on their own post", async () => {
+      mockPrismaService.$transaction.mockImplementationOnce(async (cb) => {
+        const tx = {
+          feedComment: {
+            create: jest.fn().mockResolvedValue({ id: "comment2", user: { name: "User1" } }),
+          },
+          // userId === commenterId, so no notification
+          feedPost: { update: jest.fn().mockResolvedValue({ userId: "user1" }) },
+        };
+        return cb(tx);
+      });
+
+      const result = await service.addComment("user1", "post1", "My own post!");
+      expect(result.id).toBe("comment2");
+      expect(mockNotificationsService.createAndNotify).not.toHaveBeenCalled();
     });
   });
 

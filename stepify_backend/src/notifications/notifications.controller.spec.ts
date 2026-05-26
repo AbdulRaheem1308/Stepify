@@ -52,6 +52,14 @@ describe("NotificationsController", () => {
     });
   });
 
+  describe("markAllAsRead", () => {
+    it("should mark all notifications as read", async () => {
+      const req = { user: { sub: "u1" } };
+      await controller.markAllAsRead(req);
+      expect(service.markAsRead).toHaveBeenCalledWith("u1", "all");
+    });
+  });
+
   describe("markAsRead", () => {
     it("should mark as read", async () => {
       const req = { user: { sub: "u1" } };

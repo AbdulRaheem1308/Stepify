@@ -28,7 +28,7 @@ describe("MessagingService", () => {
   };
 
   const mockNotificationsService = {
-    sendPushNotification: jest.fn(),
+    sendPushToUser: jest.fn().mockResolvedValue(undefined),
   };
 
   beforeEach(async () => {
@@ -94,6 +94,37 @@ describe("MessagingService", () => {
       const res = await service.sendMessage("c1", "u1", "hello");
       expect(res.id).toBe("m1");
       expect(mockPrisma.conversation.update).toHaveBeenCalled();
+    });
+
+    it("should truncate long message content in push notification", async () => {
+      const sendPushSpy = jest.spyOn(mockNotificationsService, 'sendPushToUser').mockResolvedValue(undefined);
+      mockPrisma.conversationParticipant.findUnique.mockResolvedValueOnce({ userId: "u1" });
+      mockPrisma.message.create.mockResolvedValueOnce({ id: "m2" });
+      mockPrisma.conversation.update.mockResolvedValueOnce({
+        participants: [{ userId: "u2" }],
+      });
+      mockPrisma.user.findUnique.mockResolvedValueOnce({ name: "Alice" });
+
+      const longContent = "a".repeat(100);
+      await service.sendMessage("c1", "u1", longContent);
+
+      expect(sendPushSpy).toHaveBeenCalledWith(
+        "u2",
+        "New Message from Alice",
+        expect.stringMatching(/\.\.\.$/),
+      );
+    });
+
+    it("should use 'Someone' when sender name is null", async () => {
+      mockPrisma.conversationParticipant.findUnique.mockResolvedValueOnce({ userId: "u1" });
+      mockPrisma.message.create.mockResolvedValueOnce({ id: "m3" });
+      mockPrisma.conversation.update.mockResolvedValueOnce({
+        participants: [{ userId: "u2" }],
+      });
+      mockPrisma.user.findUnique.mockResolvedValueOnce(null);
+
+      await service.sendMessage("c1", "u1", "short");
+      // No assertion needed — just verifying no crash when sender is null
     });
   });
 

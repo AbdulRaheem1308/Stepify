@@ -217,6 +217,38 @@ describe("StepsService", () => {
         }),
       );
     });
+
+    it("should skip nonce check when no nonce provided", async () => {
+      mockPrisma.device.findFirst.mockResolvedValueOnce({ id: "d1" });
+      mockPrisma.step.findUnique.mockResolvedValueOnce(null);
+      mockPrisma.step.upsert.mockResolvedValueOnce({ stepCount: 5000, source: "google_fit" });
+
+      // No nonce in dto — should not call setNonce
+      const dtoWithoutNonce = { ...baseDto };
+      delete (dtoWithoutNonce as any).nonce;
+      await service.syncSteps(userId, dtoWithoutNonce);
+      expect(mockRedisService.setNonce).not.toHaveBeenCalled();
+    });
+
+    it("should skip timestamp check when no timestamp provided", async () => {
+      mockPrisma.device.findFirst.mockResolvedValueOnce({ id: "d1" });
+      mockPrisma.step.findUnique.mockResolvedValueOnce(null);
+      mockPrisma.step.upsert.mockResolvedValueOnce({ stepCount: 5000, source: "google_fit" });
+
+      const dtoWithoutTimestamp = { ...baseDto };
+      delete (dtoWithoutTimestamp as any).timestamp;
+      await expect(service.syncSteps(userId, dtoWithoutTimestamp)).resolves.toBeDefined();
+    });
+
+    it("should skip integrity check when no integrity provided", async () => {
+      mockPrisma.device.findFirst.mockResolvedValueOnce({ id: "d1" });
+      mockPrisma.step.findUnique.mockResolvedValueOnce(null);
+      mockPrisma.step.upsert.mockResolvedValueOnce({ stepCount: 5000, source: "google_fit" });
+
+      const dtoWithoutIntegrity = { ...baseDto };
+      delete (dtoWithoutIntegrity as any).integrity;
+      await expect(service.syncSteps(userId, dtoWithoutIntegrity)).resolves.toBeDefined();
+    });
   });
 
   describe("getTodaySteps", () => {
@@ -245,6 +277,17 @@ describe("StepsService", () => {
       const res = await service.getTodaySteps(userId);
       expect(res.progress).toBe(100);
       expect(res.goalReached).toBe(true);
+    });
+
+    it("should default to 10000 goal when user has no dailyStepGoal", async () => {
+      mockPrisma.step.findUnique.mockResolvedValueOnce(null);
+      mockPrisma.user.findUnique.mockResolvedValueOnce({ dailyStepGoal: null });
+
+      const res = await service.getTodaySteps(userId);
+      expect(res.stepCount).toBe(0);
+      expect(res.goal).toBe(10000);
+      expect(res.progress).toBe(0);
+      expect(res.goalReached).toBe(false);
     });
   });
 

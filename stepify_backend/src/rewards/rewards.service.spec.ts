@@ -234,6 +234,34 @@ describe("RewardsService", () => {
       const res = await service.processStepRewards("u1", 6000, new Date());
       expect(res.pointsEarned).toBe(550); // 600 (total) - 50 (already awarded) = 550
     });
+
+    it("should return 0 points earned if new points <= 0", async () => {
+      mockPrisma.user.findUnique.mockResolvedValue({ dailyStepGoal: 5000 });
+      const dateStr = new Date().toISOString().split("T")[0];
+      // Already awarded more points than today's total
+      mockPrisma.transaction.findMany.mockResolvedValueOnce([
+        { points: 1000, metadata: { date: dateStr } },
+      ]);
+
+      mockPrisma.streak.findUnique.mockResolvedValue({
+        currentStreak: 1,
+        longestStreak: 1,
+        lastActiveDate: new Date(),
+      });
+      mockPrisma.streak.update.mockResolvedValue({});
+      mockPrisma.streak.create.mockResolvedValue({});
+      mockPrisma.step.findMany.mockResolvedValue([]);
+      mockPrisma.step.aggregate.mockResolvedValue({ _sum: { stepCount: 1000 } });
+      mockPrisma.wallet.findUnique.mockResolvedValue({ lifetimePoints: 500, balance: 500, lastResetDate: new Date() });
+      mockPrisma.userChallenge.count.mockResolvedValue(0);
+      mockPrisma.friendship.count.mockResolvedValue(0);
+      mockPrisma.achievement.findMany.mockResolvedValue([]);
+
+      const res = await service.processStepRewards("u1", 100, new Date());
+      // 100 steps * 0.1 = 10 points – already awarded 1000, so newPoints = -990 → clamped to 0
+      expect(res.pointsEarned).toBe(0);
+      expect(mockPrisma.wallet.upsert).not.toHaveBeenCalled();
+    });
   });
 
   describe("updateStreak", () => {
@@ -442,6 +470,12 @@ describe("RewardsService", () => {
         userId: "u1",
         lastResetDate: new Date(),
       });
+      await service.checkMonthlyReset("u1");
+      expect(mockPrisma.wallet.update).not.toHaveBeenCalled();
+    });
+
+    it("should do nothing if wallet is null", async () => {
+      mockPrisma.wallet.findUnique.mockResolvedValueOnce(null);
       await service.checkMonthlyReset("u1");
       expect(mockPrisma.wallet.update).not.toHaveBeenCalled();
     });

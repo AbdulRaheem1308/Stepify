@@ -132,6 +132,19 @@ describe("QuestsService", () => {
       expect(mockPrismaService.userQuest.update).not.toHaveBeenCalled();
     });
 
+    it("should do nothing if quest has no stages", async () => {
+      mockPrismaService.userQuest.findMany.mockResolvedValueOnce([
+        {
+          id: "uq1",
+          currentStageIndex: 0,
+          quest: { stages: [] },
+        },
+      ]);
+      await service.processQuestProgress("user1", 10000);
+      expect(mockPrismaService.userQuest.update).not.toHaveBeenCalled();
+      expect(mockPrismaService.userQuest.updateMany).not.toHaveBeenCalled();
+    });
+
     it("should advance to next stage if step count >= targetSteps and not last stage", async () => {
       mockPrismaService.userQuest.findMany.mockResolvedValueOnce([
         {

@@ -141,6 +141,15 @@ describe("FriendsService", () => {
       expect(res).toHaveLength(1);
       expect(res[0].friendshipStatus).toBe("PENDING");
     });
+
+    it("should return null friendshipStatus when no friendship exists", async () => {
+      mockPrisma.user.findMany.mockResolvedValueOnce([{ id: "u2" }]);
+      mockPrisma.friendship.findMany.mockResolvedValueOnce([]);
+
+      const res = await service.searchUsers("u1", "test");
+      expect(res).toHaveLength(1);
+      expect(res[0].friendshipStatus).toBeNull();
+    });
   });
 
   describe("sendFriendRequest", () => {
@@ -227,6 +236,15 @@ describe("FriendsService", () => {
       expect(res).toHaveLength(2);
       expect(res[0].id).toBe("f2"); // highest steps first
       expect(res[0].rank).toBe(1);
+    });
+
+    it("should return empty leaderboard when user has no friends", async () => {
+      mockPrisma.friendship.findMany.mockResolvedValueOnce([]);
+      mockPrisma.user.findMany.mockResolvedValueOnce([]);
+      mockPrisma.friendBoost.findMany.mockResolvedValueOnce([]);
+
+      const res = await service.getMiniLeaderboard("u1");
+      expect(res).toEqual([]);
     });
   });
 

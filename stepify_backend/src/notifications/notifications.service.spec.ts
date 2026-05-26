@@ -129,9 +129,19 @@ describe("NotificationsService", () => {
       expect(mMessaging.send).not.toHaveBeenCalled();
     });
 
-    it("should call sendFcmMessage if user has token", async () => {
+    it("should skip if user has push notifications disabled in settings", async () => {
       (prismaService.user.findUnique as jest.Mock).mockResolvedValue({
         fcmToken: "token1",
+        settings: { pushNotifications: false },
+      });
+      await service.sendPushToUser("u1", "title", "body");
+      expect(mMessaging.send).not.toHaveBeenCalled();
+    });
+
+    it("should call sendFcmMessage if user has token and push enabled explicitly", async () => {
+      (prismaService.user.findUnique as jest.Mock).mockResolvedValue({
+        fcmToken: "token1",
+        settings: { pushNotifications: true },
       });
       mMessaging.send.mockResolvedValue("msg-id");
       await service.sendPushToUser("u1", "title", "body");
@@ -147,6 +157,18 @@ describe("NotificationsService", () => {
     it("should handle invalid token errors and remove token", async () => {
       const error: any = new Error("Invalid token");
       error.code = "messaging/invalid-registration-token";
+      mMessaging.send.mockRejectedValue(error);
+
+      await service.sendFcmMessage("token1", "title", "body");
+      expect(prismaService.user.updateMany).toHaveBeenCalledWith({
+        where: { fcmToken: "token1" },
+        data: { fcmToken: null },
+      });
+    });
+
+    it("should handle registration-token-not-registered error and remove token", async () => {
+      const error: any = new Error("Token not registered");
+      error.code = "messaging/registration-token-not-registered";
       mMessaging.send.mockRejectedValue(error);
 
       await service.sendFcmMessage("token1", "title", "body");
