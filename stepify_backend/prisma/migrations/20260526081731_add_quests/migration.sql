@@ -25,28 +25,28 @@ ALTER TYPE "AchievementCategory" ADD VALUE IF NOT EXISTS 'CHALLENGE';
 ALTER TYPE "AchievementCategory" ADD VALUE IF NOT EXISTS 'COINS';
 
 -- AlterTable
-ALTER TABLE "achievements" ADD COLUMN     "targetValue" INTEGER;
+ALTER TABLE "achievements" ADD COLUMN IF NOT EXISTS "targetValue" INTEGER;
 
 -- AlterTable
-ALTER TABLE "user_achievements" ADD COLUMN     "currentValue" INTEGER NOT NULL DEFAULT 0,
-ADD COLUMN     "progress" INTEGER NOT NULL DEFAULT 0,
-ADD COLUMN     "unlocked" BOOLEAN NOT NULL DEFAULT false,
+ALTER TABLE "user_achievements" ADD COLUMN IF NOT EXISTS "currentValue" INTEGER NOT NULL DEFAULT 0,
+ADD COLUMN IF NOT EXISTS "progress" INTEGER NOT NULL DEFAULT 0,
+ADD COLUMN IF NOT EXISTS "unlocked" BOOLEAN NOT NULL DEFAULT false,
 ALTER COLUMN "unlockedAt" DROP NOT NULL,
 ALTER COLUMN "unlockedAt" DROP DEFAULT;
 
 -- AlterTable
-ALTER TABLE "users" ADD COLUMN     "activityPreferences" TEXT[],
-ADD COLUMN     "countryCode" TEXT NOT NULL DEFAULT 'IN',
-ADD COLUMN     "fitnessLevel" TEXT DEFAULT 'beginner',
-ADD COLUMN     "locale" TEXT NOT NULL DEFAULT 'en-IN',
-ADD COLUMN     "timezone" TEXT NOT NULL DEFAULT 'Asia/Kolkata';
+ALTER TABLE "users" ADD COLUMN IF NOT EXISTS "activityPreferences" TEXT[],
+ADD COLUMN IF NOT EXISTS "countryCode" TEXT NOT NULL DEFAULT 'IN',
+ADD COLUMN IF NOT EXISTS "fitnessLevel" TEXT DEFAULT 'beginner',
+ADD COLUMN IF NOT EXISTS "locale" TEXT NOT NULL DEFAULT 'en-IN',
+ADD COLUMN IF NOT EXISTS "timezone" TEXT NOT NULL DEFAULT 'Asia/Kolkata';
 
 -- AlterTable
-ALTER TABLE "wallets" ADD COLUMN     "lastResetDate" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
-ADD COLUMN     "monthlyXp" INTEGER NOT NULL DEFAULT 0;
+ALTER TABLE "wallets" ADD COLUMN IF NOT EXISTS "lastResetDate" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
+ADD COLUMN IF NOT EXISTS "monthlyXp" INTEGER NOT NULL DEFAULT 0;
 
 -- CreateTable
-CREATE TABLE "notifications" (
+CREATE TABLE IF NOT EXISTS "notifications" (
     "id" TEXT NOT NULL,
     "userId" TEXT NOT NULL,
     "title" TEXT NOT NULL,
@@ -59,7 +59,7 @@ CREATE TABLE "notifications" (
 );
 
 -- CreateTable
-CREATE TABLE "avatars" (
+CREATE TABLE IF NOT EXISTS "avatars" (
     "id" TEXT NOT NULL,
     "url" TEXT NOT NULL,
     "category" TEXT NOT NULL DEFAULT 'default',
@@ -70,7 +70,7 @@ CREATE TABLE "avatars" (
 );
 
 -- CreateTable
-CREATE TABLE "user_settings" (
+CREATE TABLE IF NOT EXISTS "user_settings" (
     "id" TEXT NOT NULL,
     "userId" TEXT NOT NULL,
     "themeMode" TEXT NOT NULL DEFAULT 'system',
@@ -92,7 +92,7 @@ CREATE TABLE "user_settings" (
 );
 
 -- CreateTable
-CREATE TABLE "activities" (
+CREATE TABLE IF NOT EXISTS "activities" (
     "id" TEXT NOT NULL,
     "userId" TEXT NOT NULL,
     "type" TEXT NOT NULL,
@@ -108,7 +108,7 @@ CREATE TABLE "activities" (
 );
 
 -- CreateTable
-CREATE TABLE "levels" (
+CREATE TABLE IF NOT EXISTS "levels" (
     "id" TEXT NOT NULL,
     "levelNumber" INTEGER NOT NULL,
     "name" TEXT NOT NULL,
@@ -122,7 +122,7 @@ CREATE TABLE "levels" (
 );
 
 -- CreateTable
-CREATE TABLE "teams" (
+CREATE TABLE IF NOT EXISTS "teams" (
     "id" TEXT NOT NULL,
     "name" TEXT NOT NULL,
     "description" TEXT,
@@ -140,7 +140,7 @@ CREATE TABLE "teams" (
 );
 
 -- CreateTable
-CREATE TABLE "team_members" (
+CREATE TABLE IF NOT EXISTS "team_members" (
     "id" TEXT NOT NULL,
     "teamId" TEXT NOT NULL,
     "userId" TEXT NOT NULL,
@@ -153,7 +153,7 @@ CREATE TABLE "team_members" (
 );
 
 -- CreateTable
-CREATE TABLE "team_challenges" (
+CREATE TABLE IF NOT EXISTS "team_challenges" (
     "id" TEXT NOT NULL,
     "teamId" TEXT NOT NULL,
     "title" TEXT NOT NULL,
@@ -171,7 +171,7 @@ CREATE TABLE "team_challenges" (
 );
 
 -- CreateTable
-CREATE TABLE "team_battles" (
+CREATE TABLE IF NOT EXISTS "team_battles" (
     "id" TEXT NOT NULL,
     "challengerId" TEXT NOT NULL,
     "opponentId" TEXT NOT NULL,
@@ -186,7 +186,7 @@ CREATE TABLE "team_battles" (
 );
 
 -- CreateTable
-CREATE TABLE "quests" (
+CREATE TABLE IF NOT EXISTS "quests" (
     "id" TEXT NOT NULL,
     "title" TEXT NOT NULL,
     "description" TEXT NOT NULL,
@@ -202,7 +202,7 @@ CREATE TABLE "quests" (
 );
 
 -- CreateTable
-CREATE TABLE "quest_stages" (
+CREATE TABLE IF NOT EXISTS "quest_stages" (
     "id" TEXT NOT NULL,
     "questId" TEXT NOT NULL,
     "order" INTEGER NOT NULL,
@@ -215,7 +215,7 @@ CREATE TABLE "quest_stages" (
 );
 
 -- CreateTable
-CREATE TABLE "user_quests" (
+CREATE TABLE IF NOT EXISTS "user_quests" (
     "id" TEXT NOT NULL,
     "userId" TEXT NOT NULL,
     "questId" TEXT NOT NULL,
@@ -228,7 +228,7 @@ CREATE TABLE "user_quests" (
 );
 
 -- CreateTable
-CREATE TABLE "conversations" (
+CREATE TABLE IF NOT EXISTS "conversations" (
     "id" TEXT NOT NULL,
     "createdAt" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
     "updatedAt" TIMESTAMP(3) NOT NULL,
@@ -237,7 +237,7 @@ CREATE TABLE "conversations" (
 );
 
 -- CreateTable
-CREATE TABLE "conversation_participants" (
+CREATE TABLE IF NOT EXISTS "conversation_participants" (
     "id" TEXT NOT NULL,
     "conversationId" TEXT NOT NULL,
     "userId" TEXT NOT NULL,
@@ -248,7 +248,7 @@ CREATE TABLE "conversation_participants" (
 );
 
 -- CreateTable
-CREATE TABLE "messages" (
+CREATE TABLE IF NOT EXISTS "messages" (
     "id" TEXT NOT NULL,
     "conversationId" TEXT NOT NULL,
     "senderId" TEXT NOT NULL,
@@ -261,7 +261,7 @@ CREATE TABLE "messages" (
 );
 
 -- CreateTable
-CREATE TABLE "companies" (
+CREATE TABLE IF NOT EXISTS "companies" (
     "id" TEXT NOT NULL,
     "name" TEXT NOT NULL,
     "domain" TEXT,
@@ -276,7 +276,7 @@ CREATE TABLE "companies" (
 );
 
 -- CreateTable
-CREATE TABLE "departments" (
+CREATE TABLE IF NOT EXISTS "departments" (
     "id" TEXT NOT NULL,
     "companyId" TEXT NOT NULL,
     "name" TEXT NOT NULL,
@@ -287,7 +287,7 @@ CREATE TABLE "departments" (
 );
 
 -- CreateTable
-CREATE TABLE "company_members" (
+CREATE TABLE IF NOT EXISTS "company_members" (
     "id" TEXT NOT NULL,
     "companyId" TEXT NOT NULL,
     "userId" TEXT NOT NULL,
@@ -301,7 +301,7 @@ CREATE TABLE "company_members" (
 );
 
 -- CreateTable
-CREATE TABLE "company_challenges" (
+CREATE TABLE IF NOT EXISTS "company_challenges" (
     "id" TEXT NOT NULL,
     "companyId" TEXT NOT NULL,
     "title" TEXT NOT NULL,
@@ -317,115 +317,191 @@ CREATE TABLE "company_challenges" (
 );
 
 -- CreateIndex
-CREATE INDEX "notifications_userId_isRead_idx" ON "notifications"("userId", "isRead");
+CREATE INDEX IF NOT EXISTS "notifications_userId_isRead_idx" ON "notifications"("userId", "isRead");
 
 -- CreateIndex
-CREATE UNIQUE INDEX "user_settings_userId_key" ON "user_settings"("userId");
+CREATE UNIQUE INDEX IF NOT EXISTS "user_settings_userId_key" ON "user_settings"("userId");
 
 -- CreateIndex
-CREATE INDEX "activities_userId_startTime_idx" ON "activities"("userId", "startTime");
+CREATE INDEX IF NOT EXISTS "activities_userId_startTime_idx" ON "activities"("userId", "startTime");
 
 -- CreateIndex
-CREATE UNIQUE INDEX "levels_levelNumber_key" ON "levels"("levelNumber");
+CREATE UNIQUE INDEX IF NOT EXISTS "levels_levelNumber_key" ON "levels"("levelNumber");
 
 -- CreateIndex
-CREATE UNIQUE INDEX "teams_inviteCode_key" ON "teams"("inviteCode");
+CREATE UNIQUE INDEX IF NOT EXISTS "teams_inviteCode_key" ON "teams"("inviteCode");
 
 -- CreateIndex
-CREATE INDEX "teams_captainId_idx" ON "teams"("captainId");
+CREATE INDEX IF NOT EXISTS "teams_captainId_idx" ON "teams"("captainId");
 
 -- CreateIndex
-CREATE INDEX "team_members_userId_idx" ON "team_members"("userId");
+CREATE INDEX IF NOT EXISTS "team_members_userId_idx" ON "team_members"("userId");
 
 -- CreateIndex
-CREATE UNIQUE INDEX "team_members_teamId_userId_key" ON "team_members"("teamId", "userId");
+CREATE UNIQUE INDEX IF NOT EXISTS "team_members_teamId_userId_key" ON "team_members"("teamId", "userId");
 
 -- CreateIndex
-CREATE INDEX "team_challenges_teamId_status_idx" ON "team_challenges"("teamId", "status");
+CREATE INDEX IF NOT EXISTS "team_challenges_teamId_status_idx" ON "team_challenges"("teamId", "status");
 
 -- CreateIndex
-CREATE UNIQUE INDEX "user_quests_userId_questId_key" ON "user_quests"("userId", "questId");
+CREATE UNIQUE INDEX IF NOT EXISTS "user_quests_userId_questId_key" ON "user_quests"("userId", "questId");
 
 -- CreateIndex
-CREATE UNIQUE INDEX "conversation_participants_conversationId_userId_key" ON "conversation_participants"("conversationId", "userId");
+CREATE UNIQUE INDEX IF NOT EXISTS "conversation_participants_conversationId_userId_key" ON "conversation_participants"("conversationId", "userId");
 
 -- CreateIndex
-CREATE INDEX "messages_conversationId_createdAt_idx" ON "messages"("conversationId", "createdAt");
+CREATE INDEX IF NOT EXISTS "messages_conversationId_createdAt_idx" ON "messages"("conversationId", "createdAt");
 
 -- CreateIndex
-CREATE UNIQUE INDEX "companies_inviteCode_key" ON "companies"("inviteCode");
+CREATE UNIQUE INDEX IF NOT EXISTS "companies_inviteCode_key" ON "companies"("inviteCode");
 
 -- CreateIndex
-CREATE UNIQUE INDEX "departments_companyId_name_key" ON "departments"("companyId", "name");
+CREATE UNIQUE INDEX IF NOT EXISTS "departments_companyId_name_key" ON "departments"("companyId", "name");
 
 -- CreateIndex
-CREATE UNIQUE INDEX "company_members_userId_key" ON "company_members"("userId");
+CREATE UNIQUE INDEX IF NOT EXISTS "company_members_userId_key" ON "company_members"("userId");
 
 -- CreateIndex
-CREATE INDEX "company_members_companyId_idx" ON "company_members"("companyId");
+CREATE INDEX IF NOT EXISTS "company_members_companyId_idx" ON "company_members"("companyId");
 
 -- CreateIndex
-CREATE INDEX "company_challenges_companyId_idx" ON "company_challenges"("companyId");
+CREATE INDEX IF NOT EXISTS "company_challenges_companyId_idx" ON "company_challenges"("companyId");
 
 -- CreateIndex
-CREATE INDEX "user_achievements_userId_unlocked_idx" ON "user_achievements"("userId", "unlocked");
+CREATE INDEX IF NOT EXISTS "user_achievements_userId_unlocked_idx" ON "user_achievements"("userId", "unlocked");
 
 -- CreateIndex
-CREATE INDEX "wallets_balance_idx" ON "wallets"("balance" DESC);
+CREATE INDEX IF NOT EXISTS "wallets_balance_idx" ON "wallets"("balance" DESC);
 
 -- AddForeignKey
-ALTER TABLE "notifications" ADD CONSTRAINT "notifications_userId_fkey" FOREIGN KEY ("userId") REFERENCES "users"("id") ON DELETE CASCADE ON UPDATE CASCADE;
+DO $$ BEGIN
+    ALTER TABLE "notifications" ADD CONSTRAINT "notifications_userId_fkey" FOREIGN KEY ("userId") REFERENCES "users"("id") ON DELETE CASCADE ON UPDATE CASCADE;
+EXCEPTION
+    WHEN duplicate_object THEN null;
+END $$;
 
 -- AddForeignKey
-ALTER TABLE "user_settings" ADD CONSTRAINT "user_settings_userId_fkey" FOREIGN KEY ("userId") REFERENCES "users"("id") ON DELETE CASCADE ON UPDATE CASCADE;
+DO $$ BEGIN
+    ALTER TABLE "user_settings" ADD CONSTRAINT "user_settings_userId_fkey" FOREIGN KEY ("userId") REFERENCES "users"("id") ON DELETE CASCADE ON UPDATE CASCADE;
+EXCEPTION
+    WHEN duplicate_object THEN null;
+END $$;
 
 -- AddForeignKey
-ALTER TABLE "activities" ADD CONSTRAINT "activities_userId_fkey" FOREIGN KEY ("userId") REFERENCES "users"("id") ON DELETE CASCADE ON UPDATE CASCADE;
+DO $$ BEGIN
+    ALTER TABLE "activities" ADD CONSTRAINT "activities_userId_fkey" FOREIGN KEY ("userId") REFERENCES "users"("id") ON DELETE CASCADE ON UPDATE CASCADE;
+EXCEPTION
+    WHEN duplicate_object THEN null;
+END $$;
 
 -- AddForeignKey
-ALTER TABLE "team_members" ADD CONSTRAINT "team_members_teamId_fkey" FOREIGN KEY ("teamId") REFERENCES "teams"("id") ON DELETE CASCADE ON UPDATE CASCADE;
+DO $$ BEGIN
+    ALTER TABLE "team_members" ADD CONSTRAINT "team_members_teamId_fkey" FOREIGN KEY ("teamId") REFERENCES "teams"("id") ON DELETE CASCADE ON UPDATE CASCADE;
+EXCEPTION
+    WHEN duplicate_object THEN null;
+END $$;
 
 -- AddForeignKey
-ALTER TABLE "team_challenges" ADD CONSTRAINT "team_challenges_teamId_fkey" FOREIGN KEY ("teamId") REFERENCES "teams"("id") ON DELETE CASCADE ON UPDATE CASCADE;
+DO $$ BEGIN
+    ALTER TABLE "team_challenges" ADD CONSTRAINT "team_challenges_teamId_fkey" FOREIGN KEY ("teamId") REFERENCES "teams"("id") ON DELETE CASCADE ON UPDATE CASCADE;
+EXCEPTION
+    WHEN duplicate_object THEN null;
+END $$;
 
 -- AddForeignKey
-ALTER TABLE "team_battles" ADD CONSTRAINT "team_battles_challengerId_fkey" FOREIGN KEY ("challengerId") REFERENCES "teams"("id") ON DELETE RESTRICT ON UPDATE CASCADE;
+DO $$ BEGIN
+    ALTER TABLE "team_battles" ADD CONSTRAINT "team_battles_challengerId_fkey" FOREIGN KEY ("challengerId") REFERENCES "teams"("id") ON DELETE RESTRICT ON UPDATE CASCADE;
+EXCEPTION
+    WHEN duplicate_object THEN null;
+END $$;
 
 -- AddForeignKey
-ALTER TABLE "team_battles" ADD CONSTRAINT "team_battles_opponentId_fkey" FOREIGN KEY ("opponentId") REFERENCES "teams"("id") ON DELETE RESTRICT ON UPDATE CASCADE;
+DO $$ BEGIN
+    ALTER TABLE "team_battles" ADD CONSTRAINT "team_battles_opponentId_fkey" FOREIGN KEY ("opponentId") REFERENCES "teams"("id") ON DELETE RESTRICT ON UPDATE CASCADE;
+EXCEPTION
+    WHEN duplicate_object THEN null;
+END $$;
 
 -- AddForeignKey
-ALTER TABLE "quest_stages" ADD CONSTRAINT "quest_stages_questId_fkey" FOREIGN KEY ("questId") REFERENCES "quests"("id") ON DELETE CASCADE ON UPDATE CASCADE;
+DO $$ BEGIN
+    ALTER TABLE "quest_stages" ADD CONSTRAINT "quest_stages_questId_fkey" FOREIGN KEY ("questId") REFERENCES "quests"("id") ON DELETE CASCADE ON UPDATE CASCADE;
+EXCEPTION
+    WHEN duplicate_object THEN null;
+END $$;
 
 -- AddForeignKey
-ALTER TABLE "user_quests" ADD CONSTRAINT "user_quests_userId_fkey" FOREIGN KEY ("userId") REFERENCES "users"("id") ON DELETE CASCADE ON UPDATE CASCADE;
+DO $$ BEGIN
+    ALTER TABLE "user_quests" ADD CONSTRAINT "user_quests_userId_fkey" FOREIGN KEY ("userId") REFERENCES "users"("id") ON DELETE CASCADE ON UPDATE CASCADE;
+EXCEPTION
+    WHEN duplicate_object THEN null;
+END $$;
 
 -- AddForeignKey
-ALTER TABLE "user_quests" ADD CONSTRAINT "user_quests_questId_fkey" FOREIGN KEY ("questId") REFERENCES "quests"("id") ON DELETE CASCADE ON UPDATE CASCADE;
+DO $$ BEGIN
+    ALTER TABLE "user_quests" ADD CONSTRAINT "user_quests_questId_fkey" FOREIGN KEY ("questId") REFERENCES "quests"("id") ON DELETE CASCADE ON UPDATE CASCADE;
+EXCEPTION
+    WHEN duplicate_object THEN null;
+END $$;
 
 -- AddForeignKey
-ALTER TABLE "conversation_participants" ADD CONSTRAINT "conversation_participants_conversationId_fkey" FOREIGN KEY ("conversationId") REFERENCES "conversations"("id") ON DELETE CASCADE ON UPDATE CASCADE;
+DO $$ BEGIN
+    ALTER TABLE "conversation_participants" ADD CONSTRAINT "conversation_participants_conversationId_fkey" FOREIGN KEY ("conversationId") REFERENCES "conversations"("id") ON DELETE CASCADE ON UPDATE CASCADE;
+EXCEPTION
+    WHEN duplicate_object THEN null;
+END $$;
 
 -- AddForeignKey
-ALTER TABLE "conversation_participants" ADD CONSTRAINT "conversation_participants_userId_fkey" FOREIGN KEY ("userId") REFERENCES "users"("id") ON DELETE CASCADE ON UPDATE CASCADE;
+DO $$ BEGIN
+    ALTER TABLE "conversation_participants" ADD CONSTRAINT "conversation_participants_userId_fkey" FOREIGN KEY ("userId") REFERENCES "users"("id") ON DELETE CASCADE ON UPDATE CASCADE;
+EXCEPTION
+    WHEN duplicate_object THEN null;
+END $$;
 
 -- AddForeignKey
-ALTER TABLE "messages" ADD CONSTRAINT "messages_conversationId_fkey" FOREIGN KEY ("conversationId") REFERENCES "conversations"("id") ON DELETE CASCADE ON UPDATE CASCADE;
+DO $$ BEGIN
+    ALTER TABLE "messages" ADD CONSTRAINT "messages_conversationId_fkey" FOREIGN KEY ("conversationId") REFERENCES "conversations"("id") ON DELETE CASCADE ON UPDATE CASCADE;
+EXCEPTION
+    WHEN duplicate_object THEN null;
+END $$;
 
 -- AddForeignKey
-ALTER TABLE "messages" ADD CONSTRAINT "messages_senderId_fkey" FOREIGN KEY ("senderId") REFERENCES "users"("id") ON DELETE CASCADE ON UPDATE CASCADE;
+DO $$ BEGIN
+    ALTER TABLE "messages" ADD CONSTRAINT "messages_senderId_fkey" FOREIGN KEY ("senderId") REFERENCES "users"("id") ON DELETE CASCADE ON UPDATE CASCADE;
+EXCEPTION
+    WHEN duplicate_object THEN null;
+END $$;
 
 -- AddForeignKey
-ALTER TABLE "departments" ADD CONSTRAINT "departments_companyId_fkey" FOREIGN KEY ("companyId") REFERENCES "companies"("id") ON DELETE CASCADE ON UPDATE CASCADE;
+DO $$ BEGIN
+    ALTER TABLE "departments" ADD CONSTRAINT "departments_companyId_fkey" FOREIGN KEY ("companyId") REFERENCES "companies"("id") ON DELETE CASCADE ON UPDATE CASCADE;
+EXCEPTION
+    WHEN duplicate_object THEN null;
+END $$;
 
 -- AddForeignKey
-ALTER TABLE "company_members" ADD CONSTRAINT "company_members_companyId_fkey" FOREIGN KEY ("companyId") REFERENCES "companies"("id") ON DELETE CASCADE ON UPDATE CASCADE;
+DO $$ BEGIN
+    ALTER TABLE "company_members" ADD CONSTRAINT "company_members_companyId_fkey" FOREIGN KEY ("companyId") REFERENCES "companies"("id") ON DELETE CASCADE ON UPDATE CASCADE;
+EXCEPTION
+    WHEN duplicate_object THEN null;
+END $$;
 
 -- AddForeignKey
-ALTER TABLE "company_members" ADD CONSTRAINT "company_members_userId_fkey" FOREIGN KEY ("userId") REFERENCES "users"("id") ON DELETE CASCADE ON UPDATE CASCADE;
+DO $$ BEGIN
+    ALTER TABLE "company_members" ADD CONSTRAINT "company_members_userId_fkey" FOREIGN KEY ("userId") REFERENCES "users"("id") ON DELETE CASCADE ON UPDATE CASCADE;
+EXCEPTION
+    WHEN duplicate_object THEN null;
+END $$;
 
 -- AddForeignKey
-ALTER TABLE "company_members" ADD CONSTRAINT "company_members_departmentId_fkey" FOREIGN KEY ("departmentId") REFERENCES "departments"("id") ON DELETE SET NULL ON UPDATE CASCADE;
+DO $$ BEGIN
+    ALTER TABLE "company_members" ADD CONSTRAINT "company_members_departmentId_fkey" FOREIGN KEY ("departmentId") REFERENCES "departments"("id") ON DELETE SET NULL ON UPDATE CASCADE;
+EXCEPTION
+    WHEN duplicate_object THEN null;
+END $$;
 
 -- AddForeignKey
-ALTER TABLE "company_challenges" ADD CONSTRAINT "company_challenges_companyId_fkey" FOREIGN KEY ("companyId") REFERENCES "companies"("id") ON DELETE CASCADE ON UPDATE CASCADE;
+DO $$ BEGIN
+    ALTER TABLE "company_challenges" ADD CONSTRAINT "company_challenges_companyId_fkey" FOREIGN KEY ("companyId") REFERENCES "companies"("id") ON DELETE CASCADE ON UPDATE CASCADE;
+EXCEPTION
+    WHEN duplicate_object THEN null;
+END $$;

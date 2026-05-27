@@ -28,7 +28,6 @@ class _CompleteProfileScreenState extends ConsumerState<CompleteProfileScreen> {
   final _heightController = TextEditingController(text: '170');
   
   bool _isEmailReadOnly = false;
-  bool _isPhoneReadOnly = false;
   
   double _stepGoal = 5000;
   int _selectedAvatarIndex = 0;
@@ -79,7 +78,6 @@ class _CompleteProfileScreenState extends ConsumerState<CompleteProfileScreen> {
       
       if (user['phone'] != null && (user['phone'] as String).isNotEmpty) {
         _phoneController.text = user['phone'];
-        _isPhoneReadOnly = true;
       }
       
       if (user['dailyStepGoal'] != null) {
@@ -240,10 +238,9 @@ class _CompleteProfileScreenState extends ConsumerState<CompleteProfileScreen> {
                                   label: l10n?.phoneLabel ?? 'Phone',
                                   child: TextFormField(
                                   controller: _phoneController,
-                                  readOnly: _isPhoneReadOnly,
                                   keyboardType: TextInputType.phone,
-                                  style: TextStyle(color: _isPhoneReadOnly ? AppTheme.neutral500 : AppTheme.neutral900),
-                                  decoration: _buildInputDecoration('+91 98765 43210', Icons.phone_outlined, isReadOnly: _isPhoneReadOnly),
+                                  style: const TextStyle(color: AppTheme.neutral900),
+                                  decoration: _buildInputDecoration('+91 98765 43210', Icons.phone_outlined),
                                   validator: (v) {
                                     if (v == null || v.isEmpty) return l10n?.fieldRequired ?? 'Required';
                                     final phoneStr = v.replaceAll(RegExp(r'\s+'), '');
