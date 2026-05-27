@@ -2,9 +2,11 @@ import 'dart:async';
 import 'dart:io';
 import 'package:flutter/services.dart';
 import 'package:flutter/widgets.dart';
+import 'package:flutter/foundation.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:hive_flutter/hive_flutter.dart';
+import 'package:flutter_secure_storage/flutter_secure_storage.dart';
 import 'package:stepify_app/features/dashboard/presentation/providers/dashboard_provider.dart';
 import 'package:stepify_app/features/devices/presentation/providers/device_provider.dart' hide SyncStatus;
 import 'package:stepify_app/services/api_service.dart';
@@ -177,6 +179,7 @@ class MockHealthService implements HealthService {
 void main() {
   setUpAll(() async {
     TestWidgetsFlutterBinding.ensureInitialized();
+    debugDefaultTargetPlatformOverride = TargetPlatform.iOS;
     
     // Path provider mock
     const channel = MethodChannel('plugins.flutter.io/path_provider');
@@ -204,6 +207,10 @@ void main() {
     }
 
     PedometerService().mockStepCountStream = const Stream<int>.empty();
+  });
+
+  tearDownAll(() {
+    debugDefaultTargetPlatformOverride = null;
   });
 
   group('DashboardState', () {
@@ -320,6 +327,7 @@ void main() {
     late MockHealthService mockHealthService;
 
     setUp(() {
+      FlutterSecureStorage.setMockInitialValues({'device_uuid': 'test-uuid'});
       mockApiService = MockApiService();
       mockHealthService = MockHealthService();
       PedometerService().mockStepCountStream = const Stream<int>.empty();
@@ -424,6 +432,9 @@ void main() {
       // Call lifecyle state change
       notifier.didChangeAppLifecycleState(AppLifecycleState.resumed);
       
+      // Let the microtasks run to trigger API call
+      await tester.pump();
+
       // Verify app triggers data sync
       expect(mockApiService.getCalled, isTrue);
 
@@ -442,6 +453,9 @@ void main() {
       );
 
       final notifier = container.read(dashboardProvider.notifier);
+
+      // Let listener start
+      await tester.pump(Duration.zero);
 
       // Verify pedometer stream is active
       expect(notifier.state.isSensorListening, isTrue);
