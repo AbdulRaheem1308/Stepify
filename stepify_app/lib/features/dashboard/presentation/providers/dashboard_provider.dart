@@ -349,7 +349,11 @@ class DashboardNotifier extends StateNotifier<DashboardState> with WidgetsBindin
           isSensorListening: _pedometerService.isListening,
         );
       },
-    );
+    ).then((_) {
+      state = state.copyWith(
+        isSensorListening: _pedometerService.isListening,
+      );
+    });
 
     // 2. Request Health SDK (Google Fit) authorization
     Future.microtask(() async {

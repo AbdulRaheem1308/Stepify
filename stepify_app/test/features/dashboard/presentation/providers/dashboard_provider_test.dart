@@ -179,7 +179,6 @@ class MockHealthService implements HealthService {
 void main() {
   setUpAll(() async {
     TestWidgetsFlutterBinding.ensureInitialized();
-    debugDefaultTargetPlatformOverride = TargetPlatform.iOS;
     
     // Path provider mock returning unique temp directory
     final temp = await Directory.systemTemp.createTemp();
@@ -201,16 +200,18 @@ void main() {
       },
     );
 
+    // Mock permissions MethodChannel
+    TestDefaultBinaryMessengerBinding.instance.defaultBinaryMessenger.setMockMethodCallHandler(
+      const MethodChannel('flutter.baseflow.com/permissions/methods'),
+      (MethodCall methodCall) async => {19: 1}, // ACTIVITY_RECOGNITION granted
+    );
+
     Hive.init(temp.path);
     if (!Hive.isBoxOpen('stepify_storage')) {
       await StorageService.init();
     }
 
     PedometerService().mockStepCountStream = const Stream<int>.empty();
-  });
-
-  tearDownAll(() {
-    debugDefaultTargetPlatformOverride = null;
   });
 
   group('DashboardState', () {
@@ -334,149 +335,159 @@ void main() {
     });
 
     testWidgets('DashboardNotifier loads user data and fetches stats successfully', (WidgetTester tester) async {
-      await StorageService.saveUser({'id': 'u1', 'name': 'Alice'});
+      await tester.runAsync(() async {
+        await StorageService.saveUser({'id': 'u1', 'name': 'Alice'});
 
-      final container = ProviderContainer(
-        overrides: [
-          apiServiceProvider.overrideWithValue(mockApiService),
-          healthServiceProvider.overrideWithValue(mockHealthService),
-        ],
-      );
+        final container = ProviderContainer(
+          overrides: [
+            apiServiceProvider.overrideWithValue(mockApiService),
+            healthServiceProvider.overrideWithValue(mockHealthService),
+          ],
+        );
 
-      final notifier = container.read(dashboardProvider.notifier);
+        final notifier = container.read(dashboardProvider.notifier);
 
-      // Verify initialization calls
-      expect(notifier.state.user != null, isTrue);
-      expect(notifier.state.user!['name'], equals('Alice'));
+        // Verify initialization calls
+        expect(notifier.state.user != null, isTrue);
+        expect(notifier.state.user!['name'], equals('Alice'));
 
-      // Run fetchTodayData
-      await notifier.fetchTodayData();
+        // Run fetchTodayData
+        await notifier.fetchTodayData();
 
-      // Verify that all GET APIs were called
-      expect(mockApiService.getCalled, isTrue);
-      expect(notifier.state.todaySteps != null, isTrue);
-      expect(notifier.state.todaySteps!.stepCount, equals(4000));
-      expect(notifier.state.streak != null, isTrue);
-      expect(notifier.state.streak!.currentStreak, equals(5));
-      expect(notifier.state.wallet != null, isTrue);
-      expect(notifier.state.wallet!.balance, equals(300));
-      expect(notifier.state.weeklyHistory.isNotEmpty, isTrue);
+        // Verify that all GET APIs were called
+        expect(mockApiService.getCalled, isTrue);
+        expect(notifier.state.todaySteps != null, isTrue);
+        expect(notifier.state.todaySteps!.stepCount, equals(4000));
+        expect(notifier.state.streak != null, isTrue);
+        expect(notifier.state.streak!.currentStreak, equals(5));
+        expect(notifier.state.wallet != null, isTrue);
+        expect(notifier.state.wallet!.balance, equals(300));
+        expect(notifier.state.weeklyHistory.isNotEmpty, isTrue);
 
-      // Verify XP calculations
-      expect(notifier.state.xpLevel, equals(1)); // 500 XP is Level 1
+        // Verify XP calculations
+        expect(notifier.state.xpLevel, equals(1)); // 500 XP is Level 1
 
-      container.dispose();
+        container.dispose();
+      });
     });
 
     testWidgets('DashboardNotifier syncSteps respects max cap and cadence checks', (WidgetTester tester) async {
-      final container = ProviderContainer(
-        overrides: [
-          apiServiceProvider.overrideWithValue(mockApiService),
-          healthServiceProvider.overrideWithValue(mockHealthService),
-        ],
-      );
+      await tester.runAsync(() async {
+        final container = ProviderContainer(
+          overrides: [
+            apiServiceProvider.overrideWithValue(mockApiService),
+            healthServiceProvider.overrideWithValue(mockHealthService),
+          ],
+        );
 
-      final notifier = container.read(dashboardProvider.notifier);
-      await notifier.fetchTodayData();
+        final notifier = container.read(dashboardProvider.notifier);
+        await notifier.fetchTodayData();
 
-      // 1. Test optimistic UI updates and backend sync
-      mockApiService.postCalled = false;
-      await notifier.syncSteps(8000);
-      expect(notifier.state.todaySteps!.stepCount, equals(8000));
-      expect(mockApiService.postCalled, isTrue);
-      expect(mockApiService.lastPostPath, equals('/steps/sync'));
-      expect(mockApiService.lastPostData['stepCount'], equals(8000));
+        // 1. Test optimistic UI updates and backend sync
+        mockApiService.postCalled = false;
+        await notifier.syncSteps(8000);
+        expect(notifier.state.todaySteps!.stepCount, equals(8000));
+        expect(mockApiService.postCalled, isTrue);
+        expect(mockApiService.lastPostPath, equals('/steps/sync'));
+        expect(mockApiService.lastPostData['stepCount'], equals(8000));
 
-      // 2. Test clamping stepCount above max cap of 50000
-      mockApiService.postCalled = false;
-      await notifier.syncSteps(60000);
-      expect(notifier.state.todaySteps!.stepCount, equals(50000));
-      expect(mockApiService.lastPostData['stepCount'], equals(50000));
+        // 2. Test clamping stepCount above max cap of 50000
+        mockApiService.postCalled = false;
+        await notifier.syncSteps(60000);
+        expect(notifier.state.todaySteps!.stepCount, equals(50000));
+        expect(mockApiService.lastPostData['stepCount'], equals(50000));
 
-      container.dispose();
+        container.dispose();
+      });
     });
 
     testWidgets('DashboardNotifier updateDailyGoal updates goal successfully', (WidgetTester tester) async {
-      final container = ProviderContainer(
-        overrides: [
-          apiServiceProvider.overrideWithValue(mockApiService),
-          healthServiceProvider.overrideWithValue(mockHealthService),
-        ],
-      );
+      await tester.runAsync(() async {
+        final container = ProviderContainer(
+          overrides: [
+            apiServiceProvider.overrideWithValue(mockApiService),
+            healthServiceProvider.overrideWithValue(mockHealthService),
+          ],
+        );
 
-      final notifier = container.read(dashboardProvider.notifier);
-      await notifier.fetchTodayData();
+        final notifier = container.read(dashboardProvider.notifier);
+        await notifier.fetchTodayData();
 
-      mockApiService.putCalled = false;
-      await notifier.updateDailyGoal(12000);
+        mockApiService.putCalled = false;
+        await notifier.updateDailyGoal(12000);
 
-      expect(notifier.state.todaySteps!.goal, equals(12000));
-      expect(mockApiService.putCalled, isTrue);
-      expect(mockApiService.lastPutPath, equals('/users/me'));
-      expect(mockApiService.lastPutData['dailyStepGoal'], equals(12000));
+        expect(notifier.state.todaySteps!.goal, equals(12000));
+        expect(mockApiService.putCalled, isTrue);
+        expect(mockApiService.lastPutPath, equals('/users/me'));
+        expect(mockApiService.lastPutData['dailyStepGoal'], equals(12000));
 
-      container.dispose();
+        container.dispose();
+      });
     });
 
     testWidgets('DashboardNotifier handles didChangeAppLifecycleState resumed', (WidgetTester tester) async {
-      final container = ProviderContainer(
-        overrides: [
-          apiServiceProvider.overrideWithValue(mockApiService),
-          healthServiceProvider.overrideWithValue(mockHealthService),
-        ],
-      );
+      await tester.runAsync(() async {
+        final container = ProviderContainer(
+          overrides: [
+            apiServiceProvider.overrideWithValue(mockApiService),
+            healthServiceProvider.overrideWithValue(mockHealthService),
+          ],
+        );
 
-      final notifier = container.read(dashboardProvider.notifier);
-      mockApiService.getCalled = false;
+        final notifier = container.read(dashboardProvider.notifier);
+        mockApiService.getCalled = false;
 
-      // Call lifecyle state change
-      notifier.didChangeAppLifecycleState(AppLifecycleState.resumed);
-      
-      // Let the microtasks run to trigger API call
-      await tester.pump();
+        // Call lifecyle state change
+        notifier.didChangeAppLifecycleState(AppLifecycleState.resumed);
+        
+        // Wait a short time for async tasks to execute on real loop
+        await Future.delayed(const Duration(milliseconds: 100));
 
-      // Verify app triggers data sync
-      expect(mockApiService.getCalled, isTrue);
+        // Verify app triggers data sync
+        expect(mockApiService.getCalled, isTrue);
 
-      container.dispose();
+        container.dispose();
+      });
     });
 
     testWidgets('DashboardNotifier handles pedometer stream step updates and active minutes', (WidgetTester tester) async {
-      final streamController = StreamController<int>.broadcast();
-      PedometerService().mockStepCountStream = streamController.stream;
+      await tester.runAsync(() async {
+        final streamController = StreamController<int>.broadcast();
+        PedometerService().mockStepCountStream = streamController.stream;
 
-      final container = ProviderContainer(
-        overrides: [
-          apiServiceProvider.overrideWithValue(mockApiService),
-          healthServiceProvider.overrideWithValue(mockHealthService),
-        ],
-      );
+        final container = ProviderContainer(
+          overrides: [
+            apiServiceProvider.overrideWithValue(mockApiService),
+            healthServiceProvider.overrideWithValue(mockHealthService),
+          ],
+        );
 
-      final notifier = container.read(dashboardProvider.notifier);
+        final notifier = container.read(dashboardProvider.notifier);
 
-      // Let listener start
-      await tester.pump(Duration.zero);
+        // Let listener start
+        await Future.delayed(const Duration(milliseconds: 50));
 
-      // Verify pedometer stream is active
-      expect(notifier.state.isSensorListening, isTrue);
+        // Verify pedometer stream is active
+        expect(notifier.state.isSensorListening, isTrue);
 
-      // Send first event to establish baseline
-      streamController.add(100);
-      await tester.pump(Duration.zero);
-      expect(notifier.state.sensorStepsToday, 100);
+        // Send first event to establish baseline
+        streamController.add(100);
+        await Future.delayed(const Duration(milliseconds: 50));
+        expect(notifier.state.sensorStepsToday, 0);
 
-      // Advance time and add continuous walking steps
-      streamController.add(120);
-      await tester.pump(Duration.zero);
-      expect(notifier.state.sensorStepsToday, 120);
+        // Advance time and add continuous walking steps
+        streamController.add(220); // 220 - 100 baseline = 120 steps today
+        await Future.delayed(const Duration(milliseconds: 50));
+        expect(notifier.state.sensorStepsToday, 120);
 
-      // Add bulk step updates
-      streamController.add(200);
-      await tester.pump(Duration.zero);
-      expect(notifier.state.sensorStepsToday, 200);
+        // Add bulk step updates
+        streamController.add(300); // 300 - 100 baseline = 200 steps today
+        await Future.delayed(const Duration(milliseconds: 50));
+        expect(notifier.state.sensorStepsToday, 200);
 
-      await streamController.close();
-      container.dispose();
+        await streamController.close();
+        container.dispose();
+      });
     });
 
     testWidgets('DashboardNotifier fallback Health SDK step sync via periodic timer', (WidgetTester tester) async {
@@ -514,105 +525,124 @@ void main() {
     });
 
     testWidgets('DashboardNotifier calculates XP levels correctly', (WidgetTester tester) async {
-      final container = ProviderContainer(
-        overrides: [
-          apiServiceProvider.overrideWithValue(mockApiService),
-          healthServiceProvider.overrideWithValue(mockHealthService),
-        ],
-      );
+      await tester.runAsync(() async {
+        final container = ProviderContainer(
+          overrides: [
+            apiServiceProvider.overrideWithValue(mockApiService),
+            healthServiceProvider.overrideWithValue(mockHealthService),
+          ],
+        );
 
-      final notifier = container.read(dashboardProvider.notifier);
+        final notifier = container.read(dashboardProvider.notifier);
 
-      // Mock wallet with 2800 XP to execute deep level calculations
-      mockApiService.mockWalletResponse = {
-        'balance': 300,
-        'lifetimePoints': 6000,
-        'monthlyXp': 2800,
-      };
+        // Mock wallet with 2800 XP to execute deep level calculations
+        mockApiService.mockWalletResponse = {
+          'balance': 300,
+          'lifetimePoints': 6000,
+          'monthlyXp': 2800,
+        };
 
-      await notifier.fetchTodayData();
-      
-      // Level 1: 0-999, Level 2: 1000-2499 (1500 XP range), Level 3: 2500+ (2000 XP range)
-      // 2800 monthlyXp should place Alice in Level 3
-      expect(notifier.state.xpLevel, equals(3));
+        await notifier.fetchTodayData();
+        
+        // Level 1: 0-999, Level 2: 1000-2499 (1500 XP range), Level 3: 2500+ (2000 XP range)
+        // 2800 monthlyXp should place Alice in Level 3
+        expect(notifier.state.xpLevel, equals(3));
 
-      container.dispose();
+        container.dispose();
+      });
     });
 
     testWidgets('DashboardNotifier cadence speed check limits step injecting hacks', (WidgetTester tester) async {
-      final container = ProviderContainer(
-        overrides: [
-          apiServiceProvider.overrideWithValue(mockApiService),
-          healthServiceProvider.overrideWithValue(mockHealthService),
-        ],
-      );
+      await tester.runAsync(() async {
+        final container = ProviderContainer(
+          overrides: [
+            apiServiceProvider.overrideWithValue(mockApiService),
+            healthServiceProvider.overrideWithValue(mockHealthService),
+          ],
+        );
 
-      final notifier = container.read(dashboardProvider.notifier);
-      await notifier.fetchTodayData();
+        final notifier = container.read(dashboardProvider.notifier);
+        
+        mockApiService.mockTodayStepsResponse = {
+          'stepCount': 500,
+          'caloriesBurned': 20,
+          'distanceKm': 0.3,
+          'activeMinutes': 5,
+          'goal': 10000,
+          'progress': 5,
+          'goalReached': false,
+        };
 
-      // Sync first time to baseline
-      await notifier.syncSteps(1000);
-      expect(notifier.state.todaySteps!.stepCount, 1000);
+        await notifier.fetchTodayData();
 
-      // Advance time by 2 seconds
-      await tester.pump(const Duration(seconds: 2));
+        // Sync first time to baseline
+        await notifier.syncSteps(1000);
+        expect(notifier.state.todaySteps!.stepCount, 1000);
 
-      // Inject a massive step difference (e.g. 50000 steps within 2s => 24500 steps/sec)
-      await notifier.syncSteps(50000);
+        // Advance time by 2 seconds
+        await Future.delayed(const Duration(seconds: 2));
 
-      // Allowed increase is 2s * 6.0 steps/sec = 12 steps. Clamped to 1012.
-      expect(notifier.state.todaySteps!.stepCount, 1012);
+        // Inject a massive step difference (e.g. 50000 steps within 2s => 24500 steps/sec)
+        await notifier.syncSteps(50000);
 
-      container.dispose();
+        // Allowed increase is 2s * 6.0 steps/sec = 12 steps. Clamped to 1012.
+        expect(notifier.state.todaySteps!.stepCount, 1012);
+
+        container.dispose();
+      });
     });
 
     testWidgets('DashboardNotifier handles step history auto-sync', (WidgetTester tester) async {
-      final container = ProviderContainer(
-        overrides: [
-          apiServiceProvider.overrideWithValue(mockApiService),
-          healthServiceProvider.overrideWithValue(mockHealthService),
-        ],
-      );
+      await tester.runAsync(() async {
+        final container = ProviderContainer(
+          overrides: [
+            apiServiceProvider.overrideWithValue(mockApiService),
+            healthServiceProvider.overrideWithValue(mockHealthService),
+          ],
+        );
 
-      final notifier = container.read(dashboardProvider.notifier);
+        final notifier = container.read(dashboardProvider.notifier);
 
-      // Configure history values
-      final yesterday = DateTime.now().subtract(const Duration(days: 1));
-      mockHealthService.mockStepHistory = {
-        yesterday: 8000,
-      };
-      mockHealthService.shouldAuthorize = true;
+        // Configure history values
+        final yesterday = DateTime.now().subtract(const Duration(days: 1));
+        mockHealthService.mockStepHistory = {
+          yesterday: 8000,
+        };
+        mockHealthService.shouldAuthorize = true;
 
-      mockApiService.postCalled = false;
-      await notifier.fetchTodayData();
+        mockApiService.postCalled = false;
+        await notifier.fetchTodayData();
 
-      // Verify API was called to sync the historical steps
-      expect(mockApiService.postCalled, isTrue);
+        // Verify API was called to sync the historical steps
+        expect(mockApiService.postCalled, isTrue);
 
-      container.dispose();
+        container.dispose();
+      });
     });
 
     testWidgets('DashboardNotifier handles API and synchronization errors gracefully', (WidgetTester tester) async {
-      final container = ProviderContainer(
-        overrides: [
-          apiServiceProvider.overrideWithValue(mockApiService),
-          healthServiceProvider.overrideWithValue(mockHealthService),
-        ],
-      );
+      await tester.runAsync(() async {
+        final container = ProviderContainer(
+          overrides: [
+            apiServiceProvider.overrideWithValue(mockApiService),
+            healthServiceProvider.overrideWithValue(mockHealthService),
+          ],
+        );
 
-      final notifier = container.read(dashboardProvider.notifier);
+        final notifier = container.read(dashboardProvider.notifier);
 
-      // Force APIs to fail
-      mockApiService.shouldThrowError = true;
+        // Force APIs to fail
+        mockApiService.shouldThrowError = true;
 
-      await notifier.fetchTodayData();
+        await notifier.fetchTodayData();
 
-      // Verify loading state is turned off and error message is populated
-      expect(notifier.state.isLoading, isFalse);
-      expect(notifier.state.syncStatus, SyncStatus.failed);
-      expect(notifier.state.error, isNotNull);
+        // Verify loading state is turned off and error message is populated
+        expect(notifier.state.isLoading, isFalse);
+        expect(notifier.state.syncStatus, SyncStatus.failed);
+        expect(notifier.state.error, isNotNull);
 
-      container.dispose();
+        container.dispose();
+      });
     });
   });
 }
