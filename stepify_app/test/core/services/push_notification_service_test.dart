@@ -54,21 +54,13 @@ class MockLocalNotificationsPlatform extends FlutterLocalNotificationsPlatform
 
 class MockFirebaseMessagingPlatform extends Mock
     with MockPlatformInterfaceMixin
-    implements FirebaseMessagingPlatform {
-  @override
-  Stream<RemoteMessage> get onMessage => const Stream<RemoteMessage>.empty();
-
-  @override
-  Stream<RemoteMessage> get onMessageOpenedApp => const Stream<RemoteMessage>.empty();
-}
+    implements FirebaseMessagingPlatform {}
 
 class FakeFirebaseApp extends Fake implements FirebaseApp {}
 
 void main() {
   late MockApiService mockApiService;
   late MockFirebaseMessagingPlatform mockMessagingPlatform;
-  late StreamController<RemoteMessage> onMessageController;
-  late StreamController<RemoteMessage> onMessageOpenedAppController;
   late StreamController<String> onTokenRefreshController;
 
   setUpAll(() async {
@@ -194,13 +186,8 @@ void main() {
   setUp(() {
     mockApiService = MockApiService();
     
-    // Set up active StreamControllers for listeners
-    onMessageController = StreamController<RemoteMessage>.broadcast();
-    onMessageOpenedAppController = StreamController<RemoteMessage>.broadcast();
+    // Set up active StreamController for token refresh
     onTokenRefreshController = StreamController<String>.broadcast();
-
-    when(() => mockMessagingPlatform.onMessage).thenAnswer((_) => onMessageController.stream);
-    when(() => mockMessagingPlatform.onMessageOpenedApp).thenAnswer((_) => onMessageOpenedAppController.stream);
     when(() => mockMessagingPlatform.onTokenRefresh).thenAnswer((_) => onTokenRefreshController.stream);
     
     // Default initial message is null
@@ -208,8 +195,6 @@ void main() {
   });
 
   tearDown(() {
-    onMessageController.close();
-    onMessageOpenedAppController.close();
     onTokenRefreshController.close();
   });
 
@@ -260,7 +245,7 @@ void main() {
     expect(mockApiService.postCalled, isTrue);
     expect(mockApiService.registeredToken, equals('refreshed-token'));
 
-    // 5. Test Foreground handler via stream
+    // 5. Test Foreground handler directly
     const mockMessage = RemoteMessage(
       notification: RemoteNotification(
         title: 'Walk Goal Reached!',
@@ -268,12 +253,10 @@ void main() {
       ),
       data: {'type': 'goal_reached'},
     );
-    onMessageController.add(mockMessage);
-    await tester.pump(Duration.zero);
+    expect(() => service.handleForegroundMessage(mockMessage), returnsNormally);
 
-    // 6. Test onMessageOpenedApp via stream
-    onMessageOpenedAppController.add(mockMessage);
-    await tester.pump(Duration.zero);
+    // 6. Test onMessageOpenedApp directly
+    expect(() => service.handleNotificationOpen(mockMessage), returnsNormally);
 
     container.dispose();
   });

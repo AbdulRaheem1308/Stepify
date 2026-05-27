@@ -77,15 +77,15 @@ class PushNotificationService {
     });
 
     // 7. Handle foreground messages → show local notification
-    FirebaseMessaging.onMessage.listen(_handleForegroundMessage);
+    FirebaseMessaging.onMessage.listen(handleForegroundMessage);
 
     // 8. Handle notification taps when the app is in the background (not terminated)
-    FirebaseMessaging.onMessageOpenedApp.listen(_handleNotificationOpen);
+    FirebaseMessaging.onMessageOpenedApp.listen(handleNotificationOpen);
 
     // 9. Handle notification that launched the app from terminated state
     final initialMessage = await _fcm.getInitialMessage();
     if (initialMessage != null) {
-      _handleNotificationOpen(initialMessage);
+      handleNotificationOpen(initialMessage);
     }
 
     debugPrint('[FCM] PushNotificationService initialized');
@@ -137,7 +137,7 @@ class PushNotificationService {
 
   // ── Foreground Messages ───────────────────────────────────────────────────
 
-  void _handleForegroundMessage(RemoteMessage message) {
+  void handleForegroundMessage(RemoteMessage message) {
     final notification = message.notification;
     if (notification == null) return;
 
@@ -167,7 +167,7 @@ class PushNotificationService {
     );
   }
 
-  void _handleNotificationOpen(RemoteMessage message) {
+  void handleNotificationOpen(RemoteMessage message) {
     debugPrint('[FCM] Notification opened: ${message.data}');
     // TODO: deep-link into the relevant screen based on message.data['type']
   }
