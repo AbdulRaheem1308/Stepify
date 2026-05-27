@@ -32,6 +32,7 @@ class PedometerService {
   // Hive storage keys
   static const String _baselineKey = 'pedometer_baseline_steps';
   static const String _lastDateKey = 'pedometer_last_sync_date';
+  static const String _lastKnownStepsKey = 'pedometer_last_known_steps';
 
   // ── Public API ────────────────────────────────────────────────────────────
 
@@ -89,6 +90,7 @@ class PedometerService {
     try {
       final stream = mockStepCountStream ?? _pedometer.stepCountStream();
       final sensorSteps = await stream.first.timeout(const Duration(seconds: 2));
+      await StorageService.put(_lastKnownStepsKey, sensorSteps);
       
       final todayStr = DateTime.now().toIso8601String().split('T')[0];
       final lastSyncDate = StorageService.get<String>(_lastDateKey) ?? '';
@@ -110,6 +112,26 @@ class PedometerService {
       return stepsToday;
     } catch (e) {
       debugPrint('PedometerService: Failed to get current steps: $e');
+      
+      // Fallback: Try to use the last known cumulative sensor steps from today
+      try {
+        final lastKnownSteps = StorageService.get<int>(_lastKnownStepsKey);
+        if (lastKnownSteps != null && lastKnownSteps > 0) {
+          final todayStr = DateTime.now().toIso8601String().split('T')[0];
+          final lastSyncDate = StorageService.get<String>(_lastDateKey) ?? '';
+          int baseline = StorageService.get<int>(_baselineKey) ?? -1;
+          
+          if (lastSyncDate == todayStr && baseline != -1) {
+            int stepsToday = lastKnownSteps - baseline;
+            if (stepsToday < 0) stepsToday = 0;
+            debugPrint('PedometerService: Using last known steps fallback: $stepsToday (sensor: $lastKnownSteps, baseline: $baseline)');
+            return stepsToday;
+          }
+        }
+      } catch (fallbackErr) {
+        debugPrint('PedometerService: Fallback lookup error: $fallbackErr');
+      }
+
       return 0; // Fallback to 0 if sensor fails (e.g. permission denied or no hardware sensor)
     }
   }
@@ -161,6 +183,9 @@ class PedometerService {
       await StorageService.put(_baselineKey, baseline);
       stepsToday = 0;
     }
+
+    // Save last known cumulative steps for background worker fallback
+    await StorageService.put(_lastKnownStepsKey, sensorSteps);
 
     _onStepsChanged?.call(stepsToday);
   }

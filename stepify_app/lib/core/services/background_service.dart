@@ -1,4 +1,5 @@
 import 'package:workmanager/workmanager.dart';
+import 'package:hive_flutter/hive_flutter.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:flutter/foundation.dart';
 import 'dart:io';
@@ -25,6 +26,10 @@ class BackgroundService {
   static Future<bool> runBackgroundSyncTask(String task) async {
     try {
       if (task == kBackgroundSyncTask) {
+        // 0. Initialize Hive and StorageService inside the isolate environment
+        await Hive.initFlutter();
+        await StorageService.init();
+
         final prefs = await SharedPreferences.getInstance();
         final nowStr = DateTime.now().toIso8601String();
         await prefs.setString('bg_sync_last_run', nowStr);
@@ -43,6 +48,25 @@ class BackgroundService {
         final healthService = HealthService();
         final pedometerService = PedometerService();
         final deviceUUID = await StorageService.getOrCreateDeviceUUID();
+
+        // 2.5 Ensure the physical phone device is registered in the backend
+        try {
+          final devicesResponse = await apiService.get('/devices');
+          final devicesData = devicesResponse.data;
+          if (devicesData is List) {
+            final hasPhone = devicesData.any((d) => d is Map && d['type'] == 'PHONE' && d['identifier'] == deviceUUID);
+            if (!hasPhone) {
+              await apiService.post('/devices', data: {
+                'name': 'Built-in Phone Sensors',
+                'type': 'PHONE',
+                'identifier': deviceUUID,
+              });
+              await prefs.setString('bg_sync_status', 'Registered phone device: $deviceUUID');
+            }
+          }
+        } catch (deviceRegErr) {
+          debugPrint("Background Sync Device Reg Error: $deviceRegErr");
+        }
 
         // 3. Fetch Steps (Try both Health API and direct pedometer)
         final healthSteps = await healthService.getTodaySteps();

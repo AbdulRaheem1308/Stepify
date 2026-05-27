@@ -411,6 +411,26 @@ class DashboardNotifier extends StateNotifier<DashboardState> with WidgetsBindin
   Future<void> fetchTodayData() async {
     state = state.copyWith(isLoading: true, syncStatus: SyncStatus.syncing);
 
+    // Ensure the physical phone device is registered in the backend before attempting any sync
+    try {
+      final deviceUUID = await StorageService.getOrCreateDeviceUUID();
+      final devicesResponse = await _apiService.get('/devices');
+      final devicesData = devicesResponse.data;
+      if (devicesData is List) {
+        final hasPhone = devicesData.any((d) => d is Map && d['type'] == 'PHONE' && d['identifier'] == deviceUUID);
+        if (!hasPhone) {
+          await _apiService.post('/devices', data: {
+            'name': 'Built-in Phone Sensors',
+            'type': 'PHONE',
+            'identifier': deviceUUID,
+          });
+          debugPrint('DashboardNotifier: Registered physical phone device: $deviceUUID');
+        }
+      }
+    } catch (e) {
+      debugPrint('DashboardNotifier: Failed to ensure physical phone registered: $e');
+    }
+
     // Auto-sync steps from local sensors first (sync last 7 days of history in parallel to capture past offline steps)
     try {
       // Automatically pre-authorize and request permissions on startup so the physical mobile phone's built-in pedometer tracks out-of-the-box

@@ -1,4 +1,5 @@
 import 'dart:io';
+import 'dart:async';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:flutter/foundation.dart';
 import 'package:stepify_app/services/pedometer_service.dart';
@@ -58,6 +59,21 @@ void main() {
       service.mockStepCountStream = Stream.value(150);
       final steps = await service.getCurrentSteps();
       expect(steps, greaterThanOrEqualTo(0));
+    });
+
+    test('getCurrentSteps fallback to last known steps on timeout', () async {
+      final service = PedometerService();
+      
+      final todayStr = DateTime.now().toIso8601String().split('T')[0];
+      await StorageService.put('pedometer_last_sync_date', todayStr);
+      await StorageService.put('pedometer_baseline_steps', 1000);
+      await StorageService.put('pedometer_last_known_steps', 1450);
+      
+      final completer = Completer<int>();
+      service.mockStepCountStream = Stream.fromFuture(completer.future);
+      
+      final steps = await service.getCurrentSteps();
+      expect(steps, 450);
     });
 
     test('startListening with mocked stream', () async {
