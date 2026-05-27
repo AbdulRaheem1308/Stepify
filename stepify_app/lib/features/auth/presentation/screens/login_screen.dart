@@ -111,9 +111,13 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
         child: SafeArea(
           child: Padding(
             padding: const EdgeInsets.all(24.0),
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.stretch,
-              children: [
+            child: CustomScrollView(
+              slivers: [
+                SliverFillRemaining(
+                  hasScrollBody: false,
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.stretch,
+                    children: [
                 const Spacer(flex: 2),
                 
                 // Logo
@@ -281,6 +285,9 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
                 ),
                 
                 const SizedBox(height: 16),
+                    ],
+                  ),
+                ),
               ],
             ),
           ),

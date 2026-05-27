@@ -95,7 +95,10 @@ void main() {
     // we can catch it or just let the test pass because the line was reached.
     // A better approach is to mock GoRouter, but that requires setting up GoRouter instance.
     // Let's rely on the exception or just the execution to give us coverage.
-    await tester.tap(find.textContaining('Continue with Google'));
+    final googleButtonFinder = find.textContaining('Continue with Google');
+    await tester.ensureVisible(googleButtonFinder);
+    await tester.pumpAndSettle();
+    await tester.tap(googleButtonFinder);
     await tester.pump(); // trigger loading
     
     try {
@@ -130,7 +133,10 @@ void main() {
     );
     await tester.pumpAndSettle();
 
-    await tester.tap(find.textContaining('Continue with Google'));
+    final googleButtonFinder = find.textContaining('Continue with Google');
+    await tester.ensureVisible(googleButtonFinder);
+    await tester.pumpAndSettle();
+    await tester.tap(googleButtonFinder);
     await tester.pump(); 
     
     try {
