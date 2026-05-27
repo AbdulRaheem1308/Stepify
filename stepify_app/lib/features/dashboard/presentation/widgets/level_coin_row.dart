@@ -56,66 +56,91 @@ class LevelCoinRow extends StatelessWidget {
             onTap: onLevelTap,
             child: Container(
               padding: const EdgeInsets.all(16),
-              // Fixed height removed; using IntrinsicHeight on parent
               decoration: BoxDecoration(
                 color: Theme.of(context).cardColor,
-                borderRadius: BorderRadius.circular(10),
+                borderRadius: BorderRadius.circular(12),
+                border: Border.all(
+                  color: AppTheme.primaryGreen.withOpacity(0.12),
+                  width: 1,
+                ),
                 boxShadow: [
                   BoxShadow(
-                    color: Colors.black.withAlpha(13),
+                    color: Colors.black.withOpacity(0.04),
                     blurRadius: 10,
                     offset: const Offset(0, 4),
                   ),
                 ],
               ),
-              child: Stack(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                mainAxisAlignment: MainAxisAlignment.center,
+                mainAxisSize: MainAxisSize.min,
                 children: [
-                  Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    mainAxisAlignment: MainAxisAlignment.center,
-                    mainAxisSize: MainAxisSize.min,
+                  Row(
                     children: [
-                      Row(
-                        mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                        children: [
-                          Flexible(
-                            child: Text(
-                              'Level $level',
-                              style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 16),
-                              overflow: TextOverflow.ellipsis,
-                            ),
+                      Container(
+                        padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+                        decoration: BoxDecoration(
+                          color: AppTheme.primaryGreen.withOpacity(0.1),
+                          borderRadius: BorderRadius.circular(6),
+                        ),
+                        child: Text(
+                          'LVL $level',
+                          style: const TextStyle(
+                            fontWeight: FontWeight.bold,
+                            fontSize: 11,
+                            color: AppTheme.primaryGreen,
                           ),
-                          const SizedBox(width: 4),
-                          Text(
-                            '$xpPercentage%',
-                            style: Theme.of(context).textTheme.bodySmall,
-                          ),
-                        ],
+                        ),
                       ),
-                      const SizedBox(height: 12),
-                      LinearProgressIndicator(
-                        value: xpProgress,
-                        backgroundColor: Theme.of(context).dividerColor.withAlpha(77),
-                        color: AppTheme.primaryGreen,
-                        borderRadius: BorderRadius.circular(4),
-                        minHeight: 8,
-                      ),
-                      const SizedBox(height: 8),
+                      const Spacer(),
                       Text(
-                        'Experience Points',
-                        style: Theme.of(context).textTheme.bodySmall,
+                        '$xpPercentage%',
+                        style: TextStyle(
+                          fontSize: 11,
+                          fontWeight: FontWeight.bold,
+                          color: Theme.of(context).textTheme.bodyMedium?.color?.withOpacity(0.8),
+                        ),
+                      ),
+                      const SizedBox(width: 4),
+                      InkWell(
+                        onTap: () => _showExplainer(context),
+                        borderRadius: BorderRadius.circular(12),
+                        child: Padding(
+                          padding: const EdgeInsets.all(2.0),
+                          child: Icon(
+                            Icons.info_outline_rounded,
+                            size: 13,
+                            color: Theme.of(context).textTheme.bodySmall?.color?.withOpacity(0.5),
+                          ),
+                        ),
                       ),
                     ],
                   ),
-                  Positioned(
-                    top: -12,
-                    right: -12,
-                    child: IconButton(
-                      icon: Icon(Icons.info_outline, size: 16, color: Theme.of(context).textTheme.bodySmall?.color),
-                      onPressed: () => _showExplainer(context),
-                      tooltip: 'How it works',
-                      padding: EdgeInsets.zero,
-                      constraints: const BoxConstraints(),
+                  const SizedBox(height: 12),
+                  LinearProgressIndicator(
+                    value: xpProgress,
+                    backgroundColor: Theme.of(context).dividerColor.withOpacity(0.08),
+                    color: AppTheme.primaryGreen,
+                    borderRadius: BorderRadius.circular(6),
+                    minHeight: 6,
+                  ),
+                  const SizedBox(height: 8),
+                  Text(
+                    'Monthly XP',
+                    style: TextStyle(
+                      fontSize: 10,
+                      fontWeight: FontWeight.w500,
+                      color: Theme.of(context).textTheme.bodySmall?.color?.withOpacity(0.6),
+                    ),
+                  ),
+                  const SizedBox(height: 1),
+                  Text(
+                    '$currentXp/$nextLevelXp XP',
+                    style: TextStyle(
+                      fontSize: 11,
+                      fontWeight: FontWeight.bold,
+                      color: Theme.of(context).textTheme.bodyMedium?.color?.withOpacity(0.9),
                     ),
                   ),
                 ],

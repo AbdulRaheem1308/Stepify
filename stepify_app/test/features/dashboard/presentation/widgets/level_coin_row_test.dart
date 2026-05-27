@@ -29,12 +29,12 @@ void main() {
 
     await tester.pumpAndSettle();
 
-    expect(find.text('Level 3'), findsOneWidget);
+    expect(find.text('LVL 3'), findsOneWidget);
     expect(find.text('50%'), findsOneWidget);
     expect(find.text('1250'), findsOneWidget);
 
     // Tap Level section
-    await tester.tap(find.text('Level 3'));
+    await tester.tap(find.text('LVL 3'));
     await tester.pumpAndSettle();
     expect(levelTapped, isTrue);
 
@@ -65,7 +65,7 @@ void main() {
     );
 
     // Tap info icon
-    await tester.tap(find.byIcon(Icons.info_outline));
+    await tester.tap(find.byIcon(Icons.info_outline_rounded));
     await tester.pumpAndSettle();
 
     expect(find.byType(ExplainerBottomSheet), findsOneWidget);
