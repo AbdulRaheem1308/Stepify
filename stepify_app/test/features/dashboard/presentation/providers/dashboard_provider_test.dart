@@ -181,11 +181,12 @@ void main() {
     TestWidgetsFlutterBinding.ensureInitialized();
     debugDefaultTargetPlatformOverride = TargetPlatform.iOS;
     
-    // Path provider mock
+    // Path provider mock returning unique temp directory
+    final temp = await Directory.systemTemp.createTemp();
     const channel = MethodChannel('plugins.flutter.io/path_provider');
     TestDefaultBinaryMessengerBinding.instance.defaultBinaryMessenger.setMockMethodCallHandler(
       channel,
-      (MethodCall methodCall) async => '.',
+      (MethodCall methodCall) async => temp.path,
     );
 
     // Mock SafeDevice MethodChannel
@@ -200,7 +201,6 @@ void main() {
       },
     );
 
-    final temp = await Directory.systemTemp.createTemp();
     Hive.init(temp.path);
     if (!Hive.isBoxOpen('stepify_storage')) {
       await StorageService.init();

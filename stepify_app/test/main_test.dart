@@ -124,10 +124,11 @@ void main() {
     TestWidgetsFlutterBinding.ensureInitialized();
     
     // Path provider mock
+    final temp = await Directory.systemTemp.createTemp();
     const channel = MethodChannel('plugins.flutter.io/path_provider');
     TestDefaultBinaryMessengerBinding.instance.defaultBinaryMessenger.setMockMethodCallHandler(
       channel,
-      (MethodCall methodCall) async => '.',
+      (MethodCall methodCall) async => temp.path,
     );
 
     // Flutter secure storage mock
@@ -150,7 +151,6 @@ void main() {
       return null;
     });
 
-    final temp = await Directory.systemTemp.createTemp();
     Hive.init(temp.path);
     if (!Hive.isBoxOpen('stepify_storage')) {
       await StorageService.init();

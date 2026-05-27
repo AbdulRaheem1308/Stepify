@@ -115,10 +115,11 @@ void main() {
     when(() => mockMessagingPlatform.deleteToken()).thenAnswer((_) async {});
 
     // Mock Path provider
+    final temp = await Directory.systemTemp.createTemp();
     const channel = MethodChannel('plugins.flutter.io/path_provider');
     TestDefaultBinaryMessengerBinding.instance.defaultBinaryMessenger.setMockMethodCallHandler(
       channel,
-      (MethodCall methodCall) async => '.',
+      (MethodCall methodCall) async => temp.path,
     );
 
     // Mock Secure Storage
@@ -176,7 +177,6 @@ void main() {
     );
 
     await Firebase.initializeApp();
-    final temp = await Directory.systemTemp.createTemp();
     Hive.init(temp.path);
     if (!Hive.isBoxOpen('stepify_storage')) {
       await StorageService.init();
