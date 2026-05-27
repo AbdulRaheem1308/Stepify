@@ -1,8 +1,16 @@
 -- CreateEnum
-CREATE TYPE "QuestStatus" AS ENUM ('AVAILABLE', 'IN_PROGRESS', 'COMPLETED', 'FAILED');
+DO $$ BEGIN
+    CREATE TYPE "QuestStatus" AS ENUM ('AVAILABLE', 'IN_PROGRESS', 'COMPLETED', 'FAILED');
+EXCEPTION
+    WHEN duplicate_object THEN null;
+END $$;
 
 -- CreateEnum
-CREATE TYPE "CompanyRole" AS ENUM ('ADMIN', 'MANAGER', 'EMPLOYEE');
+DO $$ BEGIN
+    CREATE TYPE "CompanyRole" AS ENUM ('ADMIN', 'MANAGER', 'EMPLOYEE');
+EXCEPTION
+    WHEN duplicate_object THEN null;
+END $$;
 
 -- AlterEnum
 -- This migration adds more than one value to an enum.

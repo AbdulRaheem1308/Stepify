@@ -8,13 +8,14 @@ import {
   IsArray,
   IsBoolean,
   IsNotEmpty,
+  IsPhoneNumber,
 } from "class-validator";
 import { ApiProperty, ApiPropertyOptional } from "@nestjs/swagger";
 
 export class CreateUserDto {
-  @ApiPropertyOptional({ example: "+1234567890" })
+  @ApiPropertyOptional({ example: "+919876543210" })
   @IsOptional()
-  @IsString()
+  @IsPhoneNumber("IN", { message: "Phone number must be a valid Indian mobile number (+91)" })
   phone?: string;
 
   @ApiPropertyOptional({ example: "user@example.com" })
@@ -72,9 +73,9 @@ export class UpdateUserDto {
   @IsString()
   avatarUrl?: string;
 
-  @ApiPropertyOptional({ example: "+1234567890" })
+  @ApiPropertyOptional({ example: "+919876543210" })
   @IsOptional()
-  @IsString()
+  @IsPhoneNumber("IN", { message: "Phone number must be a valid Indian mobile number (+91)" })
   phone?: string;
 
   @ApiPropertyOptional({ example: "user@example.com" })

@@ -23,7 +23,7 @@ async function main() {
     for (let i = 0; i < names.length; i++) {
         const name = names[i];
         const email = `user${i}@test.com`;
-        const phone = `+1555000${i.toString().padStart(4, '0')}`;
+        const phone = `+9198765${i.toString().padStart(5, '0')}`;
         const referralCount = Math.floor(Math.random() * 50);
         const referralCoinsEarned = referralCount * 100;
 

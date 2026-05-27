@@ -114,9 +114,16 @@ class _CompleteProfileScreenState extends ConsumerState<CompleteProfileScreen> {
       final weight = int.tryParse(_weightController.text) ?? 70;
       final height = int.tryParse(_heightController.text) ?? 170;
 
+      String phoneVal = _phoneController.text.trim().replaceAll(RegExp(r'\s+'), '');
+      if (phoneVal.length == 10 && !phoneVal.startsWith('+')) {
+        phoneVal = '+91$phoneVal';
+      } else if (phoneVal.startsWith('91') && phoneVal.length == 12) {
+        phoneVal = '+$phoneVal';
+      }
+
       final data = {
         'name': _nameController.text.trim(),
-        'phone': _phoneController.text.trim(),
+        'phone': phoneVal,
         'email': _emailController.text.trim(),
         'heightCm': height,
         'weightKg': weight,
@@ -234,9 +241,18 @@ class _CompleteProfileScreenState extends ConsumerState<CompleteProfileScreen> {
                                   child: TextFormField(
                                   controller: _phoneController,
                                   readOnly: _isPhoneReadOnly,
+                                  keyboardType: TextInputType.phone,
                                   style: TextStyle(color: _isPhoneReadOnly ? AppTheme.neutral500 : AppTheme.neutral900),
-                                  decoration: _buildInputDecoration('+1234567890', Icons.phone_outlined, isReadOnly: _isPhoneReadOnly),
-                                  validator: (v) => v == null || v.isEmpty ? (l10n?.fieldRequired ?? 'Required') : null,
+                                  decoration: _buildInputDecoration('+91 98765 43210', Icons.phone_outlined, isReadOnly: _isPhoneReadOnly),
+                                  validator: (v) {
+                                    if (v == null || v.isEmpty) return l10n?.fieldRequired ?? 'Required';
+                                    final phoneStr = v.replaceAll(RegExp(r'\s+'), '');
+                                    final phoneRegex = RegExp(r'^(?:\+91|91)?[6-9]\d{9}$');
+                                    if (!phoneRegex.hasMatch(phoneStr)) {
+                                      return 'Please enter a valid Indian mobile number';
+                                    }
+                                    return null;
+                                  },
                                 )),
                               ],
                             ),
