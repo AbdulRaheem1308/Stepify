@@ -20,9 +20,9 @@ END $$;
 -- the enum.
 
 
-ALTER TYPE "AchievementCategory" ADD VALUE 'SOCIAL';
-ALTER TYPE "AchievementCategory" ADD VALUE 'CHALLENGE';
-ALTER TYPE "AchievementCategory" ADD VALUE 'COINS';
+ALTER TYPE "AchievementCategory" ADD VALUE IF NOT EXISTS 'SOCIAL';
+ALTER TYPE "AchievementCategory" ADD VALUE IF NOT EXISTS 'CHALLENGE';
+ALTER TYPE "AchievementCategory" ADD VALUE IF NOT EXISTS 'COINS';
 
 -- AlterTable
 ALTER TABLE "achievements" ADD COLUMN     "targetValue" INTEGER;
