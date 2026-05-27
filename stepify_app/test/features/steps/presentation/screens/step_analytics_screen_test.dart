@@ -1,3 +1,4 @@
+import 'dart:io';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_test/flutter_test.dart';
@@ -14,13 +15,16 @@ import 'package:stepify_app/features/dashboard/presentation/widgets/calorie_tren
 class MockApiService extends Mock implements ApiService {}
 
 void main() {
+  late Directory tempDir;
+
   setUpAll(() async {
     TestWidgetsFlutterBinding.ensureInitialized();
+    tempDir = await Directory.systemTemp.createTemp('step_analytics_test_');
 
     // Mock path_provider so Hive can resolve a directory
     const pathChannel = MethodChannel('plugins.flutter.io/path_provider');
     TestDefaultBinaryMessengerBinding.instance.defaultBinaryMessenger
-        .setMockMethodCallHandler(pathChannel, (_) async => '.');
+        .setMockMethodCallHandler(pathChannel, (_) async => tempDir.path);
 
     // Mock FlutterSecureStorage so token reads/writes are no-ops
     const secureStorageChannel =
@@ -34,7 +38,7 @@ void main() {
         .setMockMethodCallHandler(safeDeviceChannel, (_) async => false);
 
     // Initialise Hive + StorageService so DashboardNotifier._loadUser() succeeds
-    Hive.init('.');
+    Hive.init(tempDir.path);
     await StorageService.init();
 
     registerFallbackValue(RequestOptions(path: ''));
@@ -163,5 +167,11 @@ void main() {
     // Explicitly dispose container inside the test body to clear the 5s periodic timer
     // BEFORE Flutter test framework checks for pending timers.
     container.dispose();
+  });
+
+  tearDownAll(() async {
+    try {
+      await tempDir.delete(recursive: true);
+    } catch (_) {}
   });
 }

@@ -37,8 +37,11 @@ class MockHealthSyncNotifier extends StateNotifier<bool> implements HealthSyncNo
 }
 
 void main() {
+  late Directory tempDir;
+
   setUpAll(() async {
-    Hive.init(Directory.systemTemp.path);
+    tempDir = await Directory.systemTemp.createTemp('accessibility_test_');
+    Hive.init(tempDir.path);
     FlutterSecureStorage.setMockInitialValues({});
     await StorageService.init();
   });
@@ -173,6 +176,12 @@ void main() {
 
       await expectLater(tester, meetsGuideline(labeledTapTargetGuideline));
     });
+  });
+
+  tearDownAll(() async {
+    try {
+      await tempDir.delete(recursive: true);
+    } catch (_) {}
   });
 }
 

@@ -1,3 +1,4 @@
+import 'dart:io';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:flutter/foundation.dart';
 import 'package:stepify_app/services/pedometer_service.dart';
@@ -6,12 +7,15 @@ import 'package:hive_flutter/hive_flutter.dart';
 import 'package:flutter/services.dart';
 
 void main() {
+  late Directory tempDir;
+
   setUpAll(() async {
     TestWidgetsFlutterBinding.ensureInitialized();
+    tempDir = await Directory.systemTemp.createTemp('pedometer_service_test_');
     const channel = MethodChannel('plugins.flutter.io/path_provider');
     TestDefaultBinaryMessengerBinding.instance.defaultBinaryMessenger.setMockMethodCallHandler(
       channel,
-      (MethodCall methodCall) async => '.',
+      (MethodCall methodCall) async => tempDir.path,
     );
     TestDefaultBinaryMessengerBinding.instance.defaultBinaryMessenger.setMockMethodCallHandler(
       const MethodChannel('flutter.baseflow.com/permissions/methods'),
@@ -23,7 +27,7 @@ void main() {
        return const StandardMethodCodec().encodeSuccessEnvelope(100);
     });
     
-    await Hive.initFlutter('.test_pedometer');
+    await Hive.initFlutter(tempDir.path);
     await StorageService.init();
   });
 
@@ -109,6 +113,12 @@ void main() {
         (MethodCall methodCall) async => {19: 1}, // ACTIVITY_RECOGNITION granted
       );
     });
+  });
+
+  tearDownAll(() async {
+    try {
+      await tempDir.delete(recursive: true);
+    } catch (_) {}
   });
 }
 

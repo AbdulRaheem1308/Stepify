@@ -1,3 +1,4 @@
+import 'dart:io';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:stepify_app/core/services/background_service.dart';
 import 'package:stepify_app/services/storage_service.dart';
@@ -6,12 +7,15 @@ import 'package:flutter/services.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
 void main() {
+  late Directory tempDir;
+
   setUpAll(() async {
     TestWidgetsFlutterBinding.ensureInitialized();
+    tempDir = await Directory.systemTemp.createTemp('background_service_test_');
     const channel = MethodChannel('plugins.flutter.io/path_provider');
     TestDefaultBinaryMessengerBinding.instance.defaultBinaryMessenger.setMockMethodCallHandler(
       channel,
-      (MethodCall methodCall) async => '.',
+      (MethodCall methodCall) async => tempDir.path,
     );
     const secureStorageChannel = MethodChannel('plugins.it_nomads.com/flutter_secure_storage');
     TestDefaultBinaryMessengerBinding.instance.defaultBinaryMessenger.setMockMethodCallHandler(
@@ -83,7 +87,7 @@ void main() {
       return null;
     });
 
-    await Hive.initFlutter('.test_bg');
+    await Hive.initFlutter(tempDir.path);
     await StorageService.init();
   });
 
@@ -119,5 +123,11 @@ void main() {
     test('callbackDispatcher executes cleanly', () {
       expect(() => callbackDispatcher(), returnsNormally);
     });
+  });
+
+  tearDownAll(() async {
+    try {
+      await tempDir.delete(recursive: true);
+    } catch (_) {}
   });
 }

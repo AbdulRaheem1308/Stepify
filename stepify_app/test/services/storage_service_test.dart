@@ -10,10 +10,13 @@ import 'package:stepify_app/services/storage_service.dart';
 import 'dart:io';
 
 void main() {
+  late Directory tempDir;
+
   // Hive in-memory setup
   setUpAll(() async {
+    tempDir = await Directory.systemTemp.createTemp('storage_service_test_');
     // Register in-memory Hive for tests (no file I/O)
-    Hive.init(Directory.systemTemp.path);
+    Hive.init(tempDir.path);
     FlutterSecureStorage.setMockInitialValues({});
   });
 
@@ -29,6 +32,9 @@ void main() {
 
   tearDownAll(() async {
     await Hive.close();
+    try {
+      await tempDir.delete(recursive: true);
+    } catch (_) {}
   });
 
   group('StorageService — guard', () {
