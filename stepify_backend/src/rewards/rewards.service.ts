@@ -905,6 +905,59 @@ export class RewardsService {
     return { message: "Demo rewards seeded", count: rewards.length };
   }
 
+  /**
+   * Force rewards sync processing immediately (Manual / Admin Trigger).
+   * Processes streaks, achievements, coins, and quest progress.
+   */
+  async forceRewardsSync(userId?: string) {
+    const now = new Date();
+    const year = now.getUTCFullYear();
+    const month = String(now.getUTCMonth() + 1).padStart(2, "0");
+    const day = String(now.getUTCDate()).padStart(2, "0");
+    const dateStr = `${year}-${month}-${day}T00:00:00.000Z`;
+
+    const where: any = {
+      date: new Date(dateStr),
+    };
+    if (userId) {
+      where.userId = userId;
+    }
+
+    const todaySteps = await this.prisma.step.findMany({
+      where,
+    });
+
+    this.logger.log(
+      `Force rewards sync triggered manually. Found ${todaySteps.length} records to process...`,
+    );
+
+    const processedUsers = [];
+    for (const stepData of todaySteps) {
+      try {
+        const result = await this.processStepRewards(
+          stepData.userId,
+          stepData.stepCount,
+          now,
+        );
+        processedUsers.push({
+          userId: stepData.userId,
+          steps: stepData.stepCount,
+          pointsAwarded: result.pointsEarned,
+        });
+      } catch (err) {
+        this.logger.error(
+          `Failed to process rewards for user ${stepData.userId}: ${err.message}`,
+        );
+      }
+    }
+
+    return {
+      message: `Force rewards sync completed. Processed ${todaySteps.length} users.`,
+      processedCount: todaySteps.length,
+      details: processedUsers,
+    };
+  }
+
   private calculateStreakMetrics(uniqueDates: string[]) {
     let currentStreak = 0;
     let longestStreak = 1;
