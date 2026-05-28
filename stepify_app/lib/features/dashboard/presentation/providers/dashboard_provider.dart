@@ -260,10 +260,10 @@ class DashboardNotifier extends StateNotifier<DashboardState> with WidgetsBindin
   @override
   void didChangeAppLifecycleState(AppLifecycleState state) {
     if (state == AppLifecycleState.resumed) {
-      // Forcibly restart the pedometer listener to ensure it wasn't killed by the OS in the background.
-      debugPrint("DashboardNotifier: App resumed. Reviving pedometer listener...");
-      _pedometerService.stopListening();
-      _initHardwarePedometer();
+      debugPrint("DashboardNotifier: App resumed.");
+      // Note: We DO NOT stop and restart the pedometer listener here! 
+      // Flutter's EventChannel automatically buffers sensor events while the app is in the background.
+      // If we cancel the subscription and restart it, we throw away all the steps taken while the app was in the background!
       
       // Also fetch the latest data from the backend to sync any background progress
       fetchTodayData();
@@ -271,6 +271,7 @@ class DashboardNotifier extends StateNotifier<DashboardState> with WidgetsBindin
   }
 
   void _initHardwarePedometer() {
+    _uiBatchTimer?.cancel();
     // 1. Start the live pedometer independently so it doesn't get blocked by Health API OAuth
     _pedometerService.startListening(
       onStepsChanged: (stepsToday) {
