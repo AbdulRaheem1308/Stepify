@@ -241,6 +241,8 @@ class DashboardNotifier extends StateNotifier<DashboardState> with WidgetsBindin
   DateTime? _lastStepTime;
   int _accumulatedActiveSeconds = 0;
   
+  String _trackingDate = DateTime.now().toIso8601String().split('T')[0];
+  
   Timer? _uiBatchTimer;
 
   DashboardNotifier(this._apiService, this._healthService) : super(DashboardState()) {
@@ -255,6 +257,22 @@ class DashboardNotifier extends StateNotifier<DashboardState> with WidgetsBindin
     _uiBatchTimer?.cancel();
     _pedometerService.stopListening();
     super.dispose();
+  }
+
+  void _checkDayRollover() {
+    final todayStr = DateTime.now().toIso8601String().split('T')[0];
+    if (_trackingDate != todayStr) {
+      debugPrint("DashboardNotifier: Midnight rollover detected. Resetting state for $todayStr");
+      _trackingDate = todayStr;
+      _currentPedometerSteps = 0;
+      _pedometerOffset = 0;
+      _pedometerOffsetInitialized = false;
+      _lastSyncedSteps = 0;
+      _accumulatedActiveSeconds = 0;
+      state = state.copyWith(
+        todaySteps: null, // Clear yesterday's steps from UI
+      );
+    }
   }
 
   @override
@@ -366,6 +384,8 @@ class DashboardNotifier extends StateNotifier<DashboardState> with WidgetsBindin
 
     // 3. Batch UI updates every 5 seconds to prevent jitter and save resources
     _uiBatchTimer = Timer.periodic(const Duration(seconds: 5), (timer) async {
+      _checkDayRollover();
+      
       int stepsToSync = 0;
       
       if (_currentPedometerSteps > 0) {
@@ -410,6 +430,7 @@ class DashboardNotifier extends StateNotifier<DashboardState> with WidgetsBindin
   }
 
   Future<void> fetchTodayData() async {
+    _checkDayRollover();
     state = state.copyWith(isLoading: true, syncStatus: SyncStatus.syncing);
 
     // Ensure the physical phone device is registered in the backend before attempting any sync
