@@ -11,6 +11,7 @@ describe("QuestsService", () => {
       count: jest.fn(),
       create: jest.fn(),
       findMany: jest.fn(),
+      findUnique: jest.fn(),
     },
     userQuest: {
       findUnique: jest.fn(),
@@ -96,6 +97,7 @@ describe("QuestsService", () => {
 
     it("should create new user quest if not joined", async () => {
       mockPrismaService.userQuest.findUnique.mockResolvedValueOnce(null);
+      mockPrismaService.quest.findUnique.mockResolvedValueOnce({ id: "q1", stages: [{ durationDays: 1 }] });
       mockPrismaService.userQuest.create.mockResolvedValueOnce({ id: "uq2" });
       const result = await service.joinQuest("user1", "q1");
       expect(result).toEqual({ id: "uq2" });
@@ -166,7 +168,7 @@ describe("QuestsService", () => {
 
       expect(mockPrismaService.userQuest.updateMany).toHaveBeenCalledWith({
         where: { id: "uq1", currentStageIndex: 0, status: "IN_PROGRESS" },
-        data: { currentStageIndex: 1 },
+        data: { currentStageIndex: 1, deadline: null, revivalCount: 0 },
       });
       expect(mockPrismaService.notification.create).toHaveBeenCalled();
       expect(mockPrismaService.$transaction).not.toHaveBeenCalled();
