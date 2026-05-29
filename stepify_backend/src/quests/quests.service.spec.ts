@@ -2,6 +2,7 @@ import { Test, TestingModule } from "@nestjs/testing";
 import { QuestsService } from "./quests.service";
 import { PrismaService } from "../prisma/prisma.service";
 import { NotificationsService } from "../notifications/notifications.service";
+import { NotFoundException, BadRequestException } from "@nestjs/common";
 
 describe("QuestsService", () => {
   let service: QuestsService;
@@ -23,6 +24,8 @@ describe("QuestsService", () => {
     $transaction: jest.fn(),
     wallet: {
       upsert: jest.fn(),
+      findUnique: jest.fn(),
+      update: jest.fn(),
     },
     transaction: {
       create: jest.fn(),
@@ -204,6 +207,57 @@ describe("QuestsService", () => {
       await service.processQuestProgress("user1", 10000);
 
       expect(mockPrismaService.$transaction).toHaveBeenCalled();
+    });
+  });
+
+  describe("revive", () => {
+    it("should throw if userQuest not found", async () => {
+      mockPrismaService.userQuest.findUnique.mockResolvedValueOnce(null);
+      await expect(service.revive("user1", "quest1", "COINS")).rejects.toThrow(NotFoundException);
+    });
+
+    it("should throw if quest does not need revival", async () => {
+      mockPrismaService.userQuest.findUnique.mockResolvedValueOnce({
+        status: "IN_PROGRESS",
+        quest: { stages: [{ durationDays: 1 }] }
+      });
+      await expect(service.revive("user1", "quest1", "COINS")).rejects.toThrow(BadRequestException);
+    });
+
+    it("should revive quest with COINS", async () => {
+      mockPrismaService.userQuest.findUnique.mockResolvedValueOnce({
+        status: "NEEDS_REVIVAL",
+        currentStageIndex: 0,
+        quest: { stages: [{ durationDays: 1 }] }
+      });
+      mockPrismaService.wallet.findUnique.mockResolvedValueOnce({ balance: 100 });
+      mockPrismaService.wallet.update.mockResolvedValueOnce({});
+      mockPrismaService.transaction.create.mockResolvedValueOnce({});
+      mockPrismaService.userQuest.update.mockResolvedValueOnce({ status: "IN_PROGRESS" });
+
+      const result = await service.revive("user1", "quest1", "COINS");
+      expect(result).toEqual({ status: "IN_PROGRESS" });
+      expect(mockPrismaService.wallet.update).toHaveBeenCalled();
+      expect(mockPrismaService.transaction.create).toHaveBeenCalled();
+    });
+  });
+
+  describe("restart", () => {
+    it("should throw if userQuest not found", async () => {
+      mockPrismaService.userQuest.findUnique.mockResolvedValueOnce(null);
+      await expect(service.restart("user1", "quest1")).rejects.toThrow(NotFoundException);
+    });
+
+    it("should restart quest", async () => {
+      mockPrismaService.userQuest.findUnique.mockResolvedValueOnce({
+        currentStageIndex: 0,
+        quest: { stages: [{ durationDays: 1 }] }
+      });
+      mockPrismaService.userQuest.update.mockResolvedValueOnce({ status: "IN_PROGRESS" });
+
+      const result = await service.restart("user1", "quest1");
+      expect(result).toEqual({ status: "IN_PROGRESS" });
+      expect(mockPrismaService.userQuest.update).toHaveBeenCalled();
     });
   });
 });

@@ -14,6 +14,21 @@ describe("NotificationsCronService", () => {
     user: {
       findMany: jest.fn(),
     },
+    userChallenge: {
+      findMany: jest.fn(),
+      update: jest.fn(),
+      updateMany: jest.fn(),
+    },
+    userQuest: {
+      findMany: jest.fn(),
+      update: jest.fn(),
+      updateMany: jest.fn(),
+    },
+    appConfig: {
+      findUnique: jest.fn(),
+      create: jest.fn(),
+    },
+    $queryRaw: jest.fn(),
   };
 
   const mockNotificationsService = {
@@ -126,6 +141,86 @@ describe("NotificationsCronService", () => {
       expect(mockNotificationsService.sendPushToUser).toHaveBeenCalledTimes(2);
       expect(mockNotificationsService.sendPushToUser).toHaveBeenCalledWith("u1", expect.any(String), expect.any(String), expect.any(Object));
       expect(mockNotificationsService.sendPushToUser).toHaveBeenCalledWith("u3", expect.any(String), expect.any(String), expect.any(Object));
+    });
+  });
+  describe("enforceTimelines", () => {
+    it("should expire ONGOING challenges and transition them to NEEDS_REVIVAL", async () => {
+      mockPrisma.userChallenge.findMany.mockResolvedValueOnce([
+        { id: "uc1", userId: "u1", challenge: { durationDays: 1, title: "Test" } }
+      ]);
+      mockPrisma.userChallenge.update.mockResolvedValueOnce({});
+      mockPrisma.userChallenge.updateMany.mockResolvedValueOnce({});
+      mockPrisma.userQuest.findMany.mockResolvedValueOnce([]);
+      mockPrisma.userQuest.updateMany.mockResolvedValueOnce({});
+
+      await service.enforceTimelines();
+
+      expect(mockPrisma.userChallenge.update).toHaveBeenCalledWith(
+        expect.objectContaining({ where: { id: "uc1" } })
+      );
+      expect(mockNotificationsService.sendPushToUser).toHaveBeenCalled();
+    });
+
+    it("should expire NEEDS_REVIVAL challenges and quests to FAILED", async () => {
+      mockPrisma.userChallenge.findMany.mockResolvedValueOnce([]);
+      mockPrisma.userChallenge.updateMany.mockResolvedValueOnce({});
+      mockPrisma.userQuest.findMany.mockResolvedValueOnce([]);
+      mockPrisma.userQuest.updateMany.mockResolvedValueOnce({});
+
+      await service.enforceTimelines();
+
+      expect(mockPrisma.userChallenge.updateMany).toHaveBeenCalledWith(
+        expect.objectContaining({ data: { status: "FAILED" } })
+      );
+      expect(mockPrisma.userQuest.updateMany).toHaveBeenCalledWith(
+        expect.objectContaining({ data: { status: "FAILED" } })
+      );
+    });
+
+    it("should expire IN_PROGRESS quests and transition them to NEEDS_REVIVAL", async () => {
+      mockPrisma.userChallenge.findMany.mockResolvedValueOnce([]);
+      mockPrisma.userChallenge.updateMany.mockResolvedValueOnce({});
+      mockPrisma.userQuest.findMany.mockResolvedValueOnce([
+        { id: "uq1", userId: "u1", currentStageIndex: 0, quest: { stages: [{ durationDays: 1 }] } }
+      ]);
+      mockPrisma.userQuest.update.mockResolvedValueOnce({});
+      mockPrisma.userQuest.updateMany.mockResolvedValueOnce({});
+
+      await service.enforceTimelines();
+
+      expect(mockPrisma.userQuest.update).toHaveBeenCalledWith(
+        expect.objectContaining({ where: { id: "uq1" } })
+      );
+      expect(mockNotificationsService.sendPushToUser).toHaveBeenCalled();
+    });
+  });
+
+  describe("sendSmartReminders", () => {
+    it("should send smart reminders based on dynamic heuristic", async () => {
+      mockPrisma.userChallenge.findMany.mockResolvedValueOnce([
+        { id: "uc1", userId: "u1", challenge: { title: "Test" }, deadline: new Date(Date.now() + 2 * 60 * 60 * 1000) } // 2 hours left
+      ]);
+      mockPrisma.appConfig.findUnique.mockResolvedValueOnce(null);
+      mockPrisma.$queryRaw.mockResolvedValueOnce([{ peak_hour: 18 }]);
+      mockPrisma.appConfig.create.mockResolvedValueOnce({});
+
+      await service.sendSmartReminders();
+
+      expect(mockNotificationsService.sendPushToUser).toHaveBeenCalled();
+      expect(mockPrisma.appConfig.create).toHaveBeenCalledWith(
+        expect.objectContaining({ data: { key: "reminder_sent_challenge_uc1", value: "sent" } })
+      );
+    });
+
+    it("should skip if reminder already sent", async () => {
+      mockPrisma.userChallenge.findMany.mockResolvedValueOnce([
+        { id: "uc1", userId: "u1", challenge: { title: "Test" } }
+      ]);
+      mockPrisma.appConfig.findUnique.mockResolvedValueOnce({ key: "reminder_sent_challenge_uc1" });
+
+      await service.sendSmartReminders();
+
+      expect(mockPrisma.$queryRaw).not.toHaveBeenCalled();
     });
   });
 });

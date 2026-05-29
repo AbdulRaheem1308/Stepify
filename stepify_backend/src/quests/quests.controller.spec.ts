@@ -17,6 +17,8 @@ describe("QuestsController", () => {
             findAll: jest.fn(),
             joinQuest: jest.fn(),
             getUserQuests: jest.fn(),
+            revive: jest.fn(),
+            restart: jest.fn(),
           },
         },
       ],
@@ -84,6 +86,28 @@ describe("QuestsController", () => {
       await expect(controller.getMyQuests("u2", user)).rejects.toThrow(
         ForbiddenException,
       );
+    });
+  });
+
+  describe("revive", () => {
+    it("should revive a quest with default COINS method", async () => {
+      const user = { id: "u1" };
+      await controller.revive(user, "q1", undefined as any);
+      expect(service.revive).toHaveBeenCalledWith("u1", "q1", "COINS");
+    });
+
+    it("should revive a quest with AD method", async () => {
+      const user = { id: "u1" };
+      await controller.revive(user, "q1", "AD");
+      expect(service.revive).toHaveBeenCalledWith("u1", "q1", "AD");
+    });
+  });
+
+  describe("restart", () => {
+    it("should restart a quest", async () => {
+      const user = { id: "u1" };
+      await controller.restart(user, "q1");
+      expect(service.restart).toHaveBeenCalledWith("u1", "q1");
     });
   });
 });

@@ -24,6 +24,7 @@ describe("RewardsController", () => {
             redeemReward: jest.fn(),
             getMyOffers: jest.fn(),
             seedDemoRewards: jest.fn(),
+            forceRewardsSync: jest.fn(),
           },
         },
       ],
@@ -131,6 +132,18 @@ describe("RewardsController", () => {
     it("should seed rewards", async () => {
       await controller.seedRewards();
       expect(service.seedDemoRewards).toHaveBeenCalled();
+    });
+  });
+
+  describe("forceSyncRewards", () => {
+    it("should force sync rewards without userId", async () => {
+      await controller.forceSyncRewards();
+      expect(service.forceRewardsSync).toHaveBeenCalledWith(undefined);
+    });
+
+    it("should force sync rewards with userId", async () => {
+      await controller.forceSyncRewards("u1");
+      expect(service.forceRewardsSync).toHaveBeenCalledWith("u1");
     });
   });
 });

@@ -21,6 +21,8 @@ describe("ChallengesController", () => {
             join: jest.fn(),
             updateProgress: jest.fn(),
             seedDemoChallenges: jest.fn(),
+            revive: jest.fn(),
+            restart: jest.fn(),
           },
         },
       ],
@@ -112,6 +114,28 @@ describe("ChallengesController", () => {
     it("should seed demo challenges", async () => {
       await controller.seed();
       expect(service.seedDemoChallenges).toHaveBeenCalled();
+    });
+  });
+
+  describe("revive", () => {
+    it("should revive a challenge with default COINS method", async () => {
+      const user = { id: "u1" };
+      await controller.revive(user, "c1", undefined as any);
+      expect(service.revive).toHaveBeenCalledWith("u1", "c1", "COINS");
+    });
+
+    it("should revive a challenge with AD method", async () => {
+      const user = { id: "u1" };
+      await controller.revive(user, "c1", "AD");
+      expect(service.revive).toHaveBeenCalledWith("u1", "c1", "AD");
+    });
+  });
+
+  describe("restart", () => {
+    it("should restart a challenge", async () => {
+      const user = { id: "u1" };
+      await controller.restart(user, "c1");
+      expect(service.restart).toHaveBeenCalledWith("u1", "c1");
     });
   });
 });
