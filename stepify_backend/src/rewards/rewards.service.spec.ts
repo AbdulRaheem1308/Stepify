@@ -278,7 +278,7 @@ describe("RewardsService", () => {
       });
       mockPrisma.streak.update.mockResolvedValue({ currentStreak: 6 });
 
-      const res = await service.updateStreak("u1", new Date());
+      await service.updateStreak("u1", new Date());
       expect(mockPrisma.streak.update).toHaveBeenCalledWith(
         expect.objectContaining({
           data: expect.objectContaining({ currentStreak: 6 }),

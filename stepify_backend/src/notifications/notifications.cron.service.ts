@@ -74,7 +74,6 @@ export class NotificationsCronService {
 
           remindersSent++;
         }
-        }
       }
 
       this.logger.log(

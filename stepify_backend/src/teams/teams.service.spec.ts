@@ -168,7 +168,6 @@ describe("TeamsService", () => {
       });
       mockPrismaService.teamMember.create.mockResolvedValue({});
       mockPrismaService.user.findUnique.mockResolvedValue({ name: "New Member" });
-      const mockNotificationsService = { createAndNotify: jest.fn().mockResolvedValue(true) };
       // Access injected notification service via module
       const res = await service.joinTeam("t1", "u1");
       expect(res.success).toBe(true);
