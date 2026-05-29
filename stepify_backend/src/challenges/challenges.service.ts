@@ -215,6 +215,11 @@ export class ChallengesService {
       throw new BadRequestException("Challenge is full");
     }
 
+    // Calculate deadline if durationDays exists
+    const deadline = challenge.durationDays 
+      ? new Date(Date.now() + challenge.durationDays * 24 * 60 * 60 * 1000)
+      : null;
+
     // Create user challenge entry
     const userChallenge = await this.prisma.userChallenge.create({
       data: {
@@ -223,6 +228,7 @@ export class ChallengesService {
         status: "ONGOING",
         currentSteps: 0,
         progress: 0,
+        deadline,
       },
       include: {
         challenge: true,
@@ -266,6 +272,10 @@ export class ChallengesService {
 
     if (!userChallenge) {
       throw new NotFoundException("User challenge not found");
+    }
+
+    if (userChallenge.status === "NEEDS_REVIVAL" || userChallenge.status === "FAILED") {
+      throw new BadRequestException(`Challenge is in ${userChallenge.status} state. Please revive or restart it to continue.`);
     }
 
     if (userChallenge.status !== "ONGOING") {
@@ -429,5 +439,97 @@ export class ChallengesService {
     }
 
     return { message: "Demo challenges seeded" };
+  }
+
+  /**
+   * Revive an expired challenge
+   */
+  async revive(userId: string, challengeId: string, method: 'COINS' | 'AD') {
+    const userChallenge = await this.prisma.userChallenge.findUnique({
+      where: { userId_challengeId: { userId, challengeId } },
+      include: { challenge: true },
+    });
+
+    if (!userChallenge) throw new NotFoundException("Challenge not found");
+    
+    if (userChallenge.status !== "NEEDS_REVIVAL") {
+      throw new BadRequestException("Challenge does not need revival");
+    }
+
+    if (userChallenge.progress < 5) {
+      throw new BadRequestException("Progress is below 5%. Please restart the challenge instead of reviving.");
+    }
+    
+    if (method === 'COINS') {
+      const wallet = await this.prisma.wallet.findUnique({ where: { userId } });
+      if (!wallet || wallet.balance < 50) {
+        throw new BadRequestException("Insufficient coins for revival (need 50)");
+      }
+      await this.prisma.wallet.update({
+        where: { userId },
+        data: { balance: { decrement: 50 } }
+      });
+      await this.prisma.transaction.create({
+        data: {
+          userId,
+          type: "REVIVAL",
+          points: -50,
+          description: `Revived challenge: ${userChallenge.challenge.title}`
+        }
+      });
+    }
+
+    // Calculate new deadline based on extension
+    let extensionHours = userChallenge.challenge.revivalExtensionHours;
+    if (!extensionHours && userChallenge.challenge.durationDays) {
+      // Intelligent fallback: 25% of total duration, minimum 24 hours
+      const fallback = Math.floor(userChallenge.challenge.durationDays * 24 * 0.25);
+      extensionHours = Math.max(24, fallback);
+    } else if (!extensionHours) {
+      extensionHours = 24;
+    }
+
+    const newDeadline = new Date(Date.now() + extensionHours * 60 * 60 * 1000);
+
+    return this.prisma.userChallenge.update({
+      where: { userId_challengeId: { userId, challengeId } },
+      data: {
+        status: "ONGOING",
+        deadline: newDeadline,
+        revivalCount: { increment: 1 }
+      },
+      include: { challenge: true },
+    });
+  }
+
+  /**
+   * Restart a challenge (Free if progress < 5%)
+   */
+  async restart(userId: string, challengeId: string) {
+    const userChallenge = await this.prisma.userChallenge.findUnique({
+      where: { userId_challengeId: { userId, challengeId } },
+      include: { challenge: true },
+    });
+
+    if (!userChallenge) throw new NotFoundException("Challenge not found");
+
+    if (userChallenge.progress >= 5) {
+      throw new BadRequestException("Progress is 5% or more. Please use the revive option instead.");
+    }
+    
+    const deadline = userChallenge.challenge.durationDays 
+      ? new Date(Date.now() + userChallenge.challenge.durationDays * 24 * 60 * 60 * 1000)
+      : null;
+
+    return this.prisma.userChallenge.update({
+      where: { userId_challengeId: { userId, challengeId } },
+      data: {
+        status: "ONGOING",
+        currentSteps: 0,
+        progress: 0,
+        deadline,
+        revivalCount: 0
+      }
+    });
   }
 }

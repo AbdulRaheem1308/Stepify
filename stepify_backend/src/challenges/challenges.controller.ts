@@ -106,4 +106,25 @@ export class ChallengesController {
   async seed() {
     return this.challengesService.seedDemoChallenges();
   }
+
+  @Post(":id/revive")
+  @ApiOperation({ summary: "Revive a failed or expired challenge" })
+  @ApiResponse({ status: 201, description: "Successfully revived challenge" })
+  async revive(
+    @CurrentUser() user: any,
+    @Param("id") challengeId: string,
+    @Body("method") method: 'COINS' | 'AD'
+  ) {
+    return this.challengesService.revive(user.id, challengeId, method || 'COINS');
+  }
+
+  @Post(":id/restart")
+  @ApiOperation({ summary: "Restart a challenge if progress is below 5%" })
+  @ApiResponse({ status: 201, description: "Successfully restarted challenge" })
+  async restart(
+    @CurrentUser() user: any,
+    @Param("id") challengeId: string
+  ) {
+    return this.challengesService.restart(user.id, challengeId);
+  }
 }

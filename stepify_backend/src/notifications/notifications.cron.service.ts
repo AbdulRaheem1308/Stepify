@@ -1,7 +1,7 @@
 import { Injectable, Logger } from "@nestjs/common";
 import { PrismaService } from "../prisma/prisma.service";
 import { NotificationsService } from "./notifications.service";
-import { Cron } from "@nestjs/schedule";
+import { Cron, CronExpression } from "@nestjs/schedule";
 
 @Injectable()
 export class NotificationsCronService {
@@ -74,6 +74,7 @@ export class NotificationsCronService {
 
           remindersSent++;
         }
+        }
       }
 
       this.logger.log(
@@ -81,6 +82,154 @@ export class NotificationsCronService {
       );
     } catch (error) {
       this.logger.error("Failed to run daily reminders cron job", error);
+    }
+  }
+
+  /**
+   * Timeline Enforcer
+   * Runs every hour to check for expired Challenges and Quests
+   */
+  @Cron(CronExpression.EVERY_HOUR)
+  async enforceTimelines() {
+    this.logger.log("Starting timeline enforcement...");
+    const now = new Date();
+
+    try {
+      // 1. Expire ONGOING challenges -> NEEDS_REVIVAL
+      const expiredChallenges = await this.prisma.userChallenge.findMany({
+        where: { status: "ONGOING", deadline: { lte: now } },
+        include: { challenge: true }
+      });
+
+      for (const uc of expiredChallenges) {
+        let graceHours = uc.challenge.gracePeriodHours;
+        if (!graceHours && uc.challenge.durationDays) {
+          graceHours = Math.max(24, Math.floor(uc.challenge.durationDays * 24 * 0.15));
+        } else if (!graceHours) {
+          graceHours = 24;
+        }
+        
+        const graceDeadline = new Date(Date.now() + graceHours * 60 * 60 * 1000);
+        
+        await this.prisma.userChallenge.update({
+          where: { id: uc.id },
+          data: { status: "NEEDS_REVIVAL", deadline: graceDeadline }
+        });
+        
+        this.notificationsService.sendPushToUser(
+          uc.userId,
+          "Time's Up! ⏰",
+          `Your time for ${uc.challenge.title} has run out. You have ${graceHours}h to revive your progress!`
+        ).catch(() => {});
+      }
+
+      // 2. Expire NEEDS_REVIVAL challenges -> FAILED
+      await this.prisma.userChallenge.updateMany({
+        where: { status: "NEEDS_REVIVAL", deadline: { lte: now } },
+        data: { status: "FAILED" }
+      });
+
+      // 3. Expire IN_PROGRESS quests -> NEEDS_REVIVAL
+      const expiredQuests = await this.prisma.userQuest.findMany({
+        where: { status: "IN_PROGRESS", deadline: { lte: now } },
+        include: { quest: { include: { stages: true } } }
+      });
+
+      for (const uq of expiredQuests) {
+        const stage = uq.quest.stages[uq.currentStageIndex];
+        let graceHours = stage?.gracePeriodHours;
+        if (!graceHours && stage?.durationDays) {
+          graceHours = Math.max(24, Math.floor(stage.durationDays * 24 * 0.15));
+        } else if (!graceHours) {
+          graceHours = 24;
+        }
+        
+        const graceDeadline = new Date(Date.now() + graceHours * 60 * 60 * 1000);
+        
+        await this.prisma.userQuest.update({
+          where: { id: uq.id },
+          data: { status: "NEEDS_REVIVAL", deadline: graceDeadline }
+        });
+        
+        this.notificationsService.sendPushToUser(
+          uq.userId,
+          "Quest Stage Expired ⏰",
+          `Your time for stage ${uq.currentStageIndex + 1} has run out. Revive it to continue!`
+        ).catch(() => {});
+      }
+
+      // 4. Expire NEEDS_REVIVAL quests -> FAILED
+      await this.prisma.userQuest.updateMany({
+        where: { status: "NEEDS_REVIVAL", deadline: { lte: now } },
+        data: { status: "FAILED" }
+      });
+
+      this.logger.log("Timeline enforcement completed.");
+    } catch (e) {
+      this.logger.error("Error enforcing timelines", e);
+    }
+  }
+
+  /**
+   * Smart Expiration Reminders (Dynamic Heuristic)
+   * Runs every hour to notify users 24h before expiry, tailored to their peak activity hour.
+   */
+  @Cron(CronExpression.EVERY_HOUR)
+  async sendSmartReminders() {
+    this.logger.log("Starting Smart Reminders...");
+    const now = new Date();
+    const in24Hours = new Date(Date.now() + 24 * 60 * 60 * 1000);
+
+    try {
+      const expiringChallenges = await this.prisma.userChallenge.findMany({
+        where: { status: "ONGOING", deadline: { gt: now, lte: in24Hours } },
+        include: { challenge: true }
+      });
+
+      for (const uc of expiringChallenges) {
+        // We will store reminder state in AppConfig to keep it simple and DB-backed
+        const configKey = `reminder_sent_challenge_${uc.id}`;
+        const alreadySent = await this.prisma.appConfig.findUnique({ where: { key: configKey } });
+        if (alreadySent) continue;
+
+        // Dynamic Heuristic: Find user's peak step hour
+        let targetHour = 18; // Default 6 PM
+        try {
+          const peakResult = await this.prisma.$queryRaw<{peak_hour: number}[]>`
+            SELECT EXTRACT(HOUR FROM "updatedAt") AS peak_hour 
+            FROM "steps" 
+            WHERE "userId" = ${uc.userId}
+            GROUP BY peak_hour 
+            ORDER BY SUM("stepCount") DESC 
+            LIMIT 1
+          `;
+          if (Array.isArray(peakResult) && peakResult.length > 0 && peakResult[0].peak_hour) {
+            targetHour = Number(peakResult[0].peak_hour);
+            if (targetHour < 9 || targetHour > 20) targetHour = 18;
+          }
+        } catch (e) {
+          // Ignore errors and fallback to 18
+        }
+
+        const currentHour = new Date().getHours();
+        
+        // If current hour matches their peak hour OR there's less than 3 hours left, send it!
+        const hoursLeft = (uc.deadline!.getTime() - Date.now()) / (1000 * 60 * 60);
+        if (currentHour === targetHour || hoursLeft <= 3) {
+          await this.notificationsService.sendPushToUser(
+            uc.userId,
+            "Expiring Soon! ⏳",
+            `Don't lose your progress! ${uc.challenge.title} expires in less than 24 hours.`
+          ).catch(() => {});
+
+          await this.prisma.appConfig.create({
+            data: { key: configKey, value: "sent" }
+          });
+        }
+      }
+      this.logger.log("Smart Reminders completed.");
+    } catch (e) {
+      this.logger.error("Error sending smart reminders", e);
     }
   }
 }
