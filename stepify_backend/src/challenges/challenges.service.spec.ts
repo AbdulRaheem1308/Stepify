@@ -36,7 +36,7 @@ const mockPrismaService: any = {
     create: jest.fn(),
     update: jest.fn(),
   },
-  wallet: { upsert: jest.fn() },
+  wallet: { findUnique: jest.fn(), update: jest.fn(), upsert: jest.fn() },
   transaction: { create: jest.fn() },
   $transaction: jest.fn((queries) => {
     if (typeof queries === "function") {

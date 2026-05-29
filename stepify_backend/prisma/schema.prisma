@@ -227,6 +227,7 @@ enum TransactionType {
   REFERRAL
   REDEMPTION
   OFFER_REWARD // New
+  REVIVAL
 }
 
 // ============================================
