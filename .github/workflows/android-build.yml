@@ -4,12 +4,12 @@ on:
   push:
     branches: [ "main" ]
     paths:
-      - 'stepify_app/**'
+      - 'wellnex_app/**'
       - '.github/workflows/android-build.yml'
   pull_request:
     branches: [ "main" ]
     paths:
-      - 'stepify_app/**'
+      - 'wellnex_app/**'
       - '.github/workflows/android-build.yml'
   workflow_dispatch:
 
@@ -17,7 +17,7 @@ jobs:
   build:
     runs-on: ubuntu-latest
     env:
-      PROJECT_DIR: stepify_app
+      PROJECT_DIR: wellnex_app
 
     steps:
     - uses: actions/checkout@v4
@@ -73,7 +73,7 @@ jobs:
         GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         SONAR_TOKEN: ${{ secrets.SONAR_TOKEN }}
       with:
-        projectBaseDir: stepify_app
+        projectBaseDir: wellnex_app
 
     - name: Build release artifacts
       working-directory: ${{ env.PROJECT_DIR }}
@@ -86,14 +86,14 @@ jobs:
     - name: Upload APK artifacts
       uses: actions/upload-artifact@v4
       with:
-        name: stepify-apks
+        name: wellnex-apks
         path: |
           ${{ env.PROJECT_DIR }}/build/app/outputs/flutter-apk/*.apk
 
     - name: Upload AAB artifact
       uses: actions/upload-artifact@v4
       with:
-        name: stepify-aab
+        name: wellnex-aab
         path: ${{ env.PROJECT_DIR }}/build/app/outputs/bundle/release/*.aab
 
     # - name: Build Debug APK for Test Lab
@@ -109,7 +109,7 @@ jobs:
     # - name: Upload Firebase Test Lab APKs
     #   uses: actions/upload-artifact@v4
     #   with:
-    #     name: stepify-firebase-test-apks
+    #     name: wellnex-firebase-test-apks
     #     path: |
     #       ${{ env.PROJECT_DIR }}/build/app/outputs/flutter-apk/app-debug.apk
     #       ${{ env.PROJECT_DIR }}/build/app/outputs/apk/androidTest/debug/app-debug-androidTest.apk
