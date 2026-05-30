@@ -66,8 +66,7 @@ void main() {
       
       final todayStr = DateTime.now().toIso8601String().split('T')[0];
       await StorageService.put('pedometer_last_sync_date', todayStr);
-      await StorageService.put('pedometer_baseline_steps', 1000);
-      await StorageService.put('pedometer_last_known_steps', 1450);
+      await StorageService.put('pedometer_saved_steps_today', 450);
       
       final completer = Completer<int>();
       service.mockStepCountStream = Stream.fromFuture(completer.future);
