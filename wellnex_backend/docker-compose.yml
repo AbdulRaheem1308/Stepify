@@ -1,0 +1,72 @@
+version: '3.8'
+
+services:
+  # The Core Database
+  postgres:
+    image: postgres:15-alpine
+    environment:
+      POSTGRES_USER: wellnex
+      POSTGRES_PASSWORD: password
+      POSTGRES_DB: wellnex
+    ports:
+      - "5432:5432"
+    volumes:
+      - pgdata:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U wellnex -d wellnex"]
+      interval: 5s
+      timeout: 5s
+      retries: 5
+
+  # In-Memory Cache and Message Queue
+  redis:
+    image: redis:7-alpine
+    ports:
+      - "6379:6379"
+    volumes:
+      - redisdata:/data
+    command: redis-server --save 60 1 --loglevel warning
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 5s
+      timeout: 5s
+      retries: 5
+
+  # Main API Node (Handles HTTP Traffic)
+  wellnex-api:
+    build: .
+    ports:
+      - "3000:3000"
+    environment:
+      - NODE_ENV=production
+      - DATABASE_URL=postgresql://wellnex:password@postgres:5432/wellnex?schema=public
+      - REDIS_HOST=redis
+      - REDIS_PORT=6379
+      - PORT=3000
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+
+  # Dedicated Background Worker Node (Handles BullMQ Jobs only)
+  # Uses the exact same image but we could override the command to just boot the processor
+  # For now, it runs the NestJS app but in a future iteration, we can make it boot a standalone microservice
+  wellnex-worker:
+    build: .
+    environment:
+      - NODE_ENV=production
+      - DATABASE_URL=postgresql://wellnex:password@postgres:5432/wellnex?schema=public
+      - REDIS_HOST=redis
+      - REDIS_PORT=6379
+      # Set a flag that our app could read to only boot workers
+      - WORKER_MODE=true
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+
+volumes:
+  pgdata:
+  redisdata:

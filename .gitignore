@@ -44,4 +44,4 @@ dist/
 !.env.example
 
 # ── Backend build artefacts ──────────────────────────────────────────────────
-stepify_backend/dist/
+wellnex_backend/dist/

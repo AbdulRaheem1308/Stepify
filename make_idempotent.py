@@ -1,6 +1,6 @@
 import re
 
-file_path = r'c:\Users\rahee\.gemini\antigravity\scratch\stepify\stepify_backend\prisma\migrations\20260526081731_add_quests\migration.sql'
+file_path = r'c:\Users\rahee\.gemini\antigravity\scratch\wellnex\wellnex_backend\prisma\migrations\20260526081731_add_quests\migration.sql'
 with open(file_path, 'r', encoding='utf-8') as f:
     sql = f.read()
 
