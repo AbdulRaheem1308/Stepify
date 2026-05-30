@@ -1,0 +1,188 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<title>Wellnex Invoice</title>
+<style>
+  @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;700;800&amp;display=swap');
+  body {
+    margin: 0;
+    padding: 0;
+    font-family: 'Inter', sans-serif;
+    color: #0B1D3A;
+    background: #F1F5F9;
+  }
+  .page {
+    width: 210mm;
+    min-height: 297mm;
+    padding: 20mm;
+    margin: 10mm auto;
+    background: #FFFFFF;
+    box-shadow: 0 4px 12px rgba(0,0,0,0.05);
+    border-radius: 8px;
+    box-sizing: border-box;
+  }
+  .header {
+    display: flex;
+    justify-content: space-between;
+    align-items: flex-start;
+    margin-bottom: 50px;
+  }
+  .logo {
+    display: flex;
+    align-items: center;
+  }
+  .invoice-details {
+    text-align: right;
+  }
+  .invoice-title {
+    font-size: 32px;
+    font-weight: 800;
+    color: #10B981;
+    margin: 0 0 10px 0;
+    text-transform: uppercase;
+    letter-spacing: 2px;
+  }
+  .details-grid {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 30px;
+    margin-bottom: 40px;
+  }
+  .bill-to h3 {
+    margin: 0 0 10px 0;
+    color: #0F766E;
+    font-size: 14px;
+    text-transform: uppercase;
+  }
+  .bill-to p {
+    margin: 0;
+    color: #334155;
+    line-height: 1.5;
+  }
+  table {
+    width: 100%;
+    border-collapse: collapse;
+    margin-bottom: 30px;
+  }
+  th {
+    background: #F8FAFC;
+    color: #0B1D3A;
+    text-align: left;
+    padding: 12px;
+    font-weight: 700;
+    border-bottom: 2px solid #E2E8F0;
+  }
+  td {
+    padding: 16px 12px;
+    border-bottom: 1px solid #E2E8F0;
+    color: #334155;
+  }
+  .totals {
+    width: 50%;
+    float: right;
+  }
+  .totals table td {
+    padding: 10px 12px;
+  }
+  .totals .grand-total {
+    font-weight: 800;
+    font-size: 18px;
+    color: #0B1D3A;
+    border-top: 2px solid #10B981;
+  }
+  .footer {
+    clear: both;
+    margin-top: 80px;
+    padding-top: 20px;
+    border-top: 1px solid #E2E8F0;
+    text-align: center;
+    color: #64748B;
+    font-size: 12px;
+  }
+  @media print {
+    body, .page { margin: 0; padding: 15mm; box-shadow: none; }
+  }
+</style>
+</head>
+<body>
+  <div class="page">
+    <div class="header">
+      <div class="logo">
+        <img src="https://joinwellnex.com/favicon.png" style="width:54px;" alt="Wellnex Icon">
+        <span style="font-size: 32px; font-weight: 800; color: #0B1D3A; margin-left:12px; letter-spacing: 1px;">WELLNEX</span>
+      </div>
+      <div class="invoice-details">
+        <h1 class="invoice-title">Invoice</h1>
+        <p style="margin:0; color:#64748B;">Invoice #: <strong>INV-2026-001</strong></p>
+        <p style="margin:5px 0 0 0; color:#64748B;">Date: <strong>Oct 24, 2026</strong></p>
+        <p style="margin:5px 0 0 0; color:#64748B;">Due Date: <strong>Nov 24, 2026</strong></p>
+      </div>
+    </div>
+    
+    <div class="details-grid">
+      <div class="bill-to">
+        <h3>Billed To</h3>
+        <p><strong>[Client Company]</strong><br>
+        [Client Name]<br>
+        [Client Address]<br>
+        [Client Email]</p>
+      </div>
+      <div class="bill-to" style="text-align: right;">
+        <h3>Pay To</h3>
+        <p><strong>Wellnex Inc.</strong><br>
+        123 Wellness Avenue<br>
+        Tech District, CA 94105<br>
+        billing@joinwellnex.com</p>
+      </div>
+    </div>
+    
+    <table>
+      <thead>
+        <tr>
+          <th>Description</th>
+          <th style="text-align:center;">Qty</th>
+          <th style="text-align:right;">Rate</th>
+          <th style="text-align:right;">Amount</th>
+        </tr>
+      </thead>
+      <tbody>
+        <tr>
+          <td>Corporate Wellness Program - Enterprise Tier</td>
+          <td style="text-align:center;">1</td>
+          <td style="text-align:right;">$5,000.00</td>
+          <td style="text-align:right;">$5,000.00</td>
+        </tr>
+        <tr>
+          <td>Custom Rewards Integration API Setup</td>
+          <td style="text-align:center;">1</td>
+          <td style="text-align:right;">$1,500.00</td>
+          <td style="text-align:right;">$1,500.00</td>
+        </tr>
+      </tbody>
+    </table>
+    
+    <div class="totals">
+      <table>
+        <tr>
+          <td>Subtotal</td>
+          <td style="text-align:right;">$6,500.00</td>
+        </tr>
+        <tr>
+          <td>Tax (0%)</td>
+          <td style="text-align:right;">$0.00</td>
+        </tr>
+        <tr class="grand-total">
+          <td>Total Due</td>
+          <td style="text-align:right; color:#10B981;">$6,500.00</td>
+        </tr>
+      </table>
+    </div>
+    
+    <div class="footer">
+      <p>Thank you for choosing Wellnex! Please make payments within 30 days.</p>
+      <p style="color: #2563EB;">Move Better. Live Better. | joinwellnex.com</p>
+    </div>
+  </div>
+</body>
+</html>

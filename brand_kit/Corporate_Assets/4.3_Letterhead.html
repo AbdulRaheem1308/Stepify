@@ -1,0 +1,95 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<title>Wellnex Letterhead</title>
+<style>
+  @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;700;800&amp;display=swap');
+  body {
+    margin: 0;
+    padding: 0;
+    font-family: 'Inter', sans-serif;
+    color: #0B1D3A;
+    background: #F1F5F9;
+  }
+  .page {
+    width: 210mm;
+    min-height: 297mm;
+    padding: 20mm;
+    margin: 10mm auto;
+    background: #FFFFFF;
+    box-shadow: 0 4px 12px rgba(0,0,0,0.05);
+    border-radius: 8px;
+    box-sizing: border-box;
+    display: flex;
+    flex-direction: column;
+  }
+  .header {
+    border-bottom: 2px solid #10B981;
+    padding-bottom: 20px;
+    margin-bottom: 40px;
+  }
+  .header img {
+    height: 48px;
+  }
+  .content {
+    flex-grow: 1;
+    font-size: 11pt;
+    line-height: 1.6;
+    color: #334155;
+  }
+  .footer {
+    margin-top: 40px;
+    padding-top: 20px;
+    border-top: 1px solid #E2E8F0;
+    font-size: 9pt;
+    color: #64748B;
+    text-align: center;
+    display: flex;
+    justify-content: space-between;
+  }
+  .footer a {
+    color: #2563EB;
+    text-decoration: none;
+    font-weight: 500;
+  }
+  @media print {
+    body, .page { margin: 0; padding: 15mm; background: #FFFFFF; box-shadow: none; }
+  }
+</style>
+</head>
+<body>
+  <div class="page">
+    <div class="header">
+      <!-- In production, replace with absolute URL to hosted horizontal logo -->
+      <img src="https://joinwellnex.com/favicon.png" style="display:inline-block; vertical-align:middle; width:48px;" alt="Wellnex Icon">
+      <span style="font-size: 28px; font-weight: 800; color: #0B1D3A; vertical-align:middle; margin-left:12px; letter-spacing: 1px;">WELLNEX</span>
+    </div>
+    
+    <div class="content">
+      <p>[Date]</p>
+      <br>
+      <p><strong>[Recipient Name]</strong><br>
+      [Recipient Title]<br>
+      [Company Name]<br>
+      [Address]</p>
+      <br>
+      <p>Dear [Recipient Name],</p>
+      <p>Start your letter content here. Wellnex is committed to building a healthier world through movement, rewards, and technology. Our corporate wellness programs ensure that...</p>
+      <p>Move Better. Live Better.</p>
+      <br><br>
+      <p>Sincerely,</p>
+      <br><br>
+      <p><strong>[Your Name]</strong><br>
+      [Your Title]<br>
+      Wellnex</p>
+    </div>
+    
+    <div class="footer">
+      <div>123 Wellness Avenue, Tech District, CA 94105</div>
+      <div><a href="mailto:support@joinwellnex.com">support@joinwellnex.com</a></div>
+      <div><a href="https://joinwellnex.com">joinwellnex.com</a></div>
+    </div>
+  </div>
+</body>
+</html>
