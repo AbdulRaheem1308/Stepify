@@ -103,7 +103,7 @@ abstract class AppLocalizations {
   /// No description provided for @appName.
   ///
   /// In en, this message translates to:
-  /// **'Wellnex'**
+  /// **'Well Nex'**
   String get appName;
 
   /// No description provided for @appTagline.
@@ -1687,7 +1687,7 @@ abstract class AppLocalizations {
   /// No description provided for @wellnexPremium.
   ///
   /// In en, this message translates to:
-  /// **'Wellnex Premium'**
+  /// **'Well Nex Premium'**
   String get wellnexPremium;
 
   /// No description provided for @adFreeExperience.

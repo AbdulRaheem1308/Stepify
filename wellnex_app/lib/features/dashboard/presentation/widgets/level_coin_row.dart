@@ -28,7 +28,7 @@ class LevelCoinRow extends StatelessWidget {
       primaryColor: const Color(0xFFFF9100), // Orange
       items: const [
         ExplainerItem(
-          title: 'Wellnex Coins',
+          title: 'WN Coins',
           description: 'Your Currency. Spend coins on real-world rewards, premium challenges, or avatar items. Earned by walking and completing quests.',
           icon: Icons.stars_rounded,
         ),
@@ -199,7 +199,7 @@ class LevelCoinRow extends StatelessWidget {
                            ),
                          ),
                          const Text(
-                           'Wellnex Coins',
+                           'WN Coins',
                            style: TextStyle(
                              color: Colors.white70,
                              fontSize: 12,

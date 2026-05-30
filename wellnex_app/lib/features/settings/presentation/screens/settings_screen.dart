@@ -248,7 +248,7 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
               child: Padding(
                 padding: const EdgeInsets.only(top: 8, bottom: 80), // Extra padding to clear bottom nav
                 child: Text(
-                  'Wellnex v1.0.0',
+                  'Well Nex v1.0.0',
                   style: TextStyle(color: AppTheme.neutral400, fontSize: 14, fontWeight: FontWeight.w600),
                 ),
               ),

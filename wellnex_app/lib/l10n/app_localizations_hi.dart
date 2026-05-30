@@ -888,7 +888,7 @@ class AppLocalizationsHi extends AppLocalizations {
   }
 
   @override
-  String get wellnexPremium => 'Wellnex Premium';
+  String get wellnexPremium => 'Well Nex Premium';
 
   @override
   String get adFreeExperience => 'Ad Free Experience';

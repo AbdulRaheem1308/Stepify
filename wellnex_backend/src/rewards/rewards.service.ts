@@ -882,7 +882,7 @@ export class RewardsService {
         description: "Premium eco-friendly yoga mat",
         coinCost: 2500,
         category: "FITNESS" as any,
-        partnerName: "Wellnex Store",
+        partnerName: "Well Nex Store",
         availableStock: 10,
         totalStock: 10,
         isLimitedEdition: true,

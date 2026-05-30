@@ -63,7 +63,7 @@ class Badge {
         final goal = stepsRequired ?? targetValue ?? 0;
         criteria = 'Walk ${_formatNumber(goal)} total lifetime steps';
         howToEarn =
-            '1. Open Wellnex every day and let the pedometer run.\n'
+            '1. Open Well Nex every day and let the pedometer run.\n'
             '2. Walk, jog, or run to accumulate steps.\n'
             '3. Your steps are tracked automatically throughout the day.\n'
             '4. Reach ${ _formatNumber(goal)} cumulative lifetime steps to earn this badge.';
@@ -73,7 +73,7 @@ class Badge {
         criteria = 'Maintain a $days-day walking streak';
         howToEarn =
             '1. Walk at least your daily step goal every single day.\n'
-            '2. Open Wellnex before midnight to sync your steps.\n'
+            '2. Open Well Nex before midnight to sync your steps.\n'
             '3. Do not miss a single day — one missed day resets your streak.\n'
             '4. Keep your streak alive for $days consecutive days to earn this badge.';
         break;
@@ -88,7 +88,7 @@ class Badge {
         break;
       case 'SOCIAL':
         final friends = targetValue ?? 1;
-        criteria = 'Add $friends friend${friends > 1 ? 's' : ''} on Wellnex';
+        criteria = 'Add $friends friend${friends > 1 ? 's' : ''} on Well Nex';
         howToEarn =
             '1. Go to the Friends section in your profile.\n'
             '2. Search for friends by name or share your referral link.\n'
@@ -106,7 +106,7 @@ class Badge {
             '5. Accumulate ${_formatNumber(coins)} total coins earned over your lifetime.';
         break;
       case 'COMMUNITY':
-        criteria = 'Participate in the Wellnex community';
+        criteria = 'Participate in the Well Nex community';
         howToEarn =
             '1. Join and post in the Community Feed.\n'
             '2. Like and comment on other users\' milestones.\n'

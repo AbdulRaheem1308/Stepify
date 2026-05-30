@@ -351,7 +351,7 @@ class ChallengeCard extends StatelessWidget {
                   const SizedBox(height: 12),
 
                   _buildHowToStep(context, '1', 'Join the challenge', 'Tap "Join Challenge" and accept the terms. You\'re enrolled immediately.', accentColor, isCompleted),
-                  _buildHowToStep(context, '2', 'Walk every day', 'Open Wellnex daily and let the pedometer count your steps automatically. Your steps accumulate over the ${challenge.durationDays}-day period.', accentColor, isCompleted),
+                  _buildHowToStep(context, '2', 'Walk every day', 'Open Well Nex daily and let the pedometer count your steps automatically. Your steps accumulate over the ${challenge.durationDays}-day period.', accentColor, isCompleted),
                   _buildHowToStep(context, '3', 'Reach ${_formatNumber(challenge.stepTarget)} total steps', 'Walk a combined total of ${_formatNumber(challenge.stepTarget)} steps across all ${challenge.durationDays} days. Your steps are synced every 4 hours.', accentColor, isCompleted),
                   _buildHowToStep(context, '4', 'Collect your reward', 'Once your step total hits the target, the challenge is automatically marked complete and +${challenge.rewardCoins} coins & +${challenge.rewardXp} XP are credited to your wallet.', accentColor, isCompleted),
 

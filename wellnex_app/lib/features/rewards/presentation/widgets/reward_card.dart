@@ -64,7 +64,7 @@ class RewardCard extends StatelessWidget {
                         borderRadius: BorderRadius.circular(6),
                       ),
                       child: Text(
-                        reward.partnerName ?? 'Wellnex',
+                        reward.partnerName ?? 'Well Nex',
                         style: const TextStyle(
                           color: Colors.white,
                           fontSize: 9,

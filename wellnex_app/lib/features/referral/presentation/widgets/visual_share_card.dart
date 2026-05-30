@@ -84,7 +84,7 @@ class VisualShareCard extends StatelessWidget {
                 
                 // Title
                 const Text(
-                  'Join me on Wellnex!',
+                  'Join me on Well Nex!',
                   textAlign: TextAlign.center,
                   style: TextStyle(
                     color: Colors.white,

@@ -28,7 +28,7 @@ class TermsScreen extends StatelessWidget {
             const SizedBox(height: 24),
             _buildSection(
               '1. Agreement to Terms',
-              'By accessing or using Wellnex, you agree to be bound by these Terms. If you disagree with any part of the terms, you may not access the service.',
+              'By accessing or using Well Nex, you agree to be bound by these Terms. If you disagree with any part of the terms, you may not access the service.',
             ),
             _buildSection(
               '2. Accounts',
@@ -36,11 +36,11 @@ class TermsScreen extends StatelessWidget {
             ),
             _buildSection(
               '3. Rewards and Coins',
-              'Wellnex provides in-app rewards ("Coins") based on your physical activity. These Coins hold no real-world monetary value and cannot be exchanged for fiat currency outside of the platform’s official redemption mechanisms. Accounts found cheating or spoofing location data will be permanently banned.',
+              'Well Nex provides in-app rewards ("WN Coins") based on your physical activity. These WN Coins hold no real-world monetary value and cannot be exchanged for fiat currency outside of the platform’s official redemption mechanisms. Accounts found cheating or spoofing location data will be permanently banned.',
             ),
             _buildSection(
               '4. Inactivity & Expiration',
-              'To maintain an active economy, Wellnex reserves the right to expire wallet balances for accounts that have been entirely inactive for a period of 180 consecutive days.',
+              'To maintain an active economy, Well Nex reserves the right to expire wallet balances for accounts that have been entirely inactive for a period of 180 consecutive days.',
             ),
             _buildSection(
               '5. Termination',

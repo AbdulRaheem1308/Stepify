@@ -69,7 +69,7 @@ const Hero = () => {
         </h1>
         
         <p className="animate-fade-up" style={{ fontSize: '1.25rem', color: 'var(--text-secondary)', maxWidth: '650px', margin: '0 auto', animationDelay: '0.2s' }}>
-          Wellnex is the ultimate fitness app that pays you to stay healthy. Walk daily, maintain your streaks, crush challenges, and redeem exclusive rewards.
+          Well Nex is the ultimate fitness app that pays you to stay healthy. Walk daily, maintain your streaks, crush challenges, and redeem exclusive rewards.
         </p>
         
         <div className="animate-fade-up" style={{ display: 'flex', gap: '1rem', marginTop: '1.5rem', animationDelay: '0.3s', flexWrap: 'wrap', justifyContent: 'center' }}>
@@ -90,7 +90,7 @@ const HowItWorks = () => {
     <section id="how-it-works" className="section" style={{ borderTop: '1px solid var(--border-light)' }}>
       <div className="container">
         <div style={{ textAlign: 'center', marginBottom: '5rem' }}>
-          <h2 style={{ fontSize: '3rem', marginBottom: '1rem' }}>How Wellnex Works</h2>
+          <h2 style={{ fontSize: '3rem', marginBottom: '1rem' }}>How Well Nex Works</h2>
           <p style={{ fontSize: '1.125rem', color: 'var(--text-secondary)' }}>Three simple steps to a healthier, wealthier you.</p>
         </div>
 
@@ -205,7 +205,7 @@ const Corporate = () => {
             </div>
             <h2 style={{ fontSize: '3rem', marginBottom: '1.5rem' }}>Transform Your Company Culture</h2>
             <p style={{ fontSize: '1.125rem', color: 'var(--text-secondary)', marginBottom: '2rem' }}>
-              Bring Wellnex to your organization. Boost employee health, reduce burnout, and foster team bonding through gamified walking challenges.
+              Bring Well Nex to your organization. Boost employee health, reduce burnout, and foster team bonding through gamified walking challenges.
             </p>
             <ul style={{ display: 'flex', flexDirection: 'column', gap: '1rem', marginBottom: '2.5rem', listStyle: 'none' }}>
               {['Private Company Leaderboards', 'Custom Reward Structures & Vouchers', 'Detailed HR Analytics & Reports', 'Inter-Department Competitions'].map((item, i) => (
@@ -253,7 +253,7 @@ const CTA = () => (
         Join thousands of users who are already turning their daily walks into incredible rewards.
       </p>
       <button className="btn btn-primary" style={{ padding: '1.25rem 3rem', fontSize: '1.25rem' }}>
-        Download Wellnex Now
+        Download Well Nex Now
       </button>
     </div>
   </section>
@@ -287,7 +287,7 @@ const Footer = () => (
         </div>
       </div>
       <div style={{ borderTop: '1px solid var(--border-light)', paddingTop: '2rem', display: 'flex', justifyContent: 'space-between', alignItems: 'center', color: 'var(--text-muted)', fontSize: '0.875rem', flexWrap: 'wrap', gap: '1rem' }}>
-        <span>© {new Date().getFullYear()} Wellnex Wellness. All rights reserved.</span>
+        <span>© {new Date().getFullYear()} Well Nex Wellness. All rights reserved.</span>
         <span>Made with ❤️ in India</span>
       </div>
     </div>

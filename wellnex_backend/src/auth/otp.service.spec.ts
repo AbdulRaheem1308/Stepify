@@ -123,7 +123,7 @@ describe("OtpService", () => {
 
         const twilioClient = (validService as any).twilioClient;
         expect(twilioClient.messages.create).toHaveBeenCalledWith({
-          body: "Your Wellnex verification code is: 123456. Valid for 5 minutes.",
+          body: "Your Well Nex verification code is: 123456. Valid for 5 minutes.",
           from: "123456",
           to: "phone1",
         });

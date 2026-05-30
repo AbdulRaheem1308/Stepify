@@ -22,10 +22,10 @@ Future<void> firebaseMessagingBackgroundHandler(RemoteMessage message) async {
 final FlutterLocalNotificationsPlugin _localNotifications =
     FlutterLocalNotificationsPlugin();
 
-/// Android notification channel used for all Wellnex push notifications.
+/// Android notification channel used for all Well Nex push notifications.
 const AndroidNotificationChannel _channel = AndroidNotificationChannel(
   'wellnex_default',          // must match backend channelId
-  'Wellnex Notifications',
+  'Well Nex Notifications',
   description: 'Step rewards, challenges, badges and daily reminders.',
   importance: Importance.high,
   playSound: true,

@@ -75,7 +75,7 @@ export const LoginView: React.FC<LoginViewProps> = ({ apiKey, setApiKey, onLogin
           WebkitBackgroundClip: "text",
           WebkitTextFillColor: "transparent"
         }}>
-          Wellnex Console
+          Well Nex Console
         </h1>
         <p style={{
           fontSize: "0.8rem",

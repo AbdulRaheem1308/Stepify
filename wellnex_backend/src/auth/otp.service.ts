@@ -38,7 +38,7 @@ export class OtpService {
   }
 
   async sendSmsOtp(phone: string, otp: string): Promise<void> {
-    const message = `Your Wellnex verification code is: ${otp}. Valid for 5 minutes.`;
+    const message = `Your Well Nex verification code is: ${otp}. Valid for 5 minutes.`;
 
     if (this.twilioClient) {
       try {

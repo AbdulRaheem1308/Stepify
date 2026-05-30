@@ -28,7 +28,7 @@ class PrivacyPolicyScreen extends StatelessWidget {
             const SizedBox(height: 24),
             _buildSection(
               '1. Introduction',
-              'Wellnex respects your privacy and is committed to protecting your personal data. This privacy policy will inform you as to how we look after your personal data when you visit our application and tell you about your privacy rights.',
+              'Well Nex respects your privacy and is committed to protecting your personal data. This privacy policy will inform you as to how we look after your personal data when you visit our application and tell you about your privacy rights.',
             ),
             _buildSection(
               '2. Data We Collect',

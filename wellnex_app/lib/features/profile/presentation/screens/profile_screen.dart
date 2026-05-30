@@ -186,7 +186,7 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen>
                         const Icon(Icons.military_tech,
                             color: AppTheme.accentYellow, size: 14),
                         const SizedBox(width: 4),
-                        Text('Level $level  •  Wellnex Pro',
+                        Text('Level $level  •  Well Nex Pro',
                             style: const TextStyle(
                                 color: Colors.white70, fontSize: 13)),
                       ],

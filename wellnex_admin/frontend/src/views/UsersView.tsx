@@ -156,7 +156,7 @@ export const UsersView: React.FC<UsersViewProps> = ({
             </div>
           )}
           <div style={{ borderTop: "1px solid var(--border-color)", marginTop: "32px", paddingTop: "16px", textAlign: "center" }}>
-            <p style={{ fontSize: "0.65rem", color: "var(--text-muted)", fontWeight: "500" }}>Wellnex Compliance & Verification Framework</p>
+            <p style={{ fontSize: "0.65rem", color: "var(--text-muted)", fontWeight: "500" }}>Well Nex Compliance & Verification Framework</p>
           </div>
         </div>
       </div>

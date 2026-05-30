@@ -1,7 +1,7 @@
 {
   "@@locale": "en",
   
-  "appName": "Wellnex",
+  "appName": "Well Nex",
   "appTagline": "Walk, Track, Earn Rewards",
   
   "home": "Home",
@@ -468,7 +468,7 @@
       "error": { "type": "String" }
     }
   },
-  "wellnexPremium": "Wellnex Premium",
+  "wellnexPremium": "Well Nex Premium",
   "adFreeExperience": "Ad Free Experience",
   "upgradeBtn": "Upgrade"
 }
