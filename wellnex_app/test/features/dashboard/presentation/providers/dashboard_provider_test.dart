@@ -585,8 +585,8 @@ void main() {
         // Inject a massive step difference (e.g. 50000 steps within 2s => 24500 steps/sec)
         await notifier.syncSteps(50000);
 
-        // Allowed increase is 2s * 6.0 steps/sec = 12 steps. Clamped to 1012.
-        expect(notifier.state.todaySteps!.stepCount, 1012);
+        // Allowed increase is 2s * 50.0 steps/sec = 100 steps. Clamped to 1100.
+        expect(notifier.state.todaySteps!.stepCount, 1100);
 
         container.dispose();
       });

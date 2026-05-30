@@ -628,9 +628,11 @@ class DashboardNotifier extends StateNotifier<DashboardState> with WidgetsBindin
       
       if (stepDiff > 0 && timeDiff.inSeconds > 0) {
         final stepsPerSecond = stepDiff / timeDiff.inSeconds;
-        // Elite athletes have ~4-5 steps/sec sprint cadence. 6.0 is a safe threshold
-        if (stepsPerSecond > 6.0) {
-          final allowedIncrease = (timeDiff.inSeconds * 6.0).toInt();
+        // Hardware sensors often batch steps and deliver them in bursts.
+        // A threshold of 50 steps/sec prevents malicious API injectors while 
+        // allowing legitimate sensor batching (e.g. 30 steps delivered in 1 sec).
+        if (stepsPerSecond > 50.0) {
+          final allowedIncrease = (timeDiff.inSeconds * 50.0).toInt();
           stepCount = _lastSyncedSteps + allowedIncrease;
           debugPrint('⚠️ Security Warning: Cadence check failed ($stepsPerSecond steps/sec). Clamping steps to: $stepCount');
         }

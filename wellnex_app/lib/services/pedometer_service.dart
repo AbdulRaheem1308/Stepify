@@ -30,9 +30,9 @@ class PedometerService {
   bool get isListening => _isListening;
 
   // Hive storage keys
-  static const String _baselineKey = 'pedometer_baseline_steps';
+  static const String _savedStepsTodayKey = 'pedometer_saved_steps_today';
   static const String _lastDateKey = 'pedometer_last_sync_date';
-  static const String _lastKnownStepsKey = 'pedometer_last_known_steps';
+  static const String _lastSensorStepsKey = 'pedometer_last_sensor_steps';
 
   // ── Public API ────────────────────────────────────────────────────────────
 
@@ -90,42 +90,48 @@ class PedometerService {
     try {
       final stream = mockStepCountStream ?? _pedometer.stepCountStream();
       final sensorSteps = await stream.first.timeout(const Duration(seconds: 2));
-      await StorageService.put(_lastKnownStepsKey, sensorSteps);
       
       final todayStr = DateTime.now().toIso8601String().split('T')[0];
       final lastSyncDate = StorageService.get<String>(_lastDateKey) ?? '';
-      int baseline = StorageService.get<int>(_baselineKey) ?? -1;
+      
+      int savedStepsToday = StorageService.get<int>(_savedStepsTodayKey) ?? 0;
+      int lastSensorSteps = StorageService.get<int>(_lastSensorStepsKey) ?? -1;
 
-      if (lastSyncDate != todayStr || baseline == -1) {
-        baseline = sensorSteps;
-        await StorageService.put(_baselineKey, baseline);
+      if (lastSyncDate != todayStr) {
+        savedStepsToday = 0;
+        lastSensorSteps = sensorSteps;
         await StorageService.put(_lastDateKey, todayStr);
       }
 
-      int stepsToday = sensorSteps - baseline;
-      if (stepsToday < 0) {
-        baseline = sensorSteps;
-        await StorageService.put(_baselineKey, baseline);
-        stepsToday = 0;
+      if (lastSensorSteps == -1) {
+        lastSensorSteps = sensorSteps;
       }
 
-      return stepsToday;
+      int delta = sensorSteps - lastSensorSteps;
+      if (delta < 0) {
+        delta = sensorSteps;
+      }
+
+      savedStepsToday += delta;
+      lastSensorSteps = sensorSteps;
+
+      await StorageService.put(_savedStepsTodayKey, savedStepsToday);
+      await StorageService.put(_lastSensorStepsKey, lastSensorSteps);
+
+      return savedStepsToday;
     } catch (e) {
       debugPrint('PedometerService: Failed to get current steps: $e');
       
       // Fallback: Try to use the last known cumulative sensor steps from today
       try {
-        final lastKnownSteps = StorageService.get<int>(_lastKnownStepsKey);
-        if (lastKnownSteps != null && lastKnownSteps > 0) {
+        final savedStepsToday = StorageService.get<int>(_savedStepsTodayKey);
+        if (savedStepsToday != null && savedStepsToday > 0) {
           final todayStr = DateTime.now().toIso8601String().split('T')[0];
           final lastSyncDate = StorageService.get<String>(_lastDateKey) ?? '';
-          int baseline = StorageService.get<int>(_baselineKey) ?? -1;
           
-          if (lastSyncDate == todayStr && baseline != -1) {
-            int stepsToday = lastKnownSteps - baseline;
-            if (stepsToday < 0) stepsToday = 0;
-            debugPrint('PedometerService: Using last known steps fallback: $stepsToday (sensor: $lastKnownSteps, baseline: $baseline)');
-            return stepsToday;
+          if (lastSyncDate == todayStr) {
+            debugPrint('PedometerService: Using saved steps fallback: $savedStepsToday');
+            return savedStepsToday;
           }
         }
       } catch (fallbackErr) {
@@ -162,32 +168,38 @@ class PedometerService {
   /// reboot (when cumulative count drops below the stored baseline).
   Future<void> _onStepCountEvent(int sensorSteps) async {
     final todayStr = DateTime.now().toIso8601String().split('T')[0];
-
     final lastSyncDate = StorageService.get<String>(_lastDateKey) ?? '';
-    int baseline = StorageService.get<int>(_baselineKey) ?? -1;
+    
+    int savedStepsToday = StorageService.get<int>(_savedStepsTodayKey) ?? 0;
+    int lastSensorSteps = StorageService.get<int>(_lastSensorStepsKey) ?? -1;
 
-    // New day or first run — reset baseline.
-    if (lastSyncDate != todayStr || baseline == -1) {
-      baseline = sensorSteps;
-      await StorageService.put(_baselineKey, baseline);
+    // New day reset
+    if (lastSyncDate != todayStr) {
+      savedStepsToday = 0;
+      lastSensorSteps = sensorSteps;
       await StorageService.put(_lastDateKey, todayStr);
-      debugPrint(
-          'PedometerService: New baseline = $baseline for $todayStr');
+      debugPrint('PedometerService: New day reset for $todayStr');
     }
 
-    int stepsToday = sensorSteps - baseline;
-
-    // Handle device reboot (cumulative counter resets to 0 or below baseline).
-    if (stepsToday < 0) {
-      baseline = sensorSteps;
-      await StorageService.put(_baselineKey, baseline);
-      stepsToday = 0;
+    if (lastSensorSteps == -1) {
+      lastSensorSteps = sensorSteps;
     }
 
-    // Save last known cumulative steps for background worker fallback
-    await StorageService.put(_lastKnownStepsKey, sensorSteps);
+    int delta = sensorSteps - lastSensorSteps;
 
-    _onStepsChanged?.call(stepsToday);
+    // Handle device reboot or sensor tracking resets
+    if (delta < 0) {
+      debugPrint('PedometerService: Sensor reset detected! Old: $lastSensorSteps, New: $sensorSteps');
+      delta = sensorSteps; // Assume sensor restarted from 0
+    }
+
+    savedStepsToday += delta;
+    lastSensorSteps = sensorSteps;
+
+    await StorageService.put(_savedStepsTodayKey, savedStepsToday);
+    await StorageService.put(_lastSensorStepsKey, lastSensorSteps);
+
+    _onStepsChanged?.call(savedStepsToday);
   }
 
   void _onStepCountError(dynamic error) {
