@@ -672,7 +672,7 @@ class _RewardsScreenState extends ConsumerState<RewardsScreen>
                     Expanded(
                       child: ElevatedButton.icon(
                         onPressed: () {
-                          final msg = '🏆 I just earned the "${badge['name']}" badge on Well Nex! Can you beat my score?\n\nJoin me: https://joinwellnex.com';
+                          final msg = '🏆 I just earned the "${badge['name']}" badge on Wellnex! Can you beat my score?\n\nJoin me: https://joinwellnex.com';
                           Share.share(msg);
                         },
                         icon: const Icon(Icons.share, size: 18),

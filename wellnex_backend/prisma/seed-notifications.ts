@@ -71,7 +71,7 @@ async function seedNotifications() {
         await (prisma as any).notification.create({
             data: {
                 userId: user.id,
-                title: '👋 Welcome to Well Nex!',
+                title: '👋 Welcome to Wellnex!',
                 message: 'Start walking to earn rewards. Check out our Challenges section!',
                 type: 'system',
                 isRead: true,

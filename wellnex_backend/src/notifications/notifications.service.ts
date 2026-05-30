@@ -254,7 +254,7 @@ export class NotificationsService {
 
     try {
       await this.transporter.sendMail({
-        from: `"Well Nex" <${process.env.SMTP_USER}>`,
+        from: `"Wellnex" <${process.env.SMTP_USER}>`,
         to,
         subject,
         html,
@@ -296,7 +296,7 @@ export class NotificationsService {
         await this.sendEmail(
           user.email,
           title,
-          `<h3>${title}</h3><p>${message}</p><br/><p>Keep stepping with Well Nex!</p>`,
+          `<h3>${title}</h3><p>${message}</p><br/><p>Keep stepping with Wellnex!</p>`,
         );
       }
     }

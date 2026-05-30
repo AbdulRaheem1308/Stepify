@@ -1,6 +1,6 @@
 import 'package:flutter/material.dart';
 
-/// Well Nex App Theme - Fresh Green & Sky Blue Fitness Theme
+/// Wellnex App Theme - Fresh Green & Sky Blue Fitness Theme
 class AppTheme {
   AppTheme._();
 

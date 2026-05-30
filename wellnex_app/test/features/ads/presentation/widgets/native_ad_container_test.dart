@@ -59,7 +59,7 @@ void main() {
       await tester.pumpAndSettle(const Duration(seconds: 2));
 
       // Fallback shows Wellnex Premium promo
-      expect(find.text('Well Nex Premium'), findsOneWidget);
+      expect(find.text('Wellnex Premium'), findsOneWidget);
       expect(find.text('Ad Free Experience'), findsOneWidget);
       expect(find.text('Upgrade'), findsOneWidget);
     });
@@ -73,7 +73,7 @@ void main() {
       ]));
       await tester.pumpAndSettle(const Duration(seconds: 2));
 
-      expect(find.text('Well Nex Premium'), findsOneWidget);
+      expect(find.text('Wellnex Premium'), findsOneWidget);
     });
 
     testWidgets('fallback has WCAG Semantics label', (tester) async {
@@ -86,7 +86,7 @@ void main() {
       await tester.pumpAndSettle(const Duration(seconds: 2));
 
       final semantics = find.bySemanticsLabel(
-        RegExp(r'Well Nex Premium - Ad Free Experience'),
+        RegExp(r'Wellnex Premium - Ad Free Experience'),
       );
       expect(semantics, findsOneWidget);
     });

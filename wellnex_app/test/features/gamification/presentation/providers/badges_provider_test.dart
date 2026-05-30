@@ -138,7 +138,7 @@ void main() {
         "targetValue": 1,
         "progress": 0
       });
-      expect(badge.unlockCriteria, 'Add 1 friend on Well Nex');
+      expect(badge.unlockCriteria, 'Add 1 friend on Wellnex');
       expect(badge.howToEarn, contains('1 accepted friend connection'));
     });
 
@@ -155,7 +155,7 @@ void main() {
       final badge = Badge.fromJson({
         "category": "COMMUNITY",
       });
-      expect(badge.unlockCriteria, 'Participate in the Well Nex community');
+      expect(badge.unlockCriteria, 'Participate in the Wellnex community');
       expect(badge.howToEarn, contains('Join and post'));
     });
 

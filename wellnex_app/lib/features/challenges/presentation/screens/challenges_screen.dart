@@ -353,7 +353,7 @@ class _ChallengesScreenState extends ConsumerState<ChallengesScreen> with Single
                               const Divider(height: 1),
                               const SizedBox(height: 12),
                               _buildTermItem(context, '1. Complete the required steps within the challenge duration.'),
-                              _buildTermItem(context, '2. Steps must be tracked through the Well Nex app.'),
+                              _buildTermItem(context, '2. Steps must be tracked through the Wellnex app.'),
                               _buildTermItem(context, '3. Rewards are credited upon successful completion.'),
                               _buildTermItem(context, '4. Cheating or manipulation will result in disqualification.'),
                               _buildTermItem(context, '5. Challenges cannot be paused once joined.'),

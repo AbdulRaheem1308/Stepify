@@ -48,7 +48,7 @@ export const Sidebar: React.FC<SidebarProps> = ({ activeTab, setActiveTab, onLog
               <Zap className="w-5 h-5 text-white" />
             </div>
             <div>
-              <span className="sidebar-title">Well Nex Admin</span>
+              <span className="sidebar-title">Wellnex Admin</span>
               <div className="sidebar-subtitle">HQ Operations</div>
             </div>
           </div>

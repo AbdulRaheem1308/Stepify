@@ -455,7 +455,7 @@ class _ReferralScreenState extends ConsumerState<ReferralScreen> {
 
         // 4. Create proper sharing message
         final message = '''
-🚀 Join me on Well Nex and get rewarded!
+🚀 Join me on Wellnex and get rewarded!
         
 My Invite Code: $code
         
@@ -466,7 +466,7 @@ Download: https://joinwellnex.com/invite?code=$code
         await Share.shareXFiles(
           [XFile(imagePath.path)],
           text: message,
-          subject: 'Join Well Nex Challenge!',
+          subject: 'Join Wellnex Challenge!',
         );
       } else {
          // Fallback to text only if capture fail
@@ -480,8 +480,8 @@ Download: https://joinwellnex.com/invite?code=$code
 
   void _shareTextOnly(String code) {
     Share.share(
-      'Join me on Well Nex! Use code: $code\nhttps://joinwellnex.com/invite?code=$code', 
-      subject: 'Join Well Nex!'
+      'Join me on Wellnex! Use code: $code\nhttps://joinwellnex.com/invite?code=$code', 
+      subject: 'Join Wellnex!'
     );
   }
 }

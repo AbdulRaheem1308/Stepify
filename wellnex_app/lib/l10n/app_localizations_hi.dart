@@ -9,7 +9,7 @@ class AppLocalizationsHi extends AppLocalizations {
   AppLocalizationsHi([String locale = 'hi']) : super(locale);
 
   @override
-  String get appName => 'Well Nex';
+  String get appName => 'Wellnex';
 
   @override
   String get appTagline => 'चलें • ट्रैक करें • कमाएँ';
@@ -888,7 +888,7 @@ class AppLocalizationsHi extends AppLocalizations {
   }
 
   @override
-  String get wellnexPremium => 'Well Nex Premium';
+  String get wellnexPremium => 'Wellnex Premium';
 
   @override
   String get adFreeExperience => 'Ad Free Experience';

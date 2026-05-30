@@ -222,8 +222,8 @@ class _ReferralLeaderboardScreenState extends ConsumerState<ReferralLeaderboardS
     }
     
     Share.share(
-      '🚀 Join me on Well Nex and get rewarded! Use my invite code: $code\n\nDownload: https://joinwellnex.com/invite?code=$code', 
-      subject: 'Join Well Nex Challenge!'
+      '🚀 Join me on Wellnex and get rewarded! Use my invite code: $code\n\nDownload: https://joinwellnex.com/invite?code=$code', 
+      subject: 'Join Wellnex Challenge!'
     );
   }
 }

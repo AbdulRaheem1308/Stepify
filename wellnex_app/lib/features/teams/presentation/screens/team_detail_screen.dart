@@ -444,7 +444,7 @@ class _TeamDetailScreenState extends ConsumerState<TeamDetailScreen> {
     switch (action) {
       case 'share':
         Share.share(
-          'Join my team "${team.name}" on Well Nex! Use invite code: ${team.inviteCode ?? team.id}',
+          'Join my team "${team.name}" on Wellnex! Use invite code: ${team.inviteCode ?? team.id}',
         );
         break;
       case 'leave':

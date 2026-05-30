@@ -9,7 +9,7 @@ class AppLocalizationsEn extends AppLocalizations {
   AppLocalizationsEn([String locale = 'en']) : super(locale);
 
   @override
-  String get appName => 'Well Nex';
+  String get appName => 'Wellnex';
 
   @override
   String get appTagline => 'Walk • Track • Earn';
@@ -885,7 +885,7 @@ class AppLocalizationsEn extends AppLocalizations {
   }
 
   @override
-  String get wellnexPremium => 'Well Nex Premium';
+  String get wellnexPremium => 'Wellnex Premium';
 
   @override
   String get adFreeExperience => 'Ad Free Experience';
@@ -899,7 +899,7 @@ class AppLocalizationsEnGb extends AppLocalizationsEn {
   AppLocalizationsEnGb() : super('en_GB');
 
   @override
-  String get appName => 'Well Nex';
+  String get appName => 'Wellnex';
 
   @override
   String get appTagline => 'Walk • Track • Earn';
@@ -1775,7 +1775,7 @@ class AppLocalizationsEnGb extends AppLocalizationsEn {
   }
 
   @override
-  String get wellnexPremium => 'Well Nex Premium';
+  String get wellnexPremium => 'Wellnex Premium';
 
   @override
   String get adFreeExperience => 'Ad Free Experience';
@@ -1789,7 +1789,7 @@ class AppLocalizationsEnIn extends AppLocalizationsEn {
   AppLocalizationsEnIn() : super('en_IN');
 
   @override
-  String get appName => 'Well Nex';
+  String get appName => 'Wellnex';
 
   @override
   String get appTagline => 'Walk • Track • Earn';
@@ -2665,7 +2665,7 @@ class AppLocalizationsEnIn extends AppLocalizationsEn {
   }
 
   @override
-  String get wellnexPremium => 'Well Nex Premium';
+  String get wellnexPremium => 'Wellnex Premium';
 
   @override
   String get adFreeExperience => 'Ad Free Experience';

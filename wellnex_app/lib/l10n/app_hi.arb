@@ -1,6 +1,6 @@
 {
   "@@locale": "hi",
-  "appName": "Well Nex",
+  "appName": "Wellnex",
   "appTagline": "चलें • ट्रैक करें • कमाएँ",
   "home": "होम",
   "analytics": "एनालिटिक्स",
@@ -264,7 +264,7 @@
   "pointsAdded": "+{points} points",
   "awesomeBtn": "Awesome!",
   "failedToClaimReward": "Failed to claim reward: {error}",
-  "wellnexPremium": "Well Nex Premium",
+  "wellnexPremium": "Wellnex Premium",
   "adFreeExperience": "Ad Free Experience",
   "upgradeBtn": "Upgrade"
 }
