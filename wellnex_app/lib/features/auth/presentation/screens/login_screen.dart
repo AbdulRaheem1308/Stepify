@@ -136,10 +136,10 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
                           ),
                         ],
                       ),
-                      child: const Icon(
-                        Icons.directions_walk_rounded,
-                        size: 60,
-                        color: AppTheme.primaryGreen,
+                      child: Image.asset(
+                        'assets/images/splash_logo.png',
+                        width: 80,
+                        height: 80,
                       ),
                     ),
                   ),
