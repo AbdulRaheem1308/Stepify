@@ -9,7 +9,7 @@ class AppLocalizationsHi extends AppLocalizations {
   AppLocalizationsHi([String locale = 'hi']) : super(locale);
 
   @override
-  String get appName => 'स्टेपिफाई';
+  String get appName => 'Well Nex';
 
   @override
   String get appTagline => 'चलें • ट्रैक करें • कमाएँ';

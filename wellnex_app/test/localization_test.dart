@@ -36,8 +36,8 @@ void main() {
 
       await tester.pumpAndSettle();
 
-      expect(l10n.appName, 'Wellnex');
-      expect(find.text('Wellnex'), findsOneWidget);
+      expect(l10n.appName, 'Well Nex');
+      expect(find.text('Well Nex'), findsOneWidget);
     });
 
     testWidgets('App loads Hindi (hi) strings correctly', (WidgetTester tester) async {
@@ -53,8 +53,8 @@ void main() {
       await tester.pumpAndSettle();
 
       // Check Hindi translation (ensure this matches what is in app_hi.arb)
-      expect(l10n.appName, 'स्टेपिफाई');
-      expect(find.text('स्टेपिफाई'), findsOneWidget);
+      expect(l10n.appName, 'Well Nex');
+      expect(find.text('Well Nex'), findsOneWidget);
     });
 
     testWidgets('App loads UK English (en_GB) fallback correctly', (WidgetTester tester) async {
