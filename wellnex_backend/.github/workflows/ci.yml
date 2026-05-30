@@ -14,9 +14,9 @@ jobs:
       postgres:
         image: postgres:15
         env:
-          POSTGRES_USER: stepify
+          POSTGRES_USER: wellnex
           POSTGRES_PASSWORD: password
-          POSTGRES_DB: stepify
+          POSTGRES_DB: wellnex
         ports:
           - 5432:5432
         options: >-
@@ -36,8 +36,8 @@ jobs:
           --health-retries 5
 
     env:
-      DATABASE_URL: "postgresql://stepify:password@localhost:5432/stepify?schema=public"
-      DIRECT_URL: "postgresql://stepify:password@localhost:5432/stepify?schema=public"
+      DATABASE_URL: "postgresql://wellnex:password@localhost:5432/wellnex?schema=public"
+      DIRECT_URL: "postgresql://wellnex:password@localhost:5432/wellnex?schema=public"
       REDIS_HOST: "localhost"
       REDIS_PORT: "6379"
       JWT_SECRET: "test-secret"
